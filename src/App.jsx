@@ -29,7 +29,7 @@ const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-
 const scr = document.createElement('script');
 // scr.type = 'module';
 scr.text = jsCode;
-document.body.append(scr);
+document.body.appendChild(scr);
 var Module = {}; // Initialize an empty Module object
 setTimeout(function(){
 Module = libload();
