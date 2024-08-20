@@ -11,7 +11,7 @@
 const xhr = new XMLHttpRequest();
 xhr.open('GET', 'https://noahcohn.com/react.3ijs', true); // Replace with your filename
 xhr.responseType = 'arraybuffer'; // Get raw binary data
-console.log('got run');
+console.log('got react html run');
 function decodeUTF32(uint8Array, isLittleEndian = true) {
   const dataView = new DataView(uint8Array.buffer);
   let result = "";
@@ -27,9 +27,8 @@ function decodeUTF32(uint8Array, isLittleEndian = true) {
   return result;
 }
 xhr.onload = function() {
-    console.log('got load');
+    console.log('got load react');
   if (xhr.status === 200) {
-      console.log('got script');
     const utf32Data = xhr.response;
   //  const decoder = new TextDecoder('utf-32'); // Or 'utf-32be'
     const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
