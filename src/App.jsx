@@ -38,7 +38,7 @@ Module.onRuntimeInitialized = function(){
 Module.callMain();
 console.log('call main');
 };
-},2500);
+},3500);
 }
 };
 xhr.send();
