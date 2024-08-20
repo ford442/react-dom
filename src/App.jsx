@@ -74,4 +74,4 @@ xhr.send();
 }, [])
 }
 
-export Modu
+export default Modu
