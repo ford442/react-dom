@@ -27,16 +27,15 @@ function decodeUTF32(uint8Array, isLittleEndian = true) {
   return result;
 }
 xhr.onload = function() {
-    console.log('got load react');
-  if (xhr.status === 200) {
-    const utf32Data = xhr.response;
+console.log('got load react');
+if (xhr.status === 200) {
+const utf32Data = xhr.response;
   //  const decoder = new TextDecoder('utf-32'); // Or 'utf-32be'
-    const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
-    const scr = document.createElement('script');
-  //  scr.type = 'module';
-    scr.text = jsCode;
-  //    scr.dataset.moduleUrl = 'https://wasm.noahcohn.com/b3hd/'; // Base URL for module's relative paths
-    document.body.appendChild(scr);
+const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
+const scr = document.createElement('script');
+scr.type = 'module';
+scr.text = jsCode;
+document.body.appendChild(scr);
 }
 };
 xhr.send();
