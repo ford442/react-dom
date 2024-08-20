@@ -2,13 +2,11 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 
 function App() {
 
-const run = useCallback(() => {
- 
+const run = async() => {
 const xhr = new XMLHttpRequest();
 xhr.open('GET', 'https://wasm.noahcohn.com/b3hd/w0-012-load-32.3ijs', true); // Replace with your filename
 xhr.responseType = 'arraybuffer'; // Get raw binary data
 console.log('got react run');
-
 function decodeUTF32(uint8Array, isLittleEndian = true) {
 const dataView = new DataView(uint8Array.buffer);
 let result = "";
@@ -23,7 +21,6 @@ result += String.fromCodePoint(codePoint);
 }
 return result;
 }
-
 xhr.onload = function() {
 console.log('got load');
 if (xhr.status === 200) {
@@ -45,7 +42,7 @@ console.log('call main');
 }
 };
 xhr.send();
-},[])
+};
 
 return (
 <div className=''>
@@ -53,7 +50,7 @@ Testing React load 3ijs...
 </div>
 )
 
-run()
+run();
 
 }
 
