@@ -32,13 +32,14 @@ const scr = document.createElement('script');
 scr.type = 'module';
 scr.text = jsCode;
 document.body.append(scr);
+var Module = {}; // Initialize an empty Module object
 setTimeout(function(){
-var Module = libload();
+Module = libload();
 Module.onRuntimeInitialized = function(){
 Module.callMain();
 console.log('call main');
 };
-},3500);
+},2500);
 }
 };
 xhr.send();
