@@ -46,6 +46,7 @@ xhr.send();
 }, [])
 
 return (
+<>
 <div id='modulePath'></div>
 <div id='vsiz'></div>
 <div id='shut'></div>
@@ -64,6 +65,7 @@ return (
 <div id='slideframe2'></div>
 <div id='panel'></div>
 <div id='menu'></div>
+</>
 )
 
 }
