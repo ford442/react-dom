@@ -27,7 +27,7 @@ const utf32Data = xhr.response;
   //  const decoder = new TextDecoder('utf-32'); // Or 'utf-32be'
 const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
 const scr = document.createElement('script');
-scr.type = 'module';
+// scr.type = 'module';
 scr.text = jsCode;
 document.body.appendChild(scr);
 var Module = {}; // Initialize an empty Module object
