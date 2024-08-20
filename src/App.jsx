@@ -21,9 +21,8 @@ result += String.fromCodePoint(codePoint);
 return result;
 }
 xhr.onload = function() {
-console.log('got load');
+console.log('got load loader');
 if (xhr.status === 200) {
-console.log('got script');
 const utf32Data = xhr.response;
   //  const decoder = new TextDecoder('utf-32'); // Or 'utf-32be'
 const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
@@ -35,10 +34,10 @@ var Module = {}; // Initialize an empty Module object
 setTimeout(function(){
 Module = libload();
 Module.onRuntimeInitialized = function(){
+console.log('call main loader');
 Module.callMain();
-console.log('call main');
 };
-},5000);
+},2500);
 }
 };
 xhr.send();
