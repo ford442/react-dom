@@ -73,4 +73,4 @@ xhr.send();
 }
 
 export default App
-export default Modu
+export Modu
