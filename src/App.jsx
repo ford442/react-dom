@@ -27,6 +27,8 @@ return (
 
 }
 
+export default App
+
 function Module() {
 useEffect(() => {
 const xhr = new XMLHttpRequest();
@@ -72,5 +74,4 @@ xhr.send();
 }, [])
 }
 
-export default App
 export Modu
