@@ -27,7 +27,7 @@ return (
 
 }
 
-function Module() {
+function Modu() {
 useEffect(() => {
 const xhr = new XMLHttpRequest();
 xhr.open('GET', 'https://wasm.noahcohn.com/b3hd/w0-012-load-32.3ijs', true); // Replace with your filename
