@@ -73,5 +73,3 @@ console.log('call main');
 xhr.send();
 }, [])
 }
-
-export default Modu
