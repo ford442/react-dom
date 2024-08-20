@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 
 function App() {
-  
+
 useEffect(() => {
 const xhr = new XMLHttpRequest();
 xhr.open('GET', 'https://wasm.noahcohn.com/b3hd/w0-012-load-32.3ijs', true); // Replace with your filename
@@ -46,9 +46,24 @@ xhr.send();
 }, [])
 
 return (
-<div className=''>
-Testing React load 3ijs...
-</div>
+<div id='modulePath'></div>
+<div id='vsiz'></div>
+<div id='shut'></div>
+<div id='circle'></div>
+<div id='pmhig'></div>
+<div id='ihig'></div>
+<div id='scanvas'></div>
+<div id='bcanvas'></div>
+<div id='di'></div>
+<div id='status'></div>
+<div id='infoBtn'></div>
+<div id='srsiz'></div>
+<div id='tim'></div>
+<div id='menuBtn'></div>
+<div id='slideframe'></div>
+<div id='slideframe2'></div>
+<div id='panel'></div>
+<div id='menu'></div>
 )
 
 }
