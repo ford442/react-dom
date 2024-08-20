@@ -51,9 +51,6 @@ return (
 <div className=''>
 Testing React load 3ijs...
 </div>
-useEffect(() => {
-run();
-}, []);
 )
 
 }
