@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 
 function App() {
-
-const run = async() => {
+  
+useEffect(() => {
 const xhr = new XMLHttpRequest();
 xhr.open('GET', 'https://wasm.noahcohn.com/b3hd/w0-012-load-32.3ijs', true); // Replace with your filename
 xhr.responseType = 'arraybuffer'; // Get raw binary data
@@ -42,15 +42,13 @@ console.log('call main');
 }
 };
 xhr.send();
-};
+}, [])
 
 return (
 <div className=''>
 Testing React load 3ijs...
 </div>
 )
-
-run();
 
 }
 
