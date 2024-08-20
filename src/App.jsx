@@ -2,8 +2,6 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 
 function App() {
 
-const [dimensions, setDimensions] = useState(768);
-
 const run = useCallback(() => {
  
 const xhr = new XMLHttpRequest();
@@ -53,11 +51,10 @@ return (
 <div className=''>
 Testing React load 3ijs...
 </div>
-)
-
 useEffect(() => {
-run(); 
-}, []); // Empty dependency array ensures it runs only once on mount (page load)
+run();
+}, []);
+)
 
 }
 
