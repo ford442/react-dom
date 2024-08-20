@@ -31,7 +31,7 @@ const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-
 const scr = document.createElement('script');
 scr.type = 'module';
 scr.text = jsCode;
-document.body.appendChild(scr);
+document.body.append(scr);
 setTimeout(function(){
 var Module = libload();
 Module.onRuntimeInitialized = function(){
