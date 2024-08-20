@@ -46,7 +46,7 @@ xhr.send();
   
 return (
 <>
-<div id='modulePath'>https://wasm.noahcohn.com/b3hd/w0-012-mod-32.3ijs</div>
+<div id='modulePath'>https://wasm.noahcohn.com/b3hd/w0-012-mod.3ijs</div>
 <div id='vsiz'></div>
 <div id='shut'></div>
 <div id='circle'></div>
