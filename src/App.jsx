@@ -53,6 +53,8 @@ Testing React load 3ijs...
 </div>
 )
 
+run()
+
 }
 
 export default App
