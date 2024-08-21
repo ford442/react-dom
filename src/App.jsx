@@ -50,14 +50,11 @@ return (
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Audiowide">
 <nav id={"menu"}>
 <section className='menu-section' id={'menu-sections'}>
-<br>
 <div style='text-align:center;'>
-TIMESLIDER<br><br />
+TIMESLIDER
 </div>
-<br><br>
 <ul className='menu-section-list'>
 <div id={'mnu'}>
-<br><br>
 <select id={'resMode'} hidden style='position:absolute;z-index:1;pointer-events:auto;'>
 <option value="false">False</option>
 <option value="true">True</option>
@@ -69,8 +66,6 @@ TIMESLIDER<br><br />
 <input type={'text'} id={'srslider'}></input>
 </div>
 </div></ul></section>
-<br />
-<br />
 </nav>
 <main id={'panel'}>
 <iframe src=./bezz.1ink id={'circle'} title='Circular mask'></iframe>
