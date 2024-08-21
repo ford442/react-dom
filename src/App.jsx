@@ -163,31 +163,6 @@ TIMESLIDER
 <video hidden muted crossorigin playsinline id={'ldv'} preload={'auto'} style='pointer-events:none;' />
 </div>
 <audio crossorigin id={'track'} preload={'auto'} hidden style='pointer-events:none;'></audio>
-
-<script>
-setTimeout(function(){
-document.querySelector('#splash2').style.zIndex=3000;
-document.querySelector('#splash2').style.display='none';
-},4200);
-setTimeout(function(){
-document.querySelector('#splash1').style.zIndex=3000;
-document.querySelector('#splash1').style.display='none';
-},4500);
-
-setTimeout(function(){
-document.getElementById('vsiz').innerHTML=parseInt(window.innerHeight,10);
-},500);
-
-setTimeout(function(){
-window.scrollTo({
-  top: 0,
-  left: 0,
-  behavior: "smooth",
-  });
-},1500);
-
-</script>
-
 </>
 )
 
