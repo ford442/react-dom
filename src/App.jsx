@@ -139,7 +139,7 @@ TIMESLIDER
 // //  //
 <div id={'wrap'}>
 <div id={'contain1'}>
-<canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:scaleY(1.0)}}></canvas>
+<canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
 <div id={'contain1a'} style={{height:'75%',width:'75%'}}>
 </div>
 </div>
@@ -157,7 +157,7 @@ TIMESLIDER
 <video hidden muted src={'./video-1456459792.mp4'}
        loop crossorigin playsinline
        id={'ivi'} preload={'auto'}
-       style={{pointerEvents:none,transform:scaleY(-1.0)}}></video>
+       style={{pointerEvents:none,transform:'scaleY(-1.0)'}}></video>
 </div>
 <div style={{pointerEvents:none,height:'100vh'}}>
 <video hidden muted crossorigin playsinline id={'ldv'} preload={'auto'} style={{pointerEvents:none}}></video>
