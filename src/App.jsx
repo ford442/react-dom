@@ -164,56 +164,7 @@ TIMESLIDER
 </div>
 <audio crossorigin id={'track'} preload={'auto'} hidden style='pointer-events:none;'></audio>
 
-<script type="module">
-document.getElementById("startBtn").addEventListener('click',function(){
-document.getElementById('mvi').play();
-});
-document.getElementById("mviBtn").addEventListener('click',function(){
-document.getElementById('mvi').play();
-});
-document.getElementById("apngBtn2").addEventListener('click',function(){
-  const xhr = new XMLHttpRequest();
-  xhr.open('GET', 'https://wasm.noahcohn.com/b3hd/w0-012-apng.3ijs', true); // Replace with your filename
-  xhr.responseType = 'arraybuffer'; // Get raw binary data
-  console.log('got run');
-  function decodeUTF32(uint8Array, isLittleEndian = true) {
-    const dataView = new DataView(uint8Array.buffer);
-    let result = "";
-    for (let i = 0; i < uint8Array.length; i += 4) {
-      let codePoint;
-      if (isLittleEndian) {
-        codePoint = dataView.getUint32(i, true); // Little-endian
-      } else {
-        codePoint = dataView.getUint32(i, false); // Big-endian
-      }
-      result += String.fromCodePoint(codePoint);
-    }
-    return result;
-  }
-  xhr.onload = function() {
-    console.log('got load');
-    if (xhr.status === 200) {
-      console.log('got script');
-      const utf32Data = xhr.response;
-      //  const decoder = new TextDecoder('utf-32'); // Or 'utf-32be'
-      const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
-      const scr = document.createElement('script');
-      //  scr.type = 'module';
-      scr.text = jsCode;
-      //    scr.dataset.moduleUrl = 'https://wasm.noahcohn.com/b3hd/'; // Base URL for module's relative paths
-      document.body.appendChild(scr);
-      setTimeout(function(){
-        var Module = libapng();
-        Module.onRuntimeInitialized = function(){
-Module.callMain();
-console.log('call main');
-        };
-      },2500);
-    }
-  };
-  xhr.send();
-});
-
+<script>
 setTimeout(function(){
 document.querySelector('#splash2').style.zIndex=3000;
 document.querySelector('#splash2').style.display='none';
