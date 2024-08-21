@@ -55,7 +55,7 @@ TIMESLIDER
 </div>
 <ul className='menu-section-list'>
 <div id={'mnu'}>
-<select id={'resMode'} hidden style={{position:absolute,zIndex:1,pointerEvents:auto}}>
+<select id={'resMode'} hidden style={{position:absolute,zIndex:1,pointerEvents:'auto'}}>
 <option value="false">False</option>
 <option value="true">True</option>
 </select>
@@ -139,12 +139,12 @@ TIMESLIDER
 // //  //
 <div id={'wrap'}>
 <div id={'contain1'}>
-<canvas className='emscripten' id={'scanvas'} style={{pointerEvents:auto,display:block,position:absolute,zIndex:3000,backgroundColor:rgba(233,233,233,1.0),top:'0',height:'100vh',width:'100vh',imageRendering:auto,transform:scaleY(1.0)}}></canvas>
+<canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:block,position:absolute,zIndex:3000,backgroundColor:rgba(233,233,233,1.0),top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:scaleY(1.0)}}></canvas>
 <div id={'contain1a'} style={{height:'75%',width:'75%'}}>
 </div>
 </div>
 <div id={'contain2'}>
-<canvas id={'bcanvas'} hidden style={{pointerEvents:none,display:none,zIndex:2100,position:absolute,height:'100vh',width:'100vh',marginLeft:'auto,marginRight:'auto,backgroundColor:rgba(0,255,0,1.0),top:'0',imageRendering:auto}}></canvas>
+<canvas id={'bcanvas'} hidden style={{pointerEvents:none,display:none,zIndex:2100,position:absolute,height:'100vh',width:'100vh',marginLeft:'auto,marginRight:'auto,backgroundColor:rgba(0,255,0,1.0),top:'0',imageRendering:'auto'}}></canvas>
 <img id={'resultImage'} src={''}></img>
 </div>
 </div>
