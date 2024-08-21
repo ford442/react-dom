@@ -63,10 +63,10 @@ TIMESLIDER<br><br />
 <option value="true">True</option>
 </select>
 <div id={'slideframe'}>
-<input type={'text'} id={'timeslider'}>
+<input type={'text'} id={'timeslider'}></input>
 </div>
 <div id={'slideframe2'}>
-<input type={'text'} id={'srslider'}>
+<input type={'text'} id={'srslider'}></input>
 </div>
 </div></ul></section>
 <br />
