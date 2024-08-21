@@ -71,7 +71,7 @@ TIMESLIDER
 <iframe src={'./bezz.1ink'} id={'circle'} title='Circular mask'></iframe>
 <input type={'button'} id={'startBtn'} style={{backgroundColor:gold,position:absolute,display:block,left:'6%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}>
 <input type={'button'} id={'menuBtn'} style={{backgroundColor:black,position:absolute,display:block,left:'3%',top:'5%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}>
-<input type={'button'} id={'musicBtn'} style={{backgroundColor:cyan,position:absolute,display:block,left:'3%',bottom:5%',zIndex:3200,border:'6px solid green',borderRadius:'20%'}}>
+<input type={'button'} id={'musicBtn'} style={{backgroundColor:cyan,position:absolute,display:block,left:'3%',bottom:'5%',zIndex:3200,border:'6px solid green',borderRadius:'20%'}}>
 <input type={'button'} id={'startBtn5'} style={{backgroundColor:yellow,position:absolute,display:block,left:'2%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'startBtn2'} style={{backgroundColor:gold,position:absolute,display:block,left:'9%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}>
 <input type={'button'} id={'startBtnC'} style={{backgroundColor:green,position:absolute,display:block,left:'5%',top:'12%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}>
@@ -94,8 +94,8 @@ TIMESLIDER
 <input type={'button'} id={'moveUp'} style={{backgroundColor:black,position:absolute,display:block,right:'5%',top:'86%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}>
 <input type={'button'} id={'moveLeft'} style={{backgroundColor:black,position:absolute,display:block,right:'3%',top:'90%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}>
 <input type={'button'} id={'moveRight'} style={{backgroundColor:black,position:absolute,display:block,right:'7%',top:'90%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}>
-<input className="button" type={'button'} id={'moveFwd'} style={{backgroundColor:gold,position:absolute,display:none,width:6vh,height:5vh,left:'47%',bottom:3%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}>
-<input className="button" type={'button'} id={'cruiseFwd'} style={{backgroundColor:red,position:absolute,display:none,width:6vh,height:5vh,left:'47%',bottom:7%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}>
+<input className="button" type={'button'} id={'moveFwd'} style={{backgroundColor:gold,position:absolute,display:none,width:6vh,height:5vh,left:'47%',bottom:'3%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}>
+<input className="button" type={'button'} id={'cruiseFwd'} style={{backgroundColor:red,position:absolute,display:none,width:6vh,height:5vh,left:'47%',bottom:'7%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}>
 <input type="file" id={"fileInput"} style={{zIndex:5000,position:absolute,left:'50vh,top:'16vh'}}></input>
 <input type="file" id={"fileInput2"} style={{zIndex:5000,position:absolute,left:'42vh,top:'26vh'}}></input>
 <label for="fileInput" className="custom-file-upload">Select File</label>
