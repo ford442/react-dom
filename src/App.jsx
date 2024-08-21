@@ -55,7 +55,20 @@ return (
 <div style={{textAlign:'center'}}>
 TIMESLIDER
 </div>
-
+<Box sx={{ width: 300 }}>
+<Slider
+aria-label="TEST"
+defaultValue={1.0}
+getAriaValueText={'x regular size'}
+valueLabelDisplay={"auto"}
+shiftStep={0.25}
+step={0.05}
+marks
+min={0.05}
+max={2.0}
+/>
+<Slider defaultValue={1.0} step={0.05} marks min={0.05} max={2.0} disabled />
+</Box>
 <ul className='menu-section-list'>
 <div id={'mnu'}>
 <select id={'resMode'} hidden style={{position:'absolute',zIndex:1,pointerEvents:'auto'}}>
@@ -167,7 +180,7 @@ TIMESLIDER
 </div>
 <audio crossorigin id={'track'} preload={'auto'} hidden style={{pointerEvents:'none'}}></audio>
 </>
-)
+);
 
 }
 
