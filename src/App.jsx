@@ -50,7 +50,7 @@ return (
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Audiowide"/>
 <nav id={"menu"}>
 <section className='menu-section' id={'menu-sections'}>
-<div style={{'text-align:center;'}}>
+<div style={'text-align:center;'}>
 TIMESLIDER
 </div>
 <ul className='menu-section-list'>
