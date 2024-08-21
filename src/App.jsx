@@ -156,13 +156,13 @@ TIMESLIDER
 <div style='pointer-events:none;height:100vh;'>
 <video hidden muted src={'./video-1456459792.mp4'}
        loop crossorigin playsinline
-       id={'ivi'} preload=auto
+       id={'ivi'} preload={'auto'}
        style='pointer-events:none;transform:scaleY(-1.0);' />
 </div>
 <div style='pointer-events:none;height:100vh;'>
-<video hidden muted crossorigin playsinline id={'ldv'} preload=auto style='pointer-events:none;' />
+<video hidden muted crossorigin playsinline id={'ldv'} preload={'auto'} style='pointer-events:none;' />
 </div>
-<audio crossorigin id={'track'} preload=none hidden style='pointer-events:none;'></audio>
+<audio crossorigin id={'track'} preload={'auto'} hidden style='pointer-events:none;'></audio>
 
 <script type='module' src={'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js'}></script>
 
