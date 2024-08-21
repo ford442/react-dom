@@ -69,39 +69,39 @@ TIMESLIDER
 </nav>
 <main id={'panel'}>
 <iframe src={'./bezz.1ink'} id={'circle'} title='Circular mask'></iframe>
-<input type={'button'} id={'startBtn'} style={{backgroundColor:gold,position:absolute,display:block,left:6%,top:9%,zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
-<input type={'button'} id={'menuBtn'} style={{backgroundColor:black,position:absolute,display:block,left:3%,top:5%,zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
-<input type={'button'} id={'musicBtn'} style={{backgroundColor:cyan,position:absolute,display:block,left:3%,bottom:5%,zIndex:3200,border:6px solid green,border-radius:20%}}>
-<input type={'button'} id={'startBtn5'} style={{backgroundColor:yellow,position:absolute,display:block,left:2%,top:9%,zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}></input>
-<input type={'button'} id={'startBtn2'} style={{backgroundColor:gold,position:absolute,display:block,left:9%,top:9%,zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
-<input type={'button'} id={'startBtnC'} style={{backgroundColor:green,position:absolute,display:block,left:5%,top:12%,zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
-<input type={'button'} id={'downloadButton'} style={{backgroundColor:grey,position:absolute,display:block,left:15%,top:22%,zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
-<input type={'button'} id={'startBtnI'} style={{backgroundColor:white,position:absolute,display:block,left:15%,top:12%,zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
-<input type={'button'} id={'pyBtn'} style={{backgroundColor:green,position:absolute,display:block,left:15%,top:6%,zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
-<input type={'button'} id={'pyBtn2'} style={{backgroundColor:green,position:absolute,display:block,left:18%,top:6%,zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
-<input type={'button'} id={'pyBtn3'} style={{backgroundColor:yellow,position:absolute,display:block,left:22%,top:6%,zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
-<input type={'button'} id={'pyBtn4'} style={{backgroundColor:red,position:absolute,display:block,left:22%,top:8%,zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
-<input type={'button'} id={'apngBtn'} style={{backgroundColor:green,position:absolute,display:block,left:35%,top:12%,zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
-<input type={'button'} id={'apngBtn2'} style={{backgroundColor:green,position:absolute,display:block,left:37%,top:12%,zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
-<input type={'button'} id={'mviBtn'} style={{backgroundColor:black,position:absolute,display:block,left:15%,top:9%,zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
-<input type={'button'} id={'uniUp'} style={{backgroundColor:black,position:absolute,display:block,left:3%,top:50%,zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
-<input type={'button'} id={'uniDown'} style={{backgroundColor:black,position:absolute,display:block,left:7%,top:50%,zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
-<input type={'button'} id={'viewUp'} style={{backgroundColor:black,position:absolute,display:block,left:5%,top:46%,zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
-<input type={'button'} id={'viewDown'} style={{backgroundColor:black,position:absolute,display:block,left:5%,top:54%,zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
-<input type={'button'} id={'sizeUp'} style={{backgroundColor:black,position:absolute,display:block,left:5%,top:86%,zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
-<input type={'button'} id={'sizeDown'} style={{backgroundColor:black,position:absolute,display:block,left:5%,top:90%,zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
-<input type={'button'} id={'moveDown'} style={{backgroundColor:black,position:absolute,display:block,right:5%,top:90%,zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
-<input type={'button'} id={'moveUp'} style={{backgroundColor:black,position:absolute,display:block,right:5%,top:86%,zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
-<input type={'button'} id={'moveLeft'} style={{backgroundColor:black,position:absolute,display:block,right:3%,top:90%,zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
-<input type={'button'} id={'moveRight'} style={{backgroundColor:black,position:absolute,display:block,right:7%,top:90%,zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
-<input className="button" type={'button'} id={'moveFwd'} style={{backgroundColor:gold,position:absolute,display:none,width:6vh,height:5vh,left:47%,bottom:3%,zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
-<input className="button" type={'button'} id={'cruiseFwd'} style={{backgroundColor:red,position:absolute,display:none,width:6vh,height:5vh,left:47%,bottom:7%,zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
-<input type="file" id={"fileInput"} style={{zIndex:5000,position:absolute,left:50vh,top:16vh}}></input>
-<input type="file" id={"fileInput2"} style={{zIndex:5000,position:absolute,left:42vh,top:26vh}}></input>
+<input type={'button'} id={'startBtn'} style={{backgroundColor:gold,position:absolute,display:block,left:'6%',top:'9%',zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
+<input type={'button'} id={'menuBtn'} style={{backgroundColor:black,position:absolute,display:block,left:'3%',top:'5%',zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
+<input type={'button'} id={'musicBtn'} style={{backgroundColor:cyan,position:absolute,display:block,left:'3%',bottom:5%',zIndex:3200,border:6px solid green,border-radius:20%}}>
+<input type={'button'} id={'startBtn5'} style={{backgroundColor:yellow,position:absolute,display:block,left:'2%',top:'9%',zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}></input>
+<input type={'button'} id={'startBtn2'} style={{backgroundColor:gold,position:absolute,display:block,left:'9%',top:'9%',zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
+<input type={'button'} id={'startBtnC'} style={{backgroundColor:green,position:absolute,display:block,left:'5%',top:'12%',zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
+<input type={'button'} id={'downloadButton'} style={{backgroundColor:grey,position:absolute,display:block,left:'15%',top:'22%',zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
+<input type={'button'} id={'startBtnI'} style={{backgroundColor:white,position:absolute,display:block,left:'15%',top:'12%',zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
+<input type={'button'} id={'pyBtn'} style={{backgroundColor:green,position:absolute,display:block,left:'15%',top:'6%',zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
+<input type={'button'} id={'pyBtn2'} style={{backgroundColor:green,position:absolute,display:block,left:'18%',top:'6%',zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
+<input type={'button'} id={'pyBtn3'} style={{backgroundColor:yellow,position:absolute,display:block,left:'22%',top:'6%',zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
+<input type={'button'} id={'pyBtn4'} style={{backgroundColor:red,position:absolute,display:block,left:'22%',top:'8%',zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
+<input type={'button'} id={'apngBtn'} style={{backgroundColor:green,position:absolute,display:block,left:'35%',top:'12%',zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
+<input type={'button'} id={'apngBtn2'} style={{backgroundColor:green,position:absolute,display:block,left:'37%',top:'12%',zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
+<input type={'button'} id={'mviBtn'} style={{backgroundColor:black,position:absolute,display:block,left:'15%',top:'9%',zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
+<input type={'button'} id={'uniUp'} style={{backgroundColor:black,position:absolute,display:block,left:'3%',top:'50%',zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
+<input type={'button'} id={'uniDown'} style={{backgroundColor:black,position:absolute,display:block,left:'7%',top:'50%',zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
+<input type={'button'} id={'viewUp'} style={{backgroundColor:black,position:absolute,display:block,left:'5%',top:'46%',zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
+<input type={'button'} id={'viewDown'} style={{backgroundColor:black,position:absolute,display:block,left:'5%',top:'54%',zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
+<input type={'button'} id={'sizeUp'} style={{backgroundColor:black,position:absolute,display:block,left:'5%',top:'86%',zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
+<input type={'button'} id={'sizeDown'} style={{backgroundColor:black,position:absolute,display:block,left:'5%',top:'90%',zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
+<input type={'button'} id={'moveDown'} style={{backgroundColor:black,position:absolute,display:block,right:'5%',top:'90%',zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
+<input type={'button'} id={'moveUp'} style={{backgroundColor:black,position:absolute,display:block,right:'5%',top:'86%',zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
+<input type={'button'} id={'moveLeft'} style={{backgroundColor:black,position:absolute,display:block,right:'3%',top:'90%',zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
+<input type={'button'} id={'moveRight'} style={{backgroundColor:black,position:absolute,display:block,right:'7%',top:'90%',zIndex:3200,border:6px solid #e7e7e7,border-radius:20%}}>
+<input className="button" type={'button'} id={'moveFwd'} style={{backgroundColor:gold,position:absolute,display:none,width:6vh,height:5vh,left:'47%',bottom:3%',zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
+<input className="button" type={'button'} id={'cruiseFwd'} style={{backgroundColor:red,position:absolute,display:none,width:6vh,height:5vh,left:'47%',bottom:7%',zIndex:3200,border:4px solid #e7e7e7,border-radius:17%}}>
+<input type="file" id={"fileInput"} style={{zIndex:5000,position:absolute,left:'50vh,top:'16vh'}}></input>
+<input type="file" id={"fileInput2"} style={{zIndex:5000,position:absolute,left:'42vh,top:'26vh'}}></input>
 <label for="fileInput" className="custom-file-upload">Select File</label>
-<div id={'outText'} style={{opacity:0.0,backgroundColor:green,position:absolute,top:50vh,left:47vw,zIndex:4200}}></div>
-<div id={'outText1'} style={{opacity:0.0,backgroundColor:green,position:absolute,top:52vh,left:47vw,zIndex:4200}}></div>
-<div id={'outText2'} style={{opacity:0.0,backgroundColor:green,position:absolute,top:54vh,left:47vw,zIndex:4200}}></div>
+<div id={'outText'} style={{opacity:0.0,backgroundColor:green,position:absolute,top:'50vh',left:'47vw',zIndex:4200}}></div>
+<div id={'outText1'} style={{opacity:0.0,backgroundColor:green,position:absolute,top:'52vh',left:'47vw',zIndex:4200}}></div>
+<div id={'outText2'} style={{opacity:0.0,backgroundColor:green,position:absolute,top:'54vh',left:'47vw',zIndex:4200}}></div>
 <div className='emscripten' id={'stat'}></div>
 <div className='emscripten' id={'status'}></div>
 <div className='emscripten'>
@@ -139,12 +139,12 @@ TIMESLIDER
 // //  //
 <div id={'wrap'}>
 <div id={'contain1'}>
-<canvas className='emscripten' id={'scanvas'} style={{pointer-events:auto,display:block,position:absolute,zIndex:3000,backgroundColor:rgba(233,233,233,1.0),top:0,height:100vh,width:100vh,image-rendering:auto,transform:scaleY(1.0)}}></canvas>
-<div id={'contain1a'} style={{height:75%,width:75%}}>
+<canvas className='emscripten' id={'scanvas'} style={{pointer-events:auto,display:block,position:absolute,zIndex:3000,backgroundColor:rgba(233,233,233,1.0),top:'0,height:100vh,width:100vh,image-rendering:auto,transform:scaleY(1.0)}}></canvas>
+<div id={'contain1a'} style={{height:75%',width:75%}}>
 </div>
 </div>
 <div id={'contain2'}>
-<canvas id={'bcanvas'} hidden style={{pointer-events:none,display:none,zIndex:2100,position:absolute,height:100vh,width:100vh,margin-left:auto,margin-right:auto,backgroundColor:rgba(0,255,0,1.0),top:0,image-rendering:auto}}></canvas>
+<canvas id={'bcanvas'} hidden style={{pointer-events:none,display:none,zIndex:2100,position:absolute,height:100vh,width:100vh,margin-left:'auto,margin-right:'auto,backgroundColor:rgba(0,255,0,1.0),top:'0,image-rendering:auto}}></canvas>
 <img id={'resultImage'} src={''}></img>
 </div>
 </div>
