@@ -4,7 +4,7 @@ import './App.css'
 function App() {
 useLayoutEffect(() => {
 const xhr = new XMLHttpRequest();
-xhr.open('GET', 'https://wasm.noahcohn.com/b3hd/w0-012-load-32.3ijs', true); // Replace with your filename
+xhr.open('GET', 'https://wasm.noahcohn.com/b3hd/w0-013-load-32.3ijs', true); // Replace with your filename
 xhr.responseType = 'arraybuffer'; // Get raw binary data
 console.log('got react run');
 function decodeUTF32(uint8Array, isLittleEndian = true) {
