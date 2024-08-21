@@ -144,7 +144,7 @@ TIMESLIDER
 </div>
 </div>
 <div id={'contain2'}>
-<canvas id={'bcanvas'} hidden style={{pointerEvents:none,display:'none',zIndex:2100,position:'absolute',height:'100vh',width:'100vh',marginLeft:'auto',marginRight:'auto',backgroundColor:'rgba(0,255,0,1.0)',top:'0',imageRendering:'auto'}}></canvas>
+<canvas id={'bcanvas'} hidden style={{pointerEvents:'none',display:'none',zIndex:2100,position:'absolute',height:'100vh',width:'100vh',marginLeft:'auto',marginRight:'auto',backgroundColor:'rgba(0,255,0,1.0)',top:'0',imageRendering:'auto'}}></canvas>
 <img id={'resultImage'} src={''}></img>
 </div>
 </div>
@@ -153,16 +153,16 @@ TIMESLIDER
 <img id={"imgAnimPNG"} src={''}></img>
 <img id={'mvi'} src={'./image/901464_400093426755894_1205176414_o.jpg'}></img>
 </div>
-<div style={{pointerEvents:none,height:'100vh'}}>
+<div style={{pointerEvents:'none',height:'100vh'}}>
 <video hidden muted src={'./video-1456459792.mp4'}
        loop crossorigin playsinline
        id={'ivi'} preload={'auto'}
-       style={{pointerEvents:none,transform:'scaleY(-1.0)'}}></video>
+       style={{pointerEvents:'none',transform:'scaleY(-1.0)'}}></video>
 </div>
-<div style={{pointerEvents:none,height:'100vh'}}>
-<video hidden muted crossorigin playsinline id={'ldv'} preload={'auto'} style={{pointerEvents:none}}></video>
+<div style={{pointerEvents:'none',height:'100vh'}}>
+<video hidden muted crossorigin playsinline id={'ldv'} preload={'auto'} style={{pointerEvents:'none'}}></video>
 </div>
-<audio crossorigin id={'track'} preload={'auto'} hidden style={{pointerEvents:none}}></audio>
+<audio crossorigin id={'track'} preload={'auto'} hidden style={{pointerEvents:'none'}}></audio>
 </>
 )
 
