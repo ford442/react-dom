@@ -94,8 +94,8 @@ TIMESLIDER
 <input type={'button'} id={'moveUp'} style={{backgroundColor:black,position:absolute,display:block,right:'5%',top:'86%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}>
 <input type={'button'} id={'moveLeft'} style={{backgroundColor:black,position:absolute,display:block,right:'3%',top:'90%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}>
 <input type={'button'} id={'moveRight'} style={{backgroundColor:black,position:absolute,display:block,right:'7%',top:'90%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}>
-<input className="button" type={'button'} id={'moveFwd'} style={{backgroundColor:gold,position:absolute,display:none,width:6vh,height:5vh,left:'47%',bottom:'3%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}>
-<input className="button" type={'button'} id={'cruiseFwd'} style={{backgroundColor:red,position:absolute,display:none,width:6vh,height:5vh,left:'47%',bottom:'7%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}>
+<input className="button" type={'button'} id={'moveFwd'} style={{backgroundColor:gold,position:absolute,display:none,width:'6vh',height:'5vh',left:'47%',bottom:'3%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}>
+<input className="button" type={'button'} id={'cruiseFwd'} style={{backgroundColor:red,position:absolute,display:none,width:'6vh',height:'5vh',left:'47%',bottom:'7%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}>
 <input type="file" id={"fileInput"} style={{zIndex:5000,position:absolute,left:'50vh,top:'16vh'}}></input>
 <input type="file" id={"fileInput2"} style={{zIndex:5000,position:absolute,left:'42vh,top:'26vh'}}></input>
 <label for="fileInput" className="custom-file-upload">Select File</label>
@@ -139,12 +139,12 @@ TIMESLIDER
 // //  //
 <div id={'wrap'}>
 <div id={'contain1'}>
-<canvas className='emscripten' id={'scanvas'} style={{pointer-events:auto,display:block,position:absolute,zIndex:3000,backgroundColor:rgba(233,233,233,1.0),top:'0,height:100vh,width:100vh,image-rendering:auto,transform:scaleY(1.0)}}></canvas>
-<div id={'contain1a'} style={{height:75%',width:75%'}}>
+<canvas className='emscripten' id={'scanvas'} style={{pointer-events:auto,display:block,position:absolute,zIndex:3000,backgroundColor:rgba(233,233,233,1.0),top:'0,height:'100vh',width:'100vh',image-rendering:auto,transform:scaleY(1.0)}}></canvas>
+<div id={'contain1a'} style={{height:'75%',width:'75%'}}>
 </div>
 </div>
 <div id={'contain2'}>
-<canvas id={'bcanvas'} hidden style={{pointer-events:none,display:none,zIndex:2100,position:absolute,height:100vh,width:100vh,margin-left:'auto,margin-right:'auto,backgroundColor:rgba(0,255,0,1.0),top:'0,image-rendering:auto}}></canvas>
+<canvas id={'bcanvas'} hidden style={{pointer-events:none,display:none,zIndex:2100,position:absolute,height:'100vh',width:'100vh',margin-left:'auto,margin-right:'auto,backgroundColor:rgba(0,255,0,1.0),top:'0,image-rendering:auto}}></canvas>
 <img id={'resultImage'} src={''}></img>
 </div>
 </div>
@@ -153,13 +153,13 @@ TIMESLIDER
 <img id={"imgAnimPNG"} src={''}></img>
 <img id={'mvi'} src={'./image/901464_400093426755894_1205176414_o.jpg'}></img>
 </div>
-<div style={{pointer-events:none,height:100vh}}>
+<div style={{pointer-events:none,height:'100vh'}}>
 <video hidden muted src={'./video-1456459792.mp4'}
        loop crossorigin playsinline
        id={'ivi'} preload={'auto'}
        style={{pointer-events:none,transform:scaleY(-1.0)}}>
 </div>
-<div style={{pointer-events:none,height:100vh}}>
+<div style={{pointer-events:none,height:'100vh'}}>
 <video hidden muted crossorigin playsinline id={'ldv'} preload={'auto'} style={{pointer-events:none}}>
 </div>
 <audio crossorigin id={'track'} preload={'auto'} hidden style={{pointer-events:none}}></audio>
