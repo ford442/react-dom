@@ -5,7 +5,7 @@ import './App.css'
 
 function App() {
 useLayoutEffect(() => {
-  
+const imageChannel = new BroadcastChannel('imageChannel');
 const fileInput = document.getElementById('fileInput');
 fileInput.addEventListener('change', (event) => {
 let file = event.target.files[0];
