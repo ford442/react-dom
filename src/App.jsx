@@ -10,7 +10,7 @@ console.log('got react run');
 function decodeUTF32(uint8Array, isLittleEndian = true) {
 const dataView = new DataView(uint8Array.buffer);
 let result = "";
-for (let i = 0, i < uint8Array.length, i += 4) {
+for (let i = 0; i < uint8Array.length, i += 4) {
 let codePoint;
 if (isLittleEndian) {
 codePoint = dataView.getUint32(i, true); // Little-endian
