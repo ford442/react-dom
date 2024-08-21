@@ -107,7 +107,7 @@ TIMESLIDER
 <div className='emscripten'>
 <progress value={'0'} max={'100'} id={'progress'}></progress>
 </div>
-<input type=checkbox id={"di"} hidden />
+<input type={'checkbox'} id={"di"} hidden />
 <div hidden id={'imagePath'}>https://www.noahcohn.com/image/901464_400093426755894_1205176414_o.jpg</div>
 <div hidden id={'modulePath'}>https://wasm.noahcohn.com/b3hd/w0-012-mod.3ijs</div>
 <div hidden id={'path'}>https://glsl.1ink.us/wgsl/zipzap.wgsl</div>
