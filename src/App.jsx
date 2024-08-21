@@ -57,17 +57,16 @@ TIMESLIDER
 </div>
 <Box sx={{ width: 300 }}>
 <Slider
-aria-label="Temperature"
-defaultValue={30}
+aria-label="TEST"
+defaultValue={1.0}
 getAriaValueText={valuetext}
 valueLabelDisplay="auto"
-shiftStep={30}
-step={10}
+shiftStep={0.25}
+step={0.05}
 marks
-min={10}
-max={110}
+min={0.05}
+max={2.0}
 />
-<Slider defaultValue={30} step={10} marks min={10} max={110} disabled />
 </Box>
 <ul className='menu-section-list'>
 <div id={'mnu'}>
