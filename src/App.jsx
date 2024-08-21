@@ -168,6 +168,286 @@ TIMESLIDER<br>(Seconds between video changes)</div>
 </div>
 <audio crossorigin id=track preload=none hidden style='pointer-events:none;'></audio>
 
+<script type='module' src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+
+<script>
+const pyChannel = new BroadcastChannel('py_channel');
+const imageChannel = new BroadcastChannel('imageChannel');
+  const imgOut = document.getElementById('mvi');
+  const pyBtn3 = document.getElementById('pyBtn3');
+  const pyBtn4 = document.getElementById('pyBtn4');
+  const fileInput = document.getElementById('fileInput'); // Replace 'fileInput' with your input's ID
+  const fileInput2 = document.getElementById('fileInput2'); // Replace 'fileInput' with your input's ID
+
+  // Add event listener for file selection
+fileInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageDataURL = e.target.result;
+        window.open('./depth.1ink');
+        setTimeout(function(){
+          imageChannel.postMessage({ imageDataURL });
+        },4500);      };
+      reader.readAsDataURL(file);
+    }
+});
+
+pyBtn4.onclick = () => {
+const divElement = document.querySelector('#imagePath'); // Replace 'myDiv' with your div's ID
+const mtext = navigator.clipboard.readText(); // Read text from clipboard
+divElement.textContent = mtext; // Set the div's text content
+document.getElementById("pyBtn").click();
+}
+
+pyBtn3.onclick = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = imgOut.width;
+      canvas.height = imgOut.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(imgOut, 0, 0);
+      const imageDataURL = canvas.toDataURL();
+    window.open('./depth.1ink');
+      //  window.open('./depth/index.html');
+      setTimeout(function () {
+        imageChannel.postMessage({imageDataURL});
+      }, 3500);
+};
+
+pyChannel.addEventListener('message', (event) => {
+const message = event.data;
+console.log('got postmessage');
+  });
+
+document.getElementById("pyBtn").addEventListener('click', () => {
+    const pth = document.querySelector('#imagePath').innerHTML;
+    processImageFromURL(pth);
+  });
+  // Add an event listener to your file input element
+fileInput2.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageDataURL = e.target.result;
+        processImage(imageDataURL);
+      };
+      reader.readAsDataURL(file);
+    }
+});
+
+async function processImage(imageDataURL) {
+let result;
+let base64String;
+base64String = imageDataURL.split(',')[1];
+const img = new Image();
+img.src = imageDataURL;
+const maxWidth = 1024; // Set your desired maximum width
+const maxHeight = 1024; // Set your desired maximum height
+let newWidth = img.width;
+let newHeight = img.height;
+/*
+    // Resize if necessary
+    if (img.width > maxWidth || img.height > maxHeight) {
+      const aspectRatio = img.width / img.height;
+      if (img.width > img.height) {
+        newWidth = maxWidth;
+        newHeight = maxWidth / aspectRatio;
+      } else {
+        newHeight = maxHeight;
+        newWidth = maxHeight * aspectRatio;
+      }
+
+      // Create a canvas to resize the image
+      const canvas = document.createElement('canvas');
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+      const ctx = canvas.getContext('2d',{alpha:true});
+      ctx.drawImage(img, 0, 0, newWidth, newHeight);
+      base64String = canvas.toDataURL();
+    }
+    */
+      //  const base64String = _arrayBufferToBase64(imageData);
+
+async function main() {
+let pyodide = await loadPyodide();
+pyodide.globals.set("imageDataPy", imageDataURL);
+await pyodide.loadPackage("micropip");
+await pyodide.runPythonAsync(`
+import micropip
+await micropip.install('numpy')
+await micropip.install('scikit-image')
+await micropip.install('cython')
+await micropip.install('opencv-python')
+import pyximport
+pyximport.install()
+import js
+import io
+import base64
+from PIL import Image
+from io import BytesIO
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+from skimage import data, img_as_float
+from skimage import exposure
+from skimage.filters import unsharp_mask
+from skimage import filters, transform
+import skimage.color as color
+matplotlib.rcParams['font.size'] = 8
+img_data:bytes = base64.b64decode('${base64String}')
+img: Image.Image = Image.open(io.BytesIO(img_data))
+img_array: np.ndarray = np.array(img)
+p2: float
+p98: float
+p2, p98 = np.percentile(img_array, (2, 98))
+js.console.log('got image PIL')
+img_rescale: np.ndarray = exposure.rescale_intensity(img_array, in_range=(p2, p98))
+js.console.log('rescale_intensity image SKI')
+img_eq: np.ndarray = exposure.equalize_hist(img_array)
+js.console.log('equalize_hist image SKI')
+resize4x: np.ndarray = transform.rescale(img_eq, 2)
+js.console.log('2x resize SKI')
+result_1: np.ndarray = unsharp_mask(resize4x, radius=1, amount=1)
+js.console.log('unsharp mask SKI')
+resize2x: np.ndarray = transform.pyramid_reduce(result_1,2)
+js.console.log('1x downscale SKI')
+img_eq_pil: Image.Image = Image.fromarray((resize2x * 255).astype(np.uint8))
+buf: io.BytesIO = io.BytesIO()
+img_eq_pil.save(buf, format='JPEG')
+buf.seek(0)
+img_str:str = base64.b64encode(buf.read()).decode('utf-8')
+buf.close()
+img_str
+`).then(result => {
+        const imgElement = document.getElementById('mvi');
+        imgElement.src = "data:image/png;base64," + result;
+        const downloadButton = document.getElementById('downloadButton'); // Assuming you have a button with this ID
+        // document.querySelector('#scanvas').style.transform='scaleY(-1.0)';
+        document.querySelector('#startBtnC').click();
+        downloadButton.addEventListener('click', () => {
+          downloadImage(result, 'histogram_eq_image.jpg');
+        });
+      });
+    }
+main();
+}
+
+function _arrayBufferToBase64(buffer) {
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      const len = bytes.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return window.btoa(binary);
+
+}
+
+function downloadImage(base64String, filename) {
+      const link = document.createElement('a');
+      link.href = "data:image/jpeg;base64," + base64String;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+}
+
+function processImageFromURL(pth) {
+    const xhr = new XMLHttpRequest();
+    document.querySelector('#mvi').src = pth;
+    xhr.open('GET', pth, true);
+    xhr.responseType = 'arraybuffer';
+    console.log('got py image');
+    xhr.onload = function() {
+      const imageData = xhr.response;
+      processImage(imageData); // Reuse the processImage function
+    };
+    xhr.send();
+}
+
+document.getElementById("pyBtn2").addEventListener('click',function() {
+document.querySelector('#scanvas').style.transform='scaleY(-1.0)';
+const imageDataUrl = document.getElementById('scanvas').toDataURL('image/jpeg'); // You can change the format if needed
+  document.getElementById('mvi').src=imageDataUrl
+  document.querySelector('#mvi').style.transform='scaleY(-1.0)';
+  document.querySelector('#mvi').style.transform='scaleX(-1.0)';
+});
+</script>
+
+<script type="module">
+document.getElementById("startBtn").addEventListener('click',function(){
+document.getElementById('mvi').play();
+});
+document.getElementById("mviBtn").addEventListener('click',function(){
+document.getElementById('mvi').play();
+});
+document.getElementById("apngBtn2").addEventListener('click',function(){
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', 'https://wasm.noahcohn.com/b3hd/w0-012-apng.3ijs', true); // Replace with your filename
+  xhr.responseType = 'arraybuffer'; // Get raw binary data
+  console.log('got run');
+  function decodeUTF32(uint8Array, isLittleEndian = true) {
+    const dataView = new DataView(uint8Array.buffer);
+    let result = "";
+    for (let i = 0; i < uint8Array.length; i += 4) {
+      let codePoint;
+      if (isLittleEndian) {
+        codePoint = dataView.getUint32(i, true); // Little-endian
+      } else {
+        codePoint = dataView.getUint32(i, false); // Big-endian
+      }
+      result += String.fromCodePoint(codePoint);
+    }
+    return result;
+  }
+  xhr.onload = function() {
+    console.log('got load');
+    if (xhr.status === 200) {
+      console.log('got script');
+      const utf32Data = xhr.response;
+      //  const decoder = new TextDecoder('utf-32'); // Or 'utf-32be'
+      const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
+      const scr = document.createElement('script');
+      //  scr.type = 'module';
+      scr.text = jsCode;
+      //    scr.dataset.moduleUrl = 'https://wasm.noahcohn.com/b3hd/'; // Base URL for module's relative paths
+      document.body.appendChild(scr);
+      setTimeout(function(){
+        var Module = libapng();
+        Module.onRuntimeInitialized = function(){
+Module.callMain();
+console.log('call main');
+        };
+      },2500);
+    }
+  };
+  xhr.send();
+});
+
+setTimeout(function(){
+document.querySelector('#splash2').style.zIndex=3000;
+document.querySelector('#splash2').style.display='none';
+},4200);
+setTimeout(function(){
+document.querySelector('#splash1').style.zIndex=3000;
+document.querySelector('#splash1').style.display='none';
+},4500);
+
+setTimeout(function(){
+document.getElementById('vsiz').innerHTML=parseInt(window.innerHeight,10);
+},500);
+
+setTimeout(function(){
+window.scrollTo({
+  top: 0,
+  left: 0,
+  behavior: "smooth",
+  });
+},1500);
+
+</script>
 
 
 </>
