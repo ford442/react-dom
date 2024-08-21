@@ -59,11 +59,9 @@ TIMESLIDER
 <Slider
 aria-label="TEST"
 defaultValue={1.0}
-getAriaValueText="x regular size"
 valueLabelDisplay="auto"
 shiftStep={0.25}
 step={0.05}
-marks
 min={0.05}
 max={2.0}
 />
