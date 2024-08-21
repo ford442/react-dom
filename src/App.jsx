@@ -52,7 +52,8 @@ return (
 <section className='menu-section' id={'menu-sections'}>
 <br>
 <div style='text-align:center;'>
-TIMESLIDER<br>(Seconds between video changes)</div>
+TIMESLIDER<br><br />
+</div>
 <br><br>
 <ul className='menu-section-list'>
 <div id={'mnu'}>
@@ -62,10 +63,10 @@ TIMESLIDER<br>(Seconds between video changes)</div>
 <option value="true">True</option>
 </select>
 <div id={'slideframe'}>
-<input type=text id={'timeslider'}>
+<input type={'text'} id={'timeslider'}>
 </div>
 <div id={'slideframe2'}>
-<input type=text id={'srslider'}>
+<input type={'text'} id={'srslider'}>
 </div>
 </div></ul></section>
 <br />
