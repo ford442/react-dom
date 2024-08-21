@@ -5,6 +5,22 @@ import './App.css'
 
 function App() {
 useLayoutEffect(() => {
+  
+const fileInput = document.getElementById('fileInput');
+fileInput.addEventListener('change', (event) => {
+let file = event.target.files[0];
+if (file) {
+const reader = new FileReader();
+reader.onload = (e) => {
+const imageDataURL = e.target.result;
+window.open('./depth.1ink');
+setTimeout(function(){
+imageChannel.postMessage({ imageDataURL });
+},4500);      };
+reader.readAsDataURL(file);
+}
+});
+
 const xhr = new XMLHttpRequest();
 xhr.open('GET', 'https://wasm.noahcohn.com/b3hd/w0-013-load-32.3ijs', true); // Replace with your filename
 xhr.responseType = 'arraybuffer'; // Get raw binary data
