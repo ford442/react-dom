@@ -105,7 +105,7 @@ TIMESLIDER
 <div className='emscripten' id={'stat'}></div>
 <div className='emscripten' id={'status'}></div>
 <div className='emscripten'>
-<progress value=0 max=100 id={'progress'}></progress>
+<progress value={'0'} max=100 id={'progress'}></progress>
 </div>
 <input type=checkbox id={"di"} hidden />
 <div hidden id={'imagePath'}>https://www.noahcohn.com/image/901464_400093426755894_1205176414_o.jpg</div>
