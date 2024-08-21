@@ -47,7 +47,7 @@ xhr.send();
 return (
 <>
 <link charset={"utf-8"} crossorigin rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Audiowide">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Audiowide"/>
 <nav id={"menu"}>
 <section className='menu-section' id={'menu-sections'}>
 <div style='text-align:center;'>
