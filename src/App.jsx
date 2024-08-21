@@ -68,7 +68,7 @@ TIMESLIDER
 </div></ul></section>
 </nav>
 <main id={'panel'}>
-<iframe src=./bezz.1ink id={'circle'} title='Circular mask'></iframe>
+<iframe src={'./bezz.1ink'} id={'circle'} title='Circular mask'></iframe>
 <input type=button id={'startBtn'} style='background-color:gold;position:absolute;display:block;left:6%;top:9%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
 <input type=button id={'menuBtn'} style='background-color:black;position:absolute;display:block;left:3%;top:5%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
 <input type=button id={'musicBtn'} style='background-color:cyan;position:absolute;display:block;left:3%;bottom:5%;z-index:3200;border:6px solid green;border-radius:20%;' />
@@ -145,16 +145,16 @@ TIMESLIDER
 </div>
 <div id={'contain2>
 <canvas id={'bcanvas'} hidden style='pointer-events:none;display:none;z-index:2100;position:absolute;height:100vh;width:100vh;margin-left:auto;margin-right:auto;background-color:rgba(0,255,0,1.0);top:0;image-rendering:auto;'></canvas>
-<img id={'resultImage'} src=""></img>
+<img id={'resultImage'} src={''}></img>
 </div>
 </div>
 </main>
 <div>
-<img id={"imgAnimPNG"} src=""></img>
-<img id={'mvi'} src=./image/901464_400093426755894_1205176414_o.jpg></img>
+<img id={"imgAnimPNG"} src={''}></img>
+<img id={'mvi'} src={'./image/901464_400093426755894_1205176414_o.jpg'}></img>
 </div>
 <div style='pointer-events:none;height:100vh;'>
-<video hidden muted src=./video-1456459792.mp4
+<video hidden muted src={'./video-1456459792.mp4'}
        loop crossorigin playsinline
        id={'ivi'} preload=auto
        style='pointer-events:none;transform:scaleY(-1.0);' />
@@ -164,7 +164,7 @@ TIMESLIDER
 </div>
 <audio crossorigin id={'track'} preload=none hidden style='pointer-events:none;'></audio>
 
-<script type='module' src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+<script type='module' src={'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js'}></script>
 
 <script>
 const pyChannel = new BroadcastChannel('py_channel');
@@ -366,7 +366,7 @@ function processImageFromURL(pth) {
 document.getElementById("pyBtn2").addEventListener('click',function() {
 document.querySelector('#scanvas').style.transform='scaleY(-1.0)';
 const imageDataUrl = document.getElementById('scanvas').toDataURL('image/jpeg'); // You can change the format if needed
-  document.getElementById('mvi').src=imageDataUrl
+  document.getElementById('mvi').src=imageDataUrl;
   document.querySelector('#mvi').style.transform='scaleY(-1.0)';
   document.querySelector('#mvi').style.transform='scaleX(-1.0)';
 });
