@@ -69,33 +69,33 @@ TIMESLIDER
 </nav>
 <main id={'panel'}>
 <iframe src={'./bezz.1ink'} id={'circle'} title='Circular mask'></iframe>
-<input type=button id={'startBtn'} style='background-color:gold;position:absolute;display:block;left:6%;top:9%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
-<input type=button id={'menuBtn'} style='background-color:black;position:absolute;display:block;left:3%;top:5%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
-<input type=button id={'musicBtn'} style='background-color:cyan;position:absolute;display:block;left:3%;bottom:5%;z-index:3200;border:6px solid green;border-radius:20%;' />
-<input type=button id={'startBtn5'} style='background-color:yellow;position:absolute;display:block;left:2%;top:9%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;'></input>
-<input type=button id={'startBtn2'} style='background-color:gold;position:absolute;display:block;left:9%;top:9%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
-<input type=button id={'startBtnC'} style='background-color:green;position:absolute;display:block;left:5%;top:12%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
-<input type=button id={'downloadButton'} style='background-color:grey;position:absolute;display:block;left:15%;top:22%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
-<input type=button id={'startBtnI'} style='background-color:white;position:absolute;display:block;left:15%;top:12%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
-<input type=button id={'pyBtn'} style='background-color:green;position:absolute;display:block;left:15%;top:6%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
-<input type=button id={'pyBtn2'} style='background-color:green;position:absolute;display:block;left:18%;top:6%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
-<input type=button id={'pyBtn3'} style='background-color:yellow;position:absolute;display:block;left:22%;top:6%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
-<input type=button id={'pyBtn4'} style='background-color:red;position:absolute;display:block;left:22%;top:8%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
-<input type=button id={'apngBtn'} style='background-color:green;position:absolute;display:block;left:35%;top:12%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
-<input type=button id={'apngBtn2'} style='background-color:green;position:absolute;display:block;left:37%;top:12%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
-<input type=button id={'mviBtn'} style='background-color:black;position:absolute;display:block;left:15%;top:9%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
-<input type=button id={'uniUp'} style='background-color:black;position:absolute;display:block;left:3%;top:50%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
-<input type=button id={'uniDown'} style='background-color:black;position:absolute;display:block;left:7%;top:50%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
-<input type=button id={'viewUp'} style='background-color:black;position:absolute;display:block;left:5%;top:46%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
-<input type=button id={'viewDown'} style='background-color:black;position:absolute;display:block;left:5%;top:54%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
-<input type=button id={'sizeUp'} style='background-color:black;position:absolute;display:block;left:5%;top:86%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
-<input type=button id={'sizeDown'} style='background-color:black;position:absolute;display:block;left:5%;top:90%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
-<input type=button id={'moveDown'} style='background-color:black;position:absolute;display:block;right:5%;top:90%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
-<input type=button id={'moveUp'} style='background-color:black;position:absolute;display:block;right:5%;top:86%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
-<input type=button id={'moveLeft'} style='background-color:black;position:absolute;display:block;right:3%;top:90%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
-<input type=button id={'moveRight'} style='background-color:black;position:absolute;display:block;right:7%;top:90%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
-<input className="button" type=button id={'moveFwd'} style='background-color:gold;position:absolute;display:none;width:6vh;height:5vh;left:47%;bottom:3%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
-<input className="button" type=button id={'cruiseFwd'} style='background-color:red;position:absolute;display:none;width:6vh;height:5vh;left:47%;bottom:7%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
+<input type={'button'} id={'startBtn'} style='background-color:gold;position:absolute;display:block;left:6%;top:9%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
+<input type={'button'} id={'menuBtn'} style='background-color:black;position:absolute;display:block;left:3%;top:5%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
+<input type={'button'} id={'musicBtn'} style='background-color:cyan;position:absolute;display:block;left:3%;bottom:5%;z-index:3200;border:6px solid green;border-radius:20%;' />
+<input type={'button'} id={'startBtn5'} style='background-color:yellow;position:absolute;display:block;left:2%;top:9%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;'></input>
+<input type={'button'} id={'startBtn2'} style='background-color:gold;position:absolute;display:block;left:9%;top:9%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
+<input type={'button'} id={'startBtnC'} style='background-color:green;position:absolute;display:block;left:5%;top:12%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
+<input type={'button'} id={'downloadButton'} style='background-color:grey;position:absolute;display:block;left:15%;top:22%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
+<input type={'button'} id={'startBtnI'} style='background-color:white;position:absolute;display:block;left:15%;top:12%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
+<input type={'button'} id={'pyBtn'} style='background-color:green;position:absolute;display:block;left:15%;top:6%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
+<input type={'button'} id={'pyBtn2'} style='background-color:green;position:absolute;display:block;left:18%;top:6%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
+<input type={'button'} id={'pyBtn3'} style='background-color:yellow;position:absolute;display:block;left:22%;top:6%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
+<input type={'button'} id={'pyBtn4'} style='background-color:red;position:absolute;display:block;left:22%;top:8%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
+<input type={'button'} id={'apngBtn'} style='background-color:green;position:absolute;display:block;left:35%;top:12%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
+<input type={'button'} id={'apngBtn2'} style='background-color:green;position:absolute;display:block;left:37%;top:12%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
+<input type={'button'} id={'mviBtn'} style='background-color:black;position:absolute;display:block;left:15%;top:9%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
+<input type={'button'} id={'uniUp'} style='background-color:black;position:absolute;display:block;left:3%;top:50%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
+<input type={'button'} id={'uniDown'} style='background-color:black;position:absolute;display:block;left:7%;top:50%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
+<input type={'button'} id={'viewUp'} style='background-color:black;position:absolute;display:block;left:5%;top:46%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
+<input type={'button'} id={'viewDown'} style='background-color:black;position:absolute;display:block;left:5%;top:54%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
+<input type={'button'} id={'sizeUp'} style='background-color:black;position:absolute;display:block;left:5%;top:86%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
+<input type={'button'} id={'sizeDown'} style='background-color:black;position:absolute;display:block;left:5%;top:90%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
+<input type={'button'} id={'moveDown'} style='background-color:black;position:absolute;display:block;right:5%;top:90%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
+<input type={'button'} id={'moveUp'} style='background-color:black;position:absolute;display:block;right:5%;top:86%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
+<input type={'button'} id={'moveLeft'} style='background-color:black;position:absolute;display:block;right:3%;top:90%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
+<input type={'button'} id={'moveRight'} style='background-color:black;position:absolute;display:block;right:7%;top:90%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;' />
+<input className="button" type={'button'} id={'moveFwd'} style='background-color:gold;position:absolute;display:none;width:6vh;height:5vh;left:47%;bottom:3%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
+<input className="button" type={'button'} id={'cruiseFwd'} style='background-color:red;position:absolute;display:none;width:6vh;height:5vh;left:47%;bottom:7%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;' />
 <input type="file" id={"fileInput"} style="z-index:5000;position:absolute;left:50vh;top:16vh;">
 <input type="file" id={"fileInput2"} style="z-index:5000;position:absolute;left:42vh;top:26vh;">
 <label for="fileInput" className="custom-file-upload">Select File</label>
