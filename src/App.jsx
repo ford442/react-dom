@@ -143,7 +143,7 @@ TIMESLIDER
 <div id={'contain1a'} style='height:75%;width:75%;'>
 </div>
 </div>
-<div id={'contain2>
+<div id={'contain2'}>
 <canvas id={'bcanvas'} hidden style='pointer-events:none;display:none;z-index:2100;position:absolute;height:100vh;width:100vh;margin-left:auto;margin-right:auto;background-color:rgba(0,255,0,1.0);top:0;image-rendering:auto;'></canvas>
 <img id={'resultImage'} src={''}></img>
 </div>
