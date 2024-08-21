@@ -96,12 +96,12 @@ TIMESLIDER
 <input type={'button'} id={'moveRight'} style={'background-color:black;position:absolute;display:block;right:7%;top:90%;z-index:3200;border:6px solid #e7e7e7;border-radius:20%;'} />
 <input className="button" type={'button'} id={'moveFwd'} style={'background-color:gold;position:absolute;display:none;width:6vh;height:5vh;left:47%;bottom:3%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;'} />
 <input className="button" type={'button'} id={'cruiseFwd'} style={'background-color:red;position:absolute;display:none;width:6vh;height:5vh;left:47%;bottom:7%;z-index:3200;border:4px solid #e7e7e7;border-radius:17%;'} />
-<input type="file" id={"fileInput"} style="z-index:5000;position:absolute;left:50vh;top:16vh;"></input>
-<input type="file" id={"fileInput2"} style="z-index:5000;position:absolute;left:42vh;top:26vh;"></input>
+<input type="file" id={"fileInput"} style={"z-index:5000;position:absolute;left:50vh;top:16vh;"}></input>
+<input type="file" id={"fileInput2"} style={"z-index:5000;position:absolute;left:42vh;top:26vh;"}></input>
 <label for="fileInput" className="custom-file-upload">Select File</label>
-<div id={'outText'} style="opacity:0.0;background-color:green;position:absolute;top:50vh;left:47vw;z-index:4200;"></div>
-<div id={'outText1'} style="opacity:0.0;background-color:green;position:absolute;top:52vh;left:47vw;z-index:4200;"></div>
-<div id={'outText2'} style="opacity:0.0;background-color:green;position:absolute;top:54vh;left:47vw;z-index:4200;"></div>
+<div id={'outText'} style={"opacity:0.0;background-color:green;position:absolute;top:50vh;left:47vw;z-index:4200;"></div>
+<div id={'outText1'} style={"opacity:0.0;background-color:green;position:absolute;top:52vh;left:47vw;z-index:4200;"></div>
+<div id={'outText2'} style={"opacity:0.0;background-color:green;position:absolute;top:54vh;left:47vw;z-index:4200;"></div>
 <div className='emscripten' id={'stat'}></div>
 <div className='emscripten' id={'status'}></div>
 <div className='emscripten'>
