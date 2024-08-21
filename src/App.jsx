@@ -48,7 +48,7 @@ return (
 <>
 <link charset={"utf-8"} crossorigin rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Audiowide">
-<nav id=menu>
+<nav id={"menu"}>
 <section class=menu-section id=menu-sections>
 <br>
 <div style='text-align:center;'>
