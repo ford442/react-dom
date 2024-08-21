@@ -177,7 +177,7 @@ const imageChannel = new BroadcastChannel('imageChannel');
 
   // Add event listener for file selection
 fileInput.addEventListener('change', (event) => {
-    const file = event.target.files[0];
+    let file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
