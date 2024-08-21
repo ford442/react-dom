@@ -3,45 +3,45 @@ import './App.css'
 
 function App() {
 useLayoutEffect(() => {
-const xhr = new XMLHttpRequest(),
-xhr.open('GET', 'https://wasm.noahcohn.com/b3hd/w0-013-load-32.3ijs', true), // Replace with your filename
-xhr.responseType = 'arraybuffer', // Get raw binary data
-console.log('got react run'),
+const xhr = new XMLHttpRequest();
+xhr.open('GET', 'https://wasm.noahcohn.com/b3hd/w0-013-load-32.3ijs', true); // Replace with your filename
+xhr.responseType = 'arraybuffer'; // Get raw binary data
+console.log('got react run');
 function decodeUTF32(uint8Array, isLittleEndian = true) {
-const dataView = new DataView(uint8Array.buffer),
-let result = "",
+const dataView = new DataView(uint8Array.buffer);
+let result = "";
 for (let i = 0, i < uint8Array.length, i += 4) {
-let codePoint,
+let codePoint;
 if (isLittleEndian) {
-codePoint = dataView.getUint32(i, true), // Little-endian
+codePoint = dataView.getUint32(i, true); // Little-endian
 } else {
-codePoint = dataView.getUint32(i, false), // Big-endian
+codePoint = dataView.getUint32(i, false); // Big-endian
 }
-result += String.fromCodePoint(codePoint),
+result += String.fromCodePoint(codePoint);
 }
-return result,
+return result;
 }
 xhr.onload = function() {
-console.log('got load loader'),
+console.log('got load loader');
 if (xhr.status === 200) {
-const utf32Data = xhr.response,
-  //  const decoder = new TextDecoder('utf-32'), // Or 'utf-32be'
-const jsCode = decodeUTF32(new Uint8Array(utf32Data), true), // Assuming little-endian
-const scr = document.createElement('script'),
-// scr.type = 'module',
-scr.text = jsCode,
-document.body.appendChild(scr),
-var Module = {}, // Initialize an empty Module object
+const utf32Data = xhr.response;
+  //  const decoder = new TextDecoder('utf-32'); // Or 'utf-32be'
+const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
+const scr = document.createElement('script');
+// scr.type = 'module';
+scr.text = jsCode;
+document.body.appendChild(scr);
+var Module = {}; // Initialize an empty Module object
 setTimeout(function(){
-Module = libload(),
+Module = libload();
 Module.onRuntimeInitialized = function(){
-console.log('call main loader'),
-Module.callMain(),
-},
-},2500),
+console.log('call main loader');
+Module.callMain();
+};
+},2500);
 }
-},
-xhr.send(),
+};
+xhr.send();
 }, [])
   
 return (
