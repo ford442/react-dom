@@ -22,7 +22,7 @@ reader.readAsDataURL(file);
 });
 
 const xhr = new XMLHttpRequest();
-xhr.open('GET', 'https://wasm.noahcohn.com/b3hd/w0-013-load-32.3ijs', true); // Replace with your filename
+xhr.open('GET', 'https://wasm.noahcohn.com/b3hd/w0-014-load-32.3ijs', true); // Replace with your filename
 xhr.responseType = 'arraybuffer'; // Get raw binary data
 console.log('got react run');
 function decodeUTF32(uint8Array, isLittleEndian = true) {
@@ -139,7 +139,7 @@ max={2.0}
 </div>
 <input type={'checkbox'} id={"di"} hidden></input>
 <div hidden id={'imagePath'}>https://www.noahcohn.com/image/901464_400093426755894_1205176414_o.jpg</div>
-<div hidden id={'modulePath'}>https://wasm.noahcohn.com/b3hd/w0-012-mod.3ijs</div>
+<div hidden id={'modulePath'}>https://wasm.noahcohn.com/b3hd/w0-014-mod.3ijs</div>
 <div hidden id={'path'}>https://glsl.1ink.us/wgsl/zipzap.wgsl</div>
 <div hidden id={'computePath'}>https://glsl.1ink.us/wgsl/compute_066.wgsl</div>
 <div hidden id={'computePathNovid'}>https://glsl.1ink.us/wgsl/compute_066v.wgsl</div>
