@@ -138,13 +138,6 @@ max={2.0}
 <progress value={'0'} max={'100'} id={'progress'}></progress>
 </div>
 <input type={'checkbox'} id={"di"} hidden></input>
-<div hidden id={'imagePath'}>https://www.noahcohn.com/image/901464_400093426755894_1205176414_o.jpg</div>
-<div hidden id={'modulePath'}>https://wasm.noahcohn.com/b3hd/w0-014-mod.3ijs</div>
-<div hidden id={'path'}>https://glsl.1ink.us/wgsl/zipzap.wgsl</div>
-<div hidden id={'computePath'}>https://glsl.1ink.us/wgsl/compute_066.wgsl</div>
-<div hidden id={'computePathNovid'}>https://glsl.1ink.us/wgsl/compute_066v.wgsl</div>
-<div hidden id={'fragPath'}>https://glsl.1ink.us/wgsl/fragment_005.wgsl</div>
-<div hidden id={'vertPath'}>https://glsl.1ink.us/wgsl/vertex_003.wgsl</div>
 //   //   //   //
 <div id={'srsiz'} hidden>1000</div>
 <div id={'ffire'} hidden>0</div>
