@@ -66,9 +66,9 @@ return (
 <>
 <link charset={"utf-8"} crossorigin rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Audiowide"/>
-<img id={'splash1'} src={'./image/shroud.jpg'} style={{backgroundColor:"white";display:"block";position:"absolute";height:100vh;width:"100vw";zIndex:3590;}}></img>
-<img id={'splash2'} src={'./image/spinner.gif'} style={{backgroundColor:"grey";display:"block";top:"50%";left:"50%";transform:"translate(-50%,-50%)";position:"absolute";height:"20vh";width:"20vh";zIndex:3591;}}></img>
-<nav id={"menu"}>
+<img id={'splash1'} src={'./image/shroud.jpg'} style={{backgroundColor:'white';display:'block';position:'absolute';height:100vh;width:'100vw';zIndex:3590;}}></img>
+<img id={'splash2'} src={'./image/spinner.gif'} style={{backgroundColor:'grey';display:'block';top:'50%';left:'50%';transform:'translate(-50%,-50%)';position:'absolute';height:'20vh';width:'20vh';zIndex:3591;}}></img>
+<nav id={'menu'}>
 <section className='menu-section' id={'menu-sections'}>
 <div style={{textAlign:'center'}}>
 TIMESLIDER
