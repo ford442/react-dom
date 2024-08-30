@@ -23,7 +23,7 @@ reader.readAsDataURL(file);
 
 // const xhrPath = document.querySelector('#loadPath').innerHTML;
 const xhr = new XMLHttpRequest();
-xhr.open('GET', 'https://wasm.noahcohn.com/b3hd/w0-014-load-32.3ijs', true); // Replace with your filename
+xhr.open('GET', 'https://wasm.noahcohn.com/b3hd/w0-017-load-32.3ijs', true); // Replace with your filename
 xhr.responseType = 'arraybuffer'; // Get raw binary data
 console.log('got react run');
 function decodeUTF32(uint8Array, isLittleEndian = true) {
