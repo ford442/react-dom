@@ -6,20 +6,15 @@ import { Client } from "@gradio/client";
 
 function App() {
 useLayoutEffect(() => {
-    const [recording, setRecording] = useState(false); //  State for recording
-  const audioChunksRef = useRef([]); // Ref for audio chunks (better for async updates)
-  const mediaRecorderRef = useRef(null); // Ref for MediaRecorder
-  const recognitionRef = useRef(null);   // Ref for SpeechRecognition
-
+  
 // VOICE
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.continuous = true;
-    recognition.interimResults = false;
-    recognitionRef.current = recognition; // Store in ref
-
+const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+recognition.continuous = true;
+recognition.interimResults = false;
+let recording = false; // Flag to indicate recording state
 let audioChunks = []; // Array to store audio chunks
 let mediaRecorder; // Declare mediaRecorder here
-
+  const audioChunksRef = useRef([]); // Ref for audio chunks (better for async updates)
 recognition.onstart = function() {
   console.log("Speech recognition started.");
 };
