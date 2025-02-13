@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback,useLayoutEffect } from 'react'
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import './App.css'
-import { client } from "@gradio/client";
+import { Client } from "@gradio/client";
 
 function App() {
 useLayoutEffect(() => {
@@ -69,7 +69,7 @@ navigator.mediaDevices.getUserMedia({ audio: true })
             const fullAudioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
             audioChunksRef.current = []; // Clear for next recording
             try {
-                const app = await client("ford442/facebook-fastspeech2-en-ljspeech", { hf_token: "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" });
+                const app = await Client("ford442/facebook-fastspeech2-en-ljspeech", { hf_token: "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" });
                const result = await app.predict("/predict", [fullAudioBlob]); // Corrected call
               console.log(result)
               if (result && result.data) {  // Corrected check (data, not audio)
