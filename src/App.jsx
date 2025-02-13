@@ -83,7 +83,7 @@ navigator.mediaDevices.getUserMedia({ audio: true })
                 downloadLink.download = 'synthesized_audio.wav';
                 downloadLink.textContent = 'Download Audio';
                 document.body.appendChild(downloadLink);
-                */
+              
             } else {
               console.error("No audio data received from the server.");
             }
@@ -95,6 +95,7 @@ navigator.mediaDevices.getUserMedia({ audio: true })
             }
         } catch (error) {
           console.error("Error calling Hugging Face Space:", error);
+       */
         } finally {
             // Restart speech recognition after processing is complete
             recognition.start();
