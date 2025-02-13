@@ -12,8 +12,6 @@ const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognit
 recognition.continuous = true;
 recognition.interimResults = false;
 let recording = false; // Flag to indicate recording state
-let audioChunks = []; // Array to store audio chunks
-let mediaRecorder; // Declare mediaRecorder here
 
 recognition.onstart = function() {
   console.log("Speech recognition started.");
