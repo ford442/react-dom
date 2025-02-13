@@ -6,7 +6,6 @@ import { Client } from "@gradio/client";
 
 function App() {
 useLayoutEffect(() => {
-
   
 // VOICE
 const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
@@ -35,7 +34,7 @@ recognition.onresult = async function(event) {
             }
             if (transcript.includes("question mark") && recording) {
                 console.log("Trigger phrase 'question mark' detected! Stopping recording.");
-                document.querySelector('#getThree').style.backgroundColor = "yellow";
+                document.body.style.backgroundColor = "yellow";
                 recording = false;
                 recognition.stop(); // Stop speech recognition
                 mediaRecorder.stop();  // Stop the MediaRecorder *FIRST*
