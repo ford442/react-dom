@@ -68,7 +68,7 @@ navigator.mediaDevices.getUserMedia({ audio: true })
             const fullAudioBlob = new Blob(audioChunks, { type: 'audio/wav' });
             audioChunks = []; // Clear for next recording
             try {
-                const app = await client("ford442/facebook-fastspeech2-en-ljspeech", { hf_token: "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" });
+                const app = await Client("ford442/facebook-fastspeech2-en-ljspeech", { hf_token: "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" });
                const result = await app.predict("/predict", [fullAudioBlob]); // Corrected call
               console.log(result)
               if (result && result.data) {  // Corrected check (data, not audio)
