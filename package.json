@@ -12,7 +12,7 @@
     "@emotion/styled": "latest",
     "@mui/material": "next",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
     "@gradio/client": "latest"
   },
   "devDependencies": {
