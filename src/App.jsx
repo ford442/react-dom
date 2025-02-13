@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback,useLayoutEffect } from 'react'
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import './App.css'
-import { Client } from "@gradio/client";
+import { client } from "@gradio/client";
 
 function App() {
 useLayoutEffect(() => {
@@ -14,6 +14,7 @@ recognition.interimResults = false;
 let recording = false; // Flag to indicate recording state
 let audioChunks = []; // Array to store audio chunks
 let mediaRecorder; // Declare mediaRecorder here
+
 recognition.onstart = function() {
   console.log("Speech recognition started.");
 };
@@ -65,11 +66,11 @@ navigator.mediaDevices.getUserMedia({ audio: true })
     };
 
    mediaRecorder.onstop = async () => {
-            const fullAudioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-            audioChunks = []; // Clear for next recording
+            const fullAudioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+            audioChunksRef.current = []; // Clear for next recording
             try {
-              const app = await Client("ford442/facebook-fastspeech2-en-ljspeech", { hf_token: "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" });
-              const result = await app.predict("/predict", [fullAudioBlob]); // Corrected call
+                const app = await client("ford442/facebook-fastspeech2-en-ljspeech", { hf_token: "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" });
+               const result = await app.predict("/predict", [fullAudioBlob]); // Corrected call
               console.log(result)
               if (result && result.data) {  // Corrected check (data, not audio)
                 //result.data is already a url
@@ -104,6 +105,62 @@ navigator.mediaDevices.getUserMedia({ audio: true })
 
 recognition.start();
  
+const imageChannel = new BroadcastChannel('imageChannel');
+const fileInput = document.getElementById('fileInput');
+fileInput.addEventListener('change', (event) => {
+let file = event.target.files[0];
+if (file) {
+const reader = new FileReader();
+reader.onload = (e) => {
+const imageDataURL = e.target.result;
+window.open('./depth.1ink');
+setTimeout(function(){
+imageChannel.postMessage({ imageDataURL });
+},4500);      };
+reader.readAsDataURL(file);
+}
+});
+
+const xhrPath = document.querySelector('#loadPath').innerHTML;
+const xhr = new XMLHttpRequest();
+xhr.open('GET', xhrPath, true); // Replace with your filename
+xhr.responseType = 'arraybuffer'; // Get raw binary data
+console.log('got react run');
+function decodeUTF32(uint8Array, isLittleEndian = true) {
+const dataView = new DataView(uint8Array.buffer);
+let result = "";
+for (let i = 0; i < uint8Array.length; i += 4) {
+let codePoint;
+if (isLittleEndian) {
+codePoint = dataView.getUint32(i, true); // Little-endian
+} else {
+codePoint = dataView.getUint32(i, false); // Big-endian
+}
+result += String.fromCodePoint(codePoint);
+}
+return result;
+}
+xhr.onload = function() {
+console.log('got load loader');
+if (xhr.status === 200) {
+const utf32Data = xhr.response;
+  //  const decoder = new TextDecoder('utf-32'); // Or 'utf-32be'
+const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
+const scr = document.createElement('script');
+// scr.type = 'module';
+scr.text = jsCode;
+document.body.appendChild(scr);
+var Module = {}; // Initialize an empty Module object
+setTimeout(function(){
+Module = libload();
+Module.onRuntimeInitialized = function(){
+console.log('call main loader');
+Module.callMain();
+};
+},2500);
+}
+};
+xhr.send();
 }, [])
   
 return (
