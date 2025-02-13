@@ -55,59 +55,58 @@ recognition.onerror = function(event) {
   }
 };
 
-// --- MediaRecorder Setup ---
-navigator.mediaDevices.getUserMedia({ audio: true })
-  .then(stream => {
-    mediaRecorder = new MediaRecorder(stream);
-    mediaRecorder.ondataavailable = event => {
-        if (event.data.size > 0) { // Ensure data is not empty
-          audioChunks.push(event.data);
-        }
-    };
+    let mediaRecorder;
+    let audioChunks = [];
 
-   mediaRecorder.onstop = async () => {
-            const fullAudioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-            audioChunksRef.current = []; // Clear for next recording
-            try {
+    // --- MediaRecorder Setup ---
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable = event => {
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          const fullAudioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+          audioChunks = []; // Clear for next recording
+
+          try {
             const app = await Client.connect("ford442/facebook-fastspeech2-en-ljspeech", { hf_token: "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" });
+            const result = await app.predict("/predict", [fullAudioBlob]);
 
-              /*
-               const result = await app.predict("/predict", [fullAudioBlob]); // Corrected call
-              console.log(result)
-              if (result && result.data) {  // Corrected check (data, not audio)
-                //result.data is already a url
-                const audio = new Audio();
-                audio.src = result.data;
-                audio.play();
-                const downloadLink = document.createElement('a');
-                downloadLink.href = URL.createObjectURL(audioBlob);
-                downloadLink.download = 'synthesized_audio.wav';
-                downloadLink.textContent = 'Download Audio';
-                document.body.appendChild(downloadLink);
-              
-            } else {
-              console.error("No audio data received from the server.");
-            }
-            if (result) {
-                console.log("Result from Hugging Face Space:", result);
-                document.getElementById("responseArea").innerText = result.response;
-            } else {
-                console.error("Failed to get result from Hugging Face Space.");
-            }
-        } catch (error) {
-          console.error("Error calling Hugging Face Space:", error);
-       */
-        } finally {
-            // Restart speech recognition after processing is complete
-            recognition.start();
-        }
-    };
-  })
-  .catch(err => {
-    console.error("Error getting audio stream:", err);
-  });
+            if (result && result.data) {
+              const audio = new Audio();
+              audio.src = result.data;
+              audio.play();
 
-recognition.start();
+              const downloadLink = document.createElement('a');
+              downloadLink.href = URL.createObjectURL(fullAudioBlob); // Use the correct blob
+              downloadLink.download = 'synthesized_audio.wav';
+              downloadLink.textContent = 'Download Audio';
+              document.body.appendChild(downloadLink);
+
+              console.log("Result from Hugging Face Space:", result);
+              document.getElementById("responseArea").innerText = result.response;
+            } else {
+              console.error("No audio data or response received from the server.");
+            }
+          } catch (error) {
+            console.error("Error calling Hugging Face Space:", error);
+          } finally {
+            if (!recording) { // Only restart if not currently recording
+              recognition.start();
+            }
+          }
+        };
+      })
+      .catch(err => {
+        console.error("Error getting audio stream:", err);
+      });
+
+    recognition.start();
  
 const imageChannel = new BroadcastChannel('imageChannel');
 const fileInput = document.getElementById('fileInput');
