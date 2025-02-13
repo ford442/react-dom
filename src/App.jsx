@@ -2,9 +2,110 @@ import { useState, useRef, useEffect, useCallback,useLayoutEffect } from 'react'
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import './App.css'
+import { Client } from "@gradio/client";
 
 function App() {
 useLayoutEffect(() => {
+
+  
+// VOICE
+const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+recognition.continuous = true;
+recognition.interimResults = false;
+let recording = false; // Flag to indicate recording state
+let audioChunks = []; // Array to store audio chunks
+let mediaRecorder; // Declare mediaRecorder here
+
+recognition.onstart = function() {
+  console.log("Speech recognition started.");
+};
+
+recognition.onresult = async function(event) {
+    if (event.results && event.results.length > 0) {
+        const lastResultIndex = event.results.length - 1;
+        if (event.results[lastResultIndex] && event.results[lastResultIndex][0] && event.results[lastResultIndex][0].transcript) {
+            const transcript = event.results[lastResultIndex][0].transcript.toLowerCase();
+            console.log("Recognized:", transcript);
+            if (transcript.includes("hey you") && !recording) {
+                console.log("Trigger phrase 'hey you' detected! Starting recording.");
+                document.body.style.backgroundColor = "green";
+                recording = true;
+                audioChunks = []; // Clear previous chunks
+                mediaRecorder.start(); // Start recording when "hey you" is detected
+            }
+            if (transcript.includes("question mark") && recording) {
+                console.log("Trigger phrase 'question mark' detected! Stopping recording.");
+                document.querySelector('#getThree').style.backgroundColor = "yellow";
+                recording = false;
+                recognition.stop(); // Stop speech recognition
+                mediaRecorder.stop();  // Stop the MediaRecorder *FIRST*
+            }
+        } else {
+            console.warn("Transcript not available in this result.");
+        }
+    } else {
+        console.warn("No speech recognition results available.");
+    }
+};
+
+recognition.onerror = function(event) {
+  console.error("Speech recognition error:", event.error);
+  if (event.error === 'no-speech') {
+      console.log("No speech detected. Restarting recognition.");
+      recognition.start();
+  }
+};
+
+// --- MediaRecorder Setup ---
+navigator.mediaDevices.getUserMedia({ audio: true })
+  .then(stream => {
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = event => {
+        if (event.data.size > 0) { // Ensure data is not empty
+          audioChunks.push(event.data);
+        }
+    };
+
+   mediaRecorder.onstop = async () => {
+            const fullAudioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+            audioChunksRef.current = []; // Clear for next recording
+            try {
+                const app = await client("ford442/facebook-fastspeech2-en-ljspeech", { hf_token: "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" });
+               const result = await app.predict("/predict", [fullAudioBlob]); // Corrected call
+              console.log(result)
+              if (result && result.data) {  // Corrected check (data, not audio)
+                //result.data is already a url
+                const audio = new Audio();
+                audio.src = result.data;
+                audio.play();
+                const downloadLink = document.createElement('a');
+                downloadLink.href = URL.createObjectURL(audioBlob);
+                downloadLink.download = 'synthesized_audio.wav';
+                downloadLink.textContent = 'Download Audio';
+                document.body.appendChild(downloadLink);
+            } else {
+              console.error("No audio data received from the server.");
+            }
+            if (result) {
+                console.log("Result from Hugging Face Space:", result);
+                document.getElementById("responseArea").innerText = result.response;
+            } else {
+                console.error("Failed to get result from Hugging Face Space.");
+            }
+        } catch (error) {
+          console.error("Error calling Hugging Face Space:", error);
+        } finally {
+            // Restart speech recognition after processing is complete
+            recognition.start();
+        }
+    };
+  })
+  .catch(err => {
+    console.error("Error getting audio stream:", err);
+  });
+
+recognition.start();
+ 
 const imageChannel = new BroadcastChannel('imageChannel');
 const fileInput = document.getElementById('fileInput');
 fileInput.addEventListener('change', (event) => {
