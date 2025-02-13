@@ -17,7 +17,6 @@ useLayoutEffect(() => {
     recognition.interimResults = false;
     recognitionRef.current = recognition; // Store in ref
 
-let recording = false; // Flag to indicate recording state
 let audioChunks = []; // Array to store audio chunks
 let mediaRecorder; // Declare mediaRecorder here
 
