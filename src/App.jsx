@@ -14,7 +14,6 @@ recognition.interimResults = false;
 let recording = false; // Flag to indicate recording state
 let audioChunks = []; // Array to store audio chunks
 let mediaRecorder; // Declare mediaRecorder here
-  const audioChunksRef = useRef([]); // Ref for audio chunks (better for async updates)
 recognition.onstart = function() {
   console.log("Speech recognition started.");
 };
@@ -66,8 +65,8 @@ navigator.mediaDevices.getUserMedia({ audio: true })
     };
 
    mediaRecorder.onstop = async () => {
-            const fullAudioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-            audioChunksRef.current = []; // Clear for next recording
+            const fullAudioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            audioChunks = []; // Clear for next recording
             try {
                 const app = await client("ford442/facebook-fastspeech2-en-ljspeech", { hf_token: "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" });
                const result = await app.predict("/predict", [fullAudioBlob]); // Corrected call
