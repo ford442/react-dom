@@ -72,8 +72,8 @@ recognition.onerror = function(event) {
           audioChunks = []; // Clear for next recording
 
           try {
-         //   const app = await Client.connect("ford442/facebook-fastspeech2-en-ljspeech", { hf_token: "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" });
-          //  const result = await app.predict("/predict", [fullAudioBlob]);
+            const app = await Client("ford442/facebook-fastspeech2-en-ljspeech");
+            const result = await app.predict("/predict", [fullAudioBlob]);
 
             if (result && result.data) {
               const audio = new Audio();
