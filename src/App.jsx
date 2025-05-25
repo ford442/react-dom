@@ -5,15 +5,12 @@ import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import './App.css'
 
-async function App() {
+function App() {
 useLayoutEffect(() => {
-const initProgressCallback = (initProgress) => {
-console.log(initProgress);
-}
+
 const selectedModel = "Llama-3.1-8B-Instruct-q4f32_1-MLC";
-const engine = await CreateMLCEngine(
+const engine = CreateMLCEngine(
 selectedModel,
-{ initProgressCallback: initProgressCallback }, // engineConfig
 );
   
 const imageChannel = new BroadcastChannel('imageChannel');
