@@ -1,10 +1,21 @@
 import { useState, useRef, useEffect, useCallback,useLayoutEffect } from 'react'
+import * as webllm from "@mlc-ai/web-llm";
+
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import './App.css'
 
 function App() {
 useLayoutEffect(() => {
+const initProgressCallback = (initProgress) => {
+console.log(initProgress);
+}
+const selectedModel = "Llama-3.1-8B-Instruct-q4f32_1-MLC";
+const engine = await CreateMLCEngine(
+selectedModel,
+{ initProgressCallback: initProgressCallback }, // engineConfig
+);
+  
 const imageChannel = new BroadcastChannel('imageChannel');
 const fileInput = document.getElementById('fileInput');
 fileInput.addEventListener('change', (event) => {
