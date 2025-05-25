@@ -5,7 +5,7 @@ import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import './App.css'
 
-function App() {
+async function App() {
 useLayoutEffect(() => {
 const initProgressCallback = (initProgress) => {
 console.log(initProgress);
