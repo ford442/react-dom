@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback,useLayoutEffect } from 'react'
-import * as webllm from "@mlc-ai/web-llm";
+import { CreateMLCEngine } from "@mlc-ai/web-llm";
 
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
