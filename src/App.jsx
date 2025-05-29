@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback,useLayoutEffect } from 'react'
-import { LlamaCpp } from "./llama-mt/llama.js";
+import { LlamaCpp } from "../llama/dist/llama-mt/llama.js";
 
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
