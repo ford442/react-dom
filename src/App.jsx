@@ -336,6 +336,7 @@ const handleGenerateText = async () => {
         // num_beams: 2,
         // early_stopping: true,
       });
+  let newGeneratedText = ""; 
 
       // The output is usually an array of objects.
       // For text2text-generation, it's typically [{ generated_text: "..." }]
