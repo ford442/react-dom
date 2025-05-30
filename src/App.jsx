@@ -292,79 +292,70 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   setIsSpeaking
 ]);
   
-const handleGenerateText = useCallback(async () => {
-  // ... (your existing logic for handleGenerateText is ALREADY ASYNC - keep it)
-  // This function should use the `prompt` state variable for its input.
-  // It will then call `setGeneratedOutput`, `setTextToSpeakInput`, and `synthesizeAndPlayText`.
-
+const handleGenerateText = async () => {
   if (!generator) {
     alert("The text generation model is not loaded yet. Please wait.");
     return;
   }
 
-  let textToProcess = prompt.trim(); // Directly use the current prompt from STT
+  let textToProcess = prompt.trim();
+  let isRespeaking = false;
 
   if (!textToProcess && generatedOutput.trim()) {
-    // This block is for manually clicking "Generate Text" when prompt is empty
-    // to re-speak the previous generatedOutput.
-    // For STT-triggered generation, prompt should have content.
-    textToProcess = generatedOutput.trim();
-    if (!textToProcess) { // Both prompt and generatedOutput are empty
-        alert("Please enter some text or use speech-to-text to provide a prompt.");
-        return;
-    }
-     // If we are here, it means prompt was empty, but generatedOutput wasn't.
-     // We will use generatedOutput as textToProcess for the LLM (if that's desired for button click)
-     // OR directly speak it (if that's the desired behavior for empty prompt + button click)
-     // The STT flow will ensure prompt has text.
-
-     // For STT flow, prompt will have text. For button click with empty prompt:
-     setTextToSpeakInput(textToProcess);
-     await synthesizeAndPlayText(textToProcess);
-     return; // Exit if we just re-spoke
+    textToProcess = generatedOutput.trim(); // Use last generated output if prompt is empty
+    isRespeaking = true; 
+    setStatusMessage("Re-speaking previous output...");
   } else if (!textToProcess) {
-    alert("Please enter text to generate.");
+    alert("Please enter some text or use speech-to-text to provide a prompt.");
     return;
-}
+  }
 
+  // If not re-speaking, then generate new text
+  if (!isRespeaking) {
+    setIsGenerating(true);
+    setGeneratedOutput("Generating, please wait..."); // Clear/update previous LLM output display
+    setStatusMessage("Generating text...");
+  }
+  
+  let newLLMText = ""; // Declare here
 
-setIsGenerating(true);
-setGeneratedOutput("Generating, please wait...");
-setStatusMessage("Generating text...");
-let newLLMText = "";
-
-try {
-const outputs = await generator(textToProcess, { max_new_tokens: 150 });
-    if (outputs && outputs.length > 0 && outputs[0].generated_text) {
-      newLLMText = outputs[0].generated_text;
-      setGeneratedOutput(newLLMText);
-      setStatusMessage("Text generation complete. Auto-speaking...");
-
-      // Automatically send to PREFERRED TTS (ensure preferredTtsEngine state is implemented)
-      const preferredTtsEngine = 'transformersJS'; // Or get from state: const [preferredTtsEngine, ...] = useState('webSpeechAPI');
-      if (preferredTtsEngine === 'webSpeechAPI') {
-        // setWebSpeechApiInput(newLLMText); // Assuming you have this state for the WebSpeech textarea
-        // speakWithWebAPI(newLLMText);    // Assuming speakWithWebAPI(text) exists
-      } else if (preferredTtsEngine === 'transformersJS') {
-        setTextToSpeakInput(newLLMText);
-        await synthesizeAndPlayText(newLLMText);
+  try {
+    if (!isRespeaking) {
+      const outputs = await generator(textToProcess, { max_new_tokens: 150 });
+      if (outputs && outputs.length > 0 && outputs[0].generated_text) {
+        newLLMText = outputs[0].generated_text;
+        setGeneratedOutput(newLLMText); // Display LLM output
+      } else {
+        setGeneratedOutput("No text was generated or output format was unexpected.");
+        setStatusMessage("Text generation failed to produce output.");
+        setIsGenerating(false);
+        return;
       }
-    } else { /* ... handle no output ... */ }
-  } catch (error) { /* ... handle error ... */ }
-  setIsGenerating(false);
-}, [
-  generator,
-  prompt,
-  generatedOutput,
-  isGenerating, // Though typically you don't depend on the setter's own state here
-  isSpeaking,   // Similarly
-  synthesizeAndPlayText,
-  setIsGenerating,
-  setGeneratedOutput,
-  setStatusMessage,
-  setTextToSpeakInput,
-  // preferredTtsEngine // Add if you implement the selector
-]);
+    } else {
+      newLLMText = textToProcess; // If re-speaking, newLLMText is the existing generatedOutput
+    }
+
+    setStatusMessage("Text processing complete. Auto-speaking...");
+
+    // --- Automatically send to PREFERRED TTS ---
+    if (preferredTtsEngine === 'webSpeechAPI') {
+      setWebSpeechApiDedicatedInput(newLLMText); // Update the WebSpeech textarea for consistency
+      speakWithWebAPI(newLLMText);          // Call the refactored Web Speech function
+    } else if (preferredTtsEngine === 'transformersJS') {
+      setTextToSpeakInput(newLLMText);      // Update the Transformers.js TTS textarea
+      await synthesizeAndPlayText(newLLMText); // Call your existing Transformers.js function
+    }
+    // --- End of auto TTS ---
+
+  } catch (error) {
+    console.error("Error during text generation or auto-speak setup:", error);
+    setGeneratedOutput(`Error: ${error.message}`);
+    setStatusMessage(`Error in processing: ${error.message}`);
+  }
+  if (!isRespeaking) {
+    setIsGenerating(false);
+  }
+};
   
 useEffect(() => {
 setupSpeechRecognition();
