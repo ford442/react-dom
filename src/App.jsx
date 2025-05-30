@@ -19,6 +19,8 @@ function App() {
 
   const [ttsPipeline, setTtsPipeline] = useState(null);
 const [speakerEmbeddings, setSpeakerEmbeddings] = useState(null);
+    const [ttsPipelineInstance, setTtsPipelineInstance] = useState(null);
+  const audioContextRef = useRef(null); // For playing audio
   
     const [isListening, setIsListening] = useState(false);
   const [sttError, setSttError] = useState('');
@@ -88,9 +90,6 @@ const [speakerEmbeddings, setSpeakerEmbeddings] = useState(null);
     }
   };
 
-    const [ttsPipelineInstance, setTtsPipelineInstance] = useState(null);
-  const [speakerEmbeddings, setSpeakerEmbeddings] = useState(null);
-  const audioContextRef = useRef(null); // For playing audio
 
   useLayoutEffect(() => {
     console.log('Forcing remote settings and disabling cache for loading.');
