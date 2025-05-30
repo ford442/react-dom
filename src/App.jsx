@@ -11,6 +11,8 @@ function App() {
 useLayoutEffect(() => {
   
   console.log('Minimal Test: Forcing remote settings');
+  env.allowLocalModels = false;
+env.useBrowserCache = false;
   env.localFilesOnly = false;
   env.allowRemoteModels = true;
   env.remoteHost = 'https://huggingface.co';
