@@ -234,7 +234,7 @@ const synthesizeAndPlayText = async (text) => {
   setStatusMessage(`Synthesizing: "${text.substring(0, 30)}..."`);
 
   try {
-    const output = await ttsPipelineInstance(text.trim(), {
+    const output = ttsPipelineInstance(text.trim(), {
       speaker_embeddings: speakerEmbeddings,
     });
 
