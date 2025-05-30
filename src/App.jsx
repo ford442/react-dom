@@ -23,7 +23,7 @@ const appConfig = {
   
 const selectedModel = "Llama-3-8B-Instruct-q4f32_1-MLC";
   
-const engine = await CreateMLCEngine(
+const engine = CreateMLCEngine(
 selectedModel,
 {appConfig: appConfig},
 );
