@@ -378,14 +378,6 @@ const handleSynthesizeSpeech = async () => {
   await synthesizeAndPlayText(textToSpeakInput);
 };
 
-initializeAudioContext();
-if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-      await audioContextRef.current.resume();
-}
-
-setIsSpeaking(true);
-setStatusMessage("Synthesizing speech...");
-  
 return (
 <>
 <link charset={"utf-8"} crossorigin rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
