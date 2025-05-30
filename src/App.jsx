@@ -330,7 +330,7 @@ function App() {
                 {/* ... other buttons ... */}
                 <input type="file" id={"fileInput"} style={{ zIndex: 5000, position: 'absolute', left: '50vh', top: '16vh' }} />
                 {/* <label htmlFor="fileInput" className="custom-file-upload">Select File</label> */}
-
+                <input type={'checkbox'} id={"di"} hidden></input>
 
                 {/* Hidden div for paths (ensure these are correct and files exist if used by loaded scripts) */}
                 <div id={'loadPath'} hidden>https://wasm.noahcohn.com/b3hd/w0-035-load-32.3ijs</div>
