@@ -273,14 +273,13 @@ loadModel();
   setStatusMessage(`Synthesizing: "${text.substring(0, 30)}..."`);
 
   try {
-    // This is your line 372 from the other error.
     const output = await ttsPipelineInstance(text.trim(), {
       speaker_embeddings: speakerEmbeddings,
     });
 
     if (output.audio && output.sampling_rate) {
       // You had a hardcoded sampling rate here in the last snippet, ensure it's from output
-      // output.sampling_rate=22050; // This line should be: const rate = output.sampling_rate;
+      output.sampling_rate=22050; // This line should be: const rate = output.sampling_rate;
       playAudio(output.audio, output.sampling_rate);
       setStatusMessage("Speech synthesized and playing.");
     } else {
