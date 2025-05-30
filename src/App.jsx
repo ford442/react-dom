@@ -48,34 +48,7 @@ function App() {
 
     loadModel();
 
-    // --- Your existing XHR and event listener code ---
-    // Ensure IDs like 'fileInput', 'loadPath' exist or this code is conditional
-    const imageChannel = new BroadcastChannel('imageChannel');
-    const fileInput = document.getElementById('fileInput');
-    if (fileInput) { // Add null check
-      fileInput.addEventListener('change', (event) => {
-        let file = event.target.files[0];
-        if (file) {
-          // ... (your file handling logic) ...
-          console.log("File selected, processing...");
-        }
-      });
-    } else {
-      console.warn("Element with ID 'fileInput' not found.");
-    }
-
-    const loadPathElement = document.getElementById('loadPath'); // Changed from querySelector
-    if (loadPathElement) { // Add null check
-      const xhrPath = loadPathElement.innerHTML;
-      const xhr = new XMLHttpRequest();
-      // ... (your XHR logic) ...
-      console.log("XHR setup for path:", xhrPath);
-    } else {
-      console.warn("Element with ID 'loadPath' not found.");
-    }
-    // --- End of your existing code ---
-
-  }, []); // Empty dependency array, so it runs once on mount
+  }, []);
 
   const handleGenerateText = async () => {
     if (!generator) {
@@ -223,7 +196,7 @@ max={2.0}
 
   
     <div style={{
-        position: 'fixed', // Or 'absolute' if you prefer, relative to a parent
+        position: 'absolute', // Or 'absolute' if you prefer, relative to a parent
         bottom: '20px',
         left: '20px',
         right: '20px', // Control width
@@ -246,7 +219,7 @@ max={2.0}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Enter your prompt here (e.g., 'Translate to German: Good morning')"
           rows={3}
-          style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+          style={{ width: '100%', padding: '8px', boxSizing: 'border-box', pointerEvents: 'auto' }}
           disabled={!generator || isGenerating}
         />
         <button
