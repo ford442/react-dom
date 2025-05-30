@@ -25,6 +25,8 @@ const [availableVoices, setAvailableVoices] = useState([]);
 const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
 const [isWebSpeaking, setIsWebSpeaking] = useState(false);
 const synthRef = useRef(null);
+  const [preferredTtsEngine, setPreferredTtsEngine] = useState('webSpeechAPI'); // Default to 'webSpeechAPI' or 'transformersJS'
+
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
   if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
   if (synthRef.current.speaking) { synthRef.current.cancel(); }
@@ -72,7 +74,53 @@ return () => { // Cleanup
     }
   };
 }, [selectedVoiceURI]); // Re-run if selectedVoiceURI changes, or just once on mount initially.
+  
+const [webSpeechApiInput, setWebSpeechApiInput] = useState("Hello from browser TTS!");
 
+  const speakWithWebAPI = useCallback((textToSay) => {
+  if (!recognitionRef.current || !synthRef.current) { // Check synthRef.current for SpeechSynthesis
+    setStatusMessage("Web Speech API not ready.");
+    console.warn("Web Speech API (Synthesis or Recognition) not ready.");
+    return;
+  }
+  if (!textToSay || !textToSay.trim()) {
+    setStatusMessage("No text for Web Speech API to speak.");
+    return;
+  }
+
+  if (synthRef.current.speaking) {
+    synthRef.current.cancel(); // Cancel previous speech to allow new one
+  }
+
+  const utterance = new SpeechSynthesisUtterance(textToSay);
+  const selectedVoice = availableVoices.find(voice => voice.voiceURI === selectedVoiceURI);
+  if (selectedVoice) {
+    utterance.voice = selectedVoice;
+  } else if (availableVoices.length > 0) {
+    utterance.voice = availableVoices[0]; // Fallback
+  }
+
+  utterance.onstart = () => {
+    setIsSpeaking(true); // Use your global isSpeaking or a dedicated one
+    setStatusMessage("Speaking (Browser)...");
+  };
+  utterance.onend = () => {
+    setIsSpeaking(false);
+    setStatusMessage("Browser speech finished.");
+  };
+  utterance.onerror = (event) => {
+    console.error("Web Speech API Error:", event);
+    setIsSpeaking(false);
+    setStatusMessage(`Browser TTS Error: ${event.error}`);
+  };
+  synthRef.current.speak(utterance);
+}, [availableVoices, selectedVoiceURI, synthRef, setIsSpeaking, setStatusMessage]); // Dependencies
+
+// Your existing button handler for the "Browser Built-in TTS" section will call this
+const handleWebSpeechSpeakButton = () => { // Renamed to avoid conflict if needed
+    speakWithWebAPI(webSpeechApiInput); // Speaks text from its dedicated textarea
+};
+  
 const handleWebSpeechSpeak = () => { // This function is now simpler
   if (!webSpeechText.trim()) { // webSpeechText is the state for its dedicated textarea
       alert("Please enter text in the 'Browser Built-in TTS' textarea.");
@@ -366,48 +414,63 @@ const synthesizeAndPlayText = useCallback(async (text) => {
 ]);
   
 const handleGenerateText = async () => {
-  if (!generator) { /* ... alert ... */ return; }
-  let textToProcess = prompt.trim();
-  if (!textToProcess && generatedOutput.trim()) {
-    // If prompt empty, use last generated output for auto-speak based on preference
-    textToProcess = generatedOutput.trim(); // Keep for consistency if logic changes
-    if (preferredTtsEngine === 'webSpeechAPI') {
-      setWebSpeechText(textToProcess); // Update its dedicated textarea too
-      speakWithWebSpeechAPI(textToProcess);
-    } else if (preferredTtsEngine === 'transformersJS') {
-      setTextToSpeakInput(textToProcess); // Update its dedicated textarea
-      await synthesizeAndPlayText(textToProcess);
-    }
+  if (!generator) {
+    alert("The text generation model is not loaded yet. Please wait.");
     return;
+  }
+
+  let textToProcess = prompt.trim(); // Text from the main LLM prompt
+
+  if (!textToProcess && generatedOutput.trim()) {
+    // If main prompt is empty, consider using the last generated output
+    // This part depends on your desired UX for an empty prompt.
+    // For now, let's assume we want to re-speak the last generated output if prompt is empty.
+    textToProcess = generatedOutput.trim();
+    if (!textToProcess) {
+        alert("Please enter some text in the prompt.");
+        return;
+    }
+    // Update text areas to reflect what's being spoken
+    setTextToSpeakInput(textToProcess); // For Transformers.js TTS section
+    setWebSpeechApiInput(textToProcess);  // For Web Speech API TTS section
+
   } else if (!textToProcess) {
-    alert("Please enter some text or use speech-to-text to provide a prompt.");
+    alert("Please enter some text to generate from.");
     return;
   }
 
   setIsGenerating(true);
   setGeneratedOutput("Generating, please wait...");
   setStatusMessage("Generating text...");
-  let newGeneratedText = "";
+  let newLLMText = ""; // Use a distinct variable name
 
   try {
     const outputs = await generator(textToProcess, { max_new_tokens: 150 });
+
     if (outputs && outputs.length > 0 && outputs[0].generated_text) {
-      newGeneratedText = outputs[0].generated_text;
-      setGeneratedOutput(newGeneratedText);
-console.log("Auto-speaking with preferred engine:", preferredTtsEngine); // Assuming you implemented preferredTtsEngine state
+      newLLMText = outputs[0].generated_text;
+      setGeneratedOutput(newLLMText); // Display LLM output
+      setStatusMessage("Text generation complete. Auto-speaking...");
 
       // --- Automatically send to PREFERRED TTS ---
       if (preferredTtsEngine === 'webSpeechAPI') {
-        setWebSpeechText(newGeneratedText); // Update the WebSpeech textarea
-        speakWithWebSpeechAPI(newGeneratedText);
+        setWebSpeechApiInput(newLLMText); // Update the WebSpeech textarea
+        speakWithWebAPI(newLLMText);       // Call the refactored Web Speech function
       } else if (preferredTtsEngine === 'transformersJS') {
-        setTextToSpeakInput(newGeneratedText); // Update the Transformers.js TTS textarea
-        await synthesizeAndPlayText(newGeneratedText);
+        setTextToSpeakInput(newLLMText);   // Update the Transformers.js TTS textarea
+        await synthesizeAndPlayText(newLLMText); // Call your existing Transformers.js function
       }
       // --- End of auto TTS ---
 
-    } else { /* ... handle no output ... */ }
-  } catch (error) { /* ... handle error ... */ }
+    } else {
+      setGeneratedOutput("No text was generated or output format was unexpected.");
+      setStatusMessage("Text generation failed to produce output.");
+    }
+  } catch (error) {
+    console.error("Error during text generation:", error);
+    setGeneratedOutput(`Error generating text: ${error.message}`);
+    setStatusMessage(`Error in LLM generation: ${error.message}`);
+  }
   setIsGenerating(false);
 };
 
@@ -540,6 +603,30 @@ max={2.0}
 <canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
 
 <div style={{ marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd', backgroundColor: 'rgba(230, 240, 250, 0.9)' }}>
+
+  <div style={{ padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
+  <h4>Auto-Speak Engine after LLM Generation:</h4>
+  <label style={{ marginRight: '15px', cursor: 'pointer' }}>
+    <input
+      type="radio"
+      name="ttsEnginePref"
+      value="webSpeechAPI"
+      checked={preferredTtsEngine === 'webSpeechAPI'}
+      onChange={() => setPreferredTtsEngine('webSpeechAPI')}
+    /> Browser Built-in
+  </label>
+  <label style={{ cursor: 'pointer' }}>
+    <input
+      type="radio"
+      name="ttsEnginePref"
+      value="transformersJS"
+      checked={preferredTtsEngine === 'transformersJS'}
+      onChange={() => setPreferredTtsEngine('transformersJS')}
+      disabled={!ttsPipelineInstance || !speakerEmbeddings} // Disable if Transformers.js TTS isn't ready
+    /> Transformers.js (SpeechT5)
+  </label>
+</div>
+  
 <h2>Text to Speech (Browser Built-in)</h2>
 <textarea
     value={webSpeechText}
