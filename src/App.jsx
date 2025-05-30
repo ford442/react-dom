@@ -19,6 +19,36 @@ const [isListening, setIsListening] = useState(false);
 const [sttError, setSttError] = useState('');
 const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
 
+      
+const initializeAudioContext = useCallback(() => {
+  if (!audioContextRef.current) {
+    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    console.log("AudioContext created. Initial state:", audioContextRef.current.state);
+  }
+  // You can try a non-blocking resume here, but it's more robust to await it before playing
+  if (audioContextRef.current.state === 'suspended') {
+     audioContextRef.current.resume().catch(err => {
+        console.warn("Initial attempt to resume AudioContext in initializeAudioContext failed. Will try again before playing.", err);
+     });
+  }
+  return audioContextRef.current;
+}, []);
+
+const playAudio = useCallback((audioArray, samplingRate) => {
+  // ... (your playAudio logic using initializeAudioContext)
+  const audioCtx = initializeAudioContext();
+  if (!audioCtx) { /* ... */ return; }
+  if (audioCtx.state === 'suspended') { audioCtx.resume().catch(e => console.error("Resume in playAudio failed",e)); } // Best effort resume
+  
+  const buffer = audioCtx.createBuffer(1, audioArray.length, samplingRate);
+  buffer.copyToChannel(audioArray, 0);
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(audioCtx.destination);
+  source.start();
+}, [initializeAudioContext]);
+
+      
 const setupSpeechRecognition = useCallback(() => {
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (!SpeechRecognition) {
@@ -331,34 +361,6 @@ const handleGenerateText = async () => {
   }
   setIsGenerating(false);
 };
-
-const initializeAudioContext = useCallback(() => {
-  if (!audioContextRef.current) {
-    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    console.log("AudioContext created. Initial state:", audioContextRef.current.state);
-  }
-  // You can try a non-blocking resume here, but it's more robust to await it before playing
-  if (audioContextRef.current.state === 'suspended') {
-     audioContextRef.current.resume().catch(err => {
-        console.warn("Initial attempt to resume AudioContext in initializeAudioContext failed. Will try again before playing.", err);
-     });
-  }
-  return audioContextRef.current;
-}, []);
-
-const playAudio = useCallback((audioArray, samplingRate) => {
-  // ... (your playAudio logic using initializeAudioContext)
-  const audioCtx = initializeAudioContext();
-  if (!audioCtx) { /* ... */ return; }
-  if (audioCtx.state === 'suspended') { audioCtx.resume().catch(e => console.error("Resume in playAudio failed",e)); } // Best effort resume
-  
-  const buffer = audioCtx.createBuffer(1, audioArray.length, samplingRate);
-  buffer.copyToChannel(audioArray, 0);
-  const source = audioCtx.createBufferSource();
-  source.buffer = buffer;
-  source.connect(audioCtx.destination);
-  source.start();
-}, [initializeAudioContext]);
 
   // --- Handle Text-to-Speech Generation ---
 const [textToSpeakInput, setTextToSpeakInput] = useState("Hello, this is a test of text to speech.");
