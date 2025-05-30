@@ -322,7 +322,7 @@ const handleGenerateText = async () => {
 
   try {
     if (!isRespeaking) {
-      const outputs = await generator(textToProcess, { max_new_tokens: 150 });
+      const outputs = await generator(textToProcess, { max_new_tokens: 450 });
       if (outputs && outputs.length > 0 && outputs[0].generated_text) {
         newLLMText = outputs[0].generated_text;
         setGeneratedOutput(newLLMText); // Display LLM output
