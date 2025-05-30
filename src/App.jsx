@@ -1,16 +1,10 @@
-import { useState, useRef, useEffect, useCallback } from 'react'; // Removed useLayoutEffect as it's not used yet
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { pipeline, env, Tensor } from '@xenova/transformers';
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import './App.css';
 
 import * as ort from 'onnxruntime-web';
-
-// It's good practice to define helper functions that don't rely on component scope
-// outside the component, or memoize them with useCallback if they do.
-// For runTextToImageWASM and its helpers, they currently use document.getElementById('status')
-// which creates a side effect. It's better to pass status updater functions or handle status via React state.
-// For now, we'll keep them inside and they'll be redefined on each render, which is acceptable for this stage.
 
 function App() {
     // --- State Variables from JSX ---
@@ -20,14 +14,13 @@ function App() {
     const [isWebSpeechApiSpeaking, setIsWebSpeechApiSpeaking] = useState(false);
     const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
     const [availableVoices, setAvailableVoices] = useState([]);
-    // const [webSpeechText, setWebSpeechText] = useState(''); // To track what was last spoken by Web Speech API
 
     const [transformersTtsInput, setTransformersTtsInput] = useState('');
     const [ttsPipelineInstance, setTtsPipelineInstance] = useState(null);
     const [speakerEmbeddings, setSpeakerEmbeddings] = useState(null);
 
-    const [llmPrompt, setLlmPrompt] = useState(''); // For LaMini text generation
-    const [llmStatusMessage, setLlmStatusMessage] = useState('Initializing model...');
+    const [llmPrompt, setLlmPrompt] = useState('');
+    const [llmStatusMessage, setLlmStatusMessage] = useState('Initializing models...');
     const [llmGenerator, setLlmGenerator] = useState(null);
     const [isLlmGenerating, setIsLlmGenerating] = useState(false);
     const [llmGeneratedOutput, setLlmGeneratedOutput] = useState('');
@@ -42,20 +35,17 @@ function App() {
     const onnxPromptInputRef = useRef(null);
 
 
-    // --- ONNX Text-to-Image Functions (defined inside App or passed dependencies) ---
+    // --- ONNX Text-to-Image Functions ---
     async function runTextToImageWASM(promptText) {
         setOnnxStatus("Starting ONNX model...");
         try {
-            // Ensure the model path is correct and accessible from your public folder.
-            // For development, place 'your_model.onnx' in the 'public' directory.
             const modelPath = './your_model.onnx'; // IMPORTANT: Update this path
             
             setOnnxStatus("Creating ONNX session... (Ensure your_model.onnx is in public folder)");
             console.log(`Attempting to load model from: ${modelPath}`);
 
             const session = await ort.InferenceSession.create(modelPath, {
-                executionProviders: ['wasm'], // or ['webgl'] for potential GPU acceleration
-                // graphOptimizationLevel: 'all'
+                executionProviders: ['wasm'],
             });
             console.log("ONNX session created.");
             setOnnxStatus("ONNX session created.");
@@ -87,7 +77,6 @@ function App() {
             } else {
                 setOnnxStatus("Failed to postprocess output to image.");
             }
-            // No need to return imageElement if using state for src
 
         } catch (e) {
             console.error(`Failed to run ONNX model: ${e}`);
@@ -100,26 +89,18 @@ function App() {
 
     async function preprocessTextToExpectedTensor(text, inputName) {
         console.log(`Preprocessing text for input: ${inputName}, text: "${text}"`);
-        // This is a VAST simplification. Real tokenization is complex and model-specific.
-        // You will need to replace this with the actual tokenizer and preprocessing
-        // logic required by your specific ONNX text-to-image model.
         const tokenizedText = text.split('').map(char => char.charCodeAt(0) % 100);
-        const sequenceLength = 64; // Example: This must match your model's expected input shape
+        const sequenceLength = 64; 
         const paddedTokens = new Array(sequenceLength).fill(0);
         for (let i = 0; i < Math.min(tokenizedText.length, sequenceLength); i++) {
             paddedTokens[i] = tokenizedText[i];
         }
-        // The data type (e.g., 'int32', 'float32') must also match your model.
         const data = Int32Array.from(paddedTokens);
-        return new ort.Tensor('int32', data, [1, sequenceLength]); // Shape [batch_size, sequence_length]
+        return new ort.Tensor('int32', data, [1, sequenceLength]);
     }
 
     async function postprocessOutputToTensorToImage(tensor) {
         console.log("Postprocessing output tensor:", tensor);
-        // This function heavily depends on your model's output format.
-        // (e.g., shape, data type, normalization, color order RGB/BGR).
-        // Assuming tensor.data contains normalized pixel values (0-1)
-        // And model output is in NCHW (Batch, Channels, Height, Width) format.
         if (!tensor || !tensor.dims || !tensor.data) {
             console.error("Invalid tensor for postprocessing.");
             return null;
@@ -133,7 +114,8 @@ function App() {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         const imageData = ctx.createImageData(width, height);
-        const pixelData = tensor.data; // Should be TypedArray (e.g., Float32Array)
+        const outputData = imageData.data; // Renamed to avoid conflict with ort.Tensor's data property
+        const pixelData = tensor.data; 
 
         if (channels === 3) { // RGB
             for (let y = 0; y < height; y++) {
@@ -143,10 +125,10 @@ function App() {
                     const bIdx = (2 * height * width) + (y * width) + x;
                     const dataIdx = (y * width + x) * 4;
 
-                    data[dataIdx]     = pixelData[rIdx] * 255; // R
-                    data[dataIdx + 1] = pixelData[gIdx] * 255; // G
-                    data[dataIdx + 2] = pixelData[bIdx] * 255; // B
-                    data[dataIdx + 3] = 255;                   // Alpha
+                    outputData[dataIdx]     = pixelData[rIdx] * 255; 
+                    outputData[dataIdx + 1] = pixelData[gIdx] * 255; 
+                    outputData[dataIdx + 2] = pixelData[bIdx] * 255; 
+                    outputData[dataIdx + 3] = 255;                   
                 }
             }
         } else if (channels === 1) { // Grayscale
@@ -155,10 +137,10 @@ function App() {
                     const valIdx = (y * width) + x;
                     const dataIdx = (y * width + x) * 4;
                     const intensity = pixelData[valIdx] * 255;
-                    data[dataIdx]     = intensity;
-                    data[dataIdx + 1] = intensity;
-                    data[dataIdx + 2] = intensity;
-                    data[dataIdx + 3] = 255;
+                    outputData[dataIdx]     = intensity;
+                    outputData[dataIdx + 1] = intensity;
+                    outputData[dataIdx + 2] = intensity;
+                    outputData[dataIdx + 3] = 255;
                 }
             }
         } else {
@@ -172,10 +154,7 @@ function App() {
         return img;
     }
 
-
     // --- Event Handlers and Effects ---
-
-    // useEffect for ONNX Text-to-Image button and other initial setup
     useEffect(() => {
         const imageChannel = new BroadcastChannel('imageChannel');
 
@@ -186,8 +165,6 @@ function App() {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const imageDataURL = e.target.result;
-                    // Ensure depth.1ink is a valid page that can receive this message
-                    // window.open('./depth.1ink'); // This might be blocked by pop-up blockers
                     console.log("Attempting to post message to imageChannel after opening ./depth.1ink");
                     setTimeout(function() {
                         imageChannel.postMessage({ imageDataURL });
@@ -202,12 +179,11 @@ function App() {
             console.warn("Element with ID 'fileInput' not found.");
         }
 
-        // XHR for loading Emscripten module (example)
         const loadPathDiv = document.querySelector('#loadPath');
-        let xhr; // Declare xhr here to potentially abort it in cleanup
+        let xhr; 
         if (loadPathDiv && loadPathDiv.innerHTML) {
             const xhrPath = loadPathDiv.innerHTML;
-            xhr = new XMLHttpRequest(); // Assign to the outer scope xhr
+            xhr = new XMLHttpRequest(); 
             xhr.open('GET', xhrPath, true);
             xhr.responseType = 'arraybuffer';
             console.log('XHR: starting request for Emscripten loader script from', xhrPath);
@@ -217,9 +193,6 @@ function App() {
                 if (xhr.status === 200) {
                     const utf32Data = xhr.response;
                     
-                    // Assuming decodeUTF32 is globally available or defined elsewhere
-                    // If not, you need to define it here or import it.
-                    // For simplicity, let's assume it's defined:
                     function decodeUTF32(uint8Array, isLittleEndian = true) {
                         const dataView = new DataView(uint8Array.buffer);
                         let result = "";
@@ -232,22 +205,19 @@ function App() {
                     const jsCode = decodeUTF32(new Uint8Array(utf32Data), true);
                     
                     const scr = document.createElement('script');
-                    scr.type = 'module'; // Or 'text/javascript' depending on the script
+                    scr.type = 'module'; 
                     scr.text = jsCode;
                     document.body.appendChild(scr);
                     console.log("XHR: Appended loaded script to body.");
 
-                    // Emscripten Module initialization (example)
-                    // This part is highly dependent on how 'libload()' and your Emscripten module work.
-                    // Ensure 'libload' is defined globally by the loaded script.
                     if (typeof window.libload === 'function') {
-                        window.Module = {}; // Initialize an empty Module object on window
+                        window.Module = {}; 
                         setTimeout(function() {
                             try {
                                 window.Module = window.libload();
                                 console.log("Emscripten Module object:", window.Module);
-                                if (window.Module && typeof window.Module.onRuntimeInitialized === 'function') {
-                                    window.Module.onRuntimeInitialized = function() {
+                                if (window.Module && typeof window.Module.onRuntimeInitialized === 'function') { // This check is problematic if onRuntimeInitialized is a property to be set
+                                    window.Module.onRuntimeInitialized = function() { // This line SETS the property
                                         console.log('Emscripten runtime initialized. Calling main.');
                                         if (typeof window.Module.callMain === 'function') {
                                             window.Module.callMain();
@@ -255,15 +225,23 @@ function App() {
                                             console.warn("Module.callMain is not a function.");
                                         }
                                     };
-                                } else if (window.Module && !window.Module.onRuntimeInitialized) {
-                                     // If onRuntimeInitialized is not used, maybe callMain directly or it's auto-run
-                                     console.warn("Module.onRuntimeInitialized not found. Assuming auto-run or direct call needed.");
-                                     // if (typeof window.Module.callMain === 'function') window.Module.callMain();
+                                } else if (window.Module && window.Module.asm) { // Alternative check: if it's already somewhat initialized
+                                     console.warn("Module.onRuntimeInitialized not found or not a function, attempting to call main or assuming auto-run.");
+                                     // If Module.onRuntimeInitialized is a property that *should* be set by the user (as is common),
+                                     // the previous block `window.Module.onRuntimeInitialized = function() { ... }` is the correct pattern.
+                                     // The logic here depends on how your specific Emscripten module is structured.
+                                     // For many Emscripten modules, you *set* onRuntimeInitialized.
+                                     // If it's already initialized, you might not need to do anything or just callMain.
+                                     if (typeof window.Module.callMain === 'function' && !window.Module.onRuntimeInitialized) {
+                                        //  window.Module.callMain(); // Potentially call if not handled by onRuntimeInitialized
+                                     }
+                                } else {
+                                    console.warn("Emscripten module loaded but 'onRuntimeInitialized' is not a function to set, or 'asm' is not present. Review module structure.");
                                 }
                             } catch(e) {
                                 console.error("Error during Emscripten libload/initialization:", e);
                             }
-                        }, 2500); // Delay might be for script execution
+                        }, 2500); 
                     } else {
                         console.warn("'libload' function not found after script execution. Emscripten module may not load.");
                     }
@@ -279,20 +257,16 @@ function App() {
             console.warn("Element with selector '#loadPath' not found or has no content. Cannot load Emscripten module.");
         }
 
-        // Cleanup function
         return () => {
             if (fileInputElement) {
                 fileInputElement.removeEventListener('change', fileChangeHandler);
             }
             imageChannel.close();
             if (xhr && xhr.readyState !== XMLHttpRequest.DONE) {
-                xhr.abort(); // Abort ongoing XHR request if component unmounts
+                xhr.abort(); 
             }
-            // Any other cleanup (e.g., removing the dynamically added script, Emscripten module cleanup if possible)
-            // const dynamicScripts = document.querySelectorAll('script[data-dynamic-loader]');
-            // dynamicScripts.forEach(s => s.remove());
         };
-    }, []); // Empty dependency array: runs once on mount and cleans up on unmount
+    }, []); 
 
     const handleOnnxGenerateClick = async () => {
         if (onnxPromptInputRef.current && onnxPromptInputRef.current.value) {
@@ -301,15 +275,13 @@ function App() {
                 alert("Please enter a prompt for ONNX generation.");
                 return;
             }
-            setOnnxImageSrc(''); // Clear previous image
+            setOnnxImageSrc(''); 
             await runTextToImageWASM(prompt);
         } else {
             alert("Please enter a prompt.");
         }
     };
 
-
-    // --- Placeholder Handlers for JSX UI elements ---
     const handleWebSpeechSpeak = () => {
         if (!webSpeechApiDedicatedInput.trim() || isWebSpeechApiSpeaking || availableVoices.length === 0) return;
         setIsWebSpeechApiSpeaking(true);
@@ -356,19 +328,19 @@ function App() {
         setLlmStatusMessage("Generating text with LaMini...");
         setLlmGeneratedOutput('');
         try {
-            // The output structure depends on the pipeline. For text2text-generation, it's usually an array.
-            const outputs = await llmGenerator(llmPrompt, { max_new_tokens: 100 /*, other params as needed */ });
+            const outputs = await llmGenerator(llmPrompt, { max_new_tokens: 100 });
             if (outputs && outputs.length > 0 && outputs[0].generated_text) {
-                setLlmGeneratedOutput(outputs[0].generated_text);
-                 // Auto-speak if preferred
-                if (preferredTtsEngine === 'webSpeechAPI' && outputs[0].generated_text) {
-                    setWebSpeechApiDedicatedInput(outputs[0].generated_text); // Set text for Web Speech API
-                    // Call handleWebSpeechSpeak directly or manage via a useEffect watching this text
-                } else if (preferredTtsEngine === 'transformersJS' && ttsPipelineInstance && outputs[0].generated_text) {
-                    setTransformersTtsInput(outputs[0].generated_text); // Set text for Transformers.js TTS
-                    // Call handleSynthesizeSpeech or manage via useEffect
+                const generatedText = outputs[0].generated_text;
+                setLlmGeneratedOutput(generatedText);
+                if (preferredTtsEngine === 'webSpeechAPI' && generatedText) {
+                    setWebSpeechApiDedicatedInput(generatedText); 
+                    // To auto-speak, you might call handleWebSpeechSpeak() here,
+                    // or better, use a useEffect to trigger speak when webSpeechApiDedicatedInput changes
+                    // and some other condition (e.g., an 'autoSpeakNextLlmOutput' state) is true.
+                } else if (preferredTtsEngine === 'transformersJS' && ttsPipelineInstance && generatedText) {
+                    setTransformersTtsInput(generatedText); 
+                    // Similar logic for auto-speaking with Transformers.js TTS
                 }
-
             } else {
                 setLlmGeneratedOutput("No text generated or unexpected output format.");
             }
@@ -387,7 +359,7 @@ function App() {
         }
         if (isSttListening) {
             recognitionRef.current.stop();
-            setIsSttListening(false);
+            // onend will set isSttListening to false
         } else {
             try {
                 recognitionRef.current.start();
@@ -395,15 +367,15 @@ function App() {
                 setSttError('');
             } catch(e) {
                 console.error("Error starting STT:", e);
-                setSttError("Error starting STT. Already started?");
-                setIsSttListening(false); // Ensure state consistency
+                setSttError(`Error starting STT: ${e.message}. Might be already started or an issue with permissions.`);
+                setIsSttListening(false); 
             }
         }
     };
 
-    // useEffect for Web Speech API voice loading
     useEffect(() => {
-        const "loadVoices" = () => {
+        // Corrected: remove quotes from function name
+        const loadVoices = () => {
             const voices = speechSynthesis.getVoices();
             if (voices.length > 0) {
                 setAvailableVoices(voices);
@@ -411,12 +383,11 @@ function App() {
                 if (defaultVoice) setSelectedVoiceURI(defaultVoice.voiceURI);
             }
         };
-        "loadVoices"(); // Initial load
-        speechSynthesis.onvoiceschanged = "loadVoices"; // Subsequent changes
+        loadVoices(); 
+        speechSynthesis.onvoiceschanged = loadVoices; 
         return () => { speechSynthesis.onvoiceschanged = null; };
     }, []);
 
-    // useEffect for Speech-to-Text (STT) setup
     useEffect(() => {
         if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
             const SpeechRecognitionApi = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -427,36 +398,34 @@ function App() {
 
             recognitionRef.current.onresult = (event) => {
                 const transcript = event.results[event.results.length - 1][0].transcript.trim();
-                setLlmPrompt(prev => prev ? `${prev} ${transcript}` : transcript); // Append to LLM prompt
-                setIsSttListening(false); // Stop listening indication
+                setLlmPrompt(prev => prev ? `${prev} ${transcript}` : transcript); 
+                // No setIsSttListening(false) here; let onend handle it.
             };
             recognitionRef.current.onerror = (event) => {
                 console.error('STT Error:', event.error);
                 setSttError(`STT Error: ${event.error}`);
-                setIsSttListening(false);
+                setIsSttListening(false); // Explicitly set on error
             };
             recognitionRef.current.onend = () => {
-                // This onend can be triggered by stop() or automatically.
-                // We manage isSttListening primarily on onresult or onerror or explicit stop.
-                 if (isSttListening) setIsSttListening(false); // Ensure consistent state if it ends unexpectedly
+                 // This is called when recognition stops, either manually or automatically.
+                setIsSttListening(false);
             };
         } else {
             setSttError('STT API not supported in this browser.');
         }
         return () => {
             if (recognitionRef.current) {
-                recognitionRef.current.abort(); // Stop any active recognition
+                recognitionRef.current.abort(); 
             }
         };
-    }, [isSttListening]); // Re-run if isSttListening changes might be problematic, consider removing dependency or refine logic
+    }, []); // Run once on mount
 
-    // useEffect for Transformers.js Text Generation Pipeline (LaMini)
     useEffect(() => {
-        async function "loadGenerator"() {
+        // Corrected: remove quotes from function name
+        async function loadGenerator() {
             try {
-                // Configure environment for Transformers.js
-                env.allowLocalModels = false; // Default: download from Hugging Face Hub
-                env.useBrowserCache = true;   // Default: cache models in browser
+                env.allowLocalModels = false; 
+                env.useBrowserCache = true;   
                 
                 setLlmStatusMessage("Loading LLM (LaMini-Flan-T5-783M)...");
                 const generatorInstance = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-783M', {
@@ -469,16 +438,16 @@ function App() {
                 setLlmStatusMessage(`Failed to load LLM: ${e.message}`);
             }
         }
-        "loadGenerator"();
+        loadGenerator();
     }, []);
     
-    // useEffect for Transformers.js TTS Pipeline (SpeechT5)
     useEffect(() => {
-        async function "loadTTSPipeline"() {
+        // Corrected: remove quotes from function name
+        async function loadTTSPipeline() {
             try {
-                setLlmStatusMessage(prev => prev + "\nLoading TTS model (SpeechT5)...");
+                setLlmStatusMessage(prev => prev.includes("Loading TTS model") ? prev : prev + "\nLoading TTS model (SpeechT5)...");
                 const tts = await pipeline('text-to-speech', 'Xenova/speecht5_tts', {
-                    quantized: true, // SpeechT5 usually uses non-quantized for quality, but try quantized for speed/size
+                    quantized: true, 
                     progress_callback: (p) => console.log(`TTS Model loading: ${p.file} (${Math.round(p.progress)}%)`)
                 });
                 setTtsPipelineInstance(() => tts);
@@ -496,9 +465,8 @@ function App() {
                 setLlmStatusMessage(prev => prev + `\nFailed to load TTS: ${e.message}`);
             }
         }
-        "loadTTSPipeline"();
+        loadTTSPipeline();
     }, []);
-
 
     return (
         <>
@@ -517,8 +485,8 @@ function App() {
                                 <option value="false">False</option>
                                 <option value="true">True</option>
                             </select>
-                            <div id={'slideframe'}><input type={'text'} id={'timeslider'} /></div>
-                            <div id={'slideframe2'}><input type={'text'} id={'srslider'} /></div>
+                            <div id={'slideframe'}><input type={'text'} id={'timeslider'} readOnly /></div>
+                            <div id={'slideframe2'}><input type={'text'} id={'srslider'} readOnly /></div>
                             <div id={'slideframe3'}>
                                 <Box sx={{ width: '15vh' }}>
                                     <Slider aria-label="TEST" defaultValue={1.0} valueLabelDisplay="auto" shiftStep={0.25} step={0.05} min={0.05} max={2.0} />
@@ -530,41 +498,29 @@ function App() {
             </nav>
 
             <main id={'panel'}>
-                <iframe src={'./bezz.1ink'} id={'circle'} title='Circular mask' style={{pointerEvents:'none'}}></iframe>
-                {/* Control Buttons: Consider managing their state/visibility via React if they change */}
+                <iframe src={'./bezz.1ink'} id={'circle'} title='Circular mask' style={{pointerEvents:'none', border:'none', width:'100%', height:'100%'}}></iframe>
                 <input type={'button'} id={'startBtn'} value="S1" style={{ backgroundColor: 'gold', position: 'absolute', display: 'block', left: '6%', top: '9%', zIndex: 3200, border: '4px solid #e7e7e7', borderRadius: '17%' }} />
-                {/* ... other buttons ... */}
                 <input type="file" id={"fileInput"} style={{ zIndex: 5000, position: 'absolute', left: '50vh', top: '16vh' }} />
-                {/* <label htmlFor="fileInput" className="custom-file-upload">Select File</label> */}
 
 
-                {/* Hidden div for paths (ensure these are correct and files exist if used by loaded scripts) */}
                 <div id={'loadPath'} hidden>https://wasm.noahcohn.com/b3hd/w0-035-load-32.3ijs</div>
-                {/* ... other hidden divs ... */}
 
 
                 <div id={'wrap'}>
                     <div id={'contain1'}>
-                        <canvas className='emscripten' id={'scanvas'} style={{ pointerEvents: 'auto', display: 'block', position: 'absolute', zIndex: 3000, backgroundColor: 'rgba(233,233,233,1.0)', top: '0', height: '100vh', width: '100vh', imageRendering: 'auto', transform: 'scaleY(1.0)' }}></canvas>
+                        <canvas className='emscripten' id={'scanvas'} style={{ pointerEvents: 'auto', display: 'block', position: 'absolute', zIndex: 3000, backgroundColor: 'rgba(233,233,233,1.0)', top: '0', height: '100vh', width: '100vw', imageRendering: 'auto', transform: 'scaleY(1.0)' }}></canvas>
                         
-                        {/* === ONNX Text-to-Image Section === */}
                         <div style={{ marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd', backgroundColor: 'rgba(220, 230, 240, 0.9)', position:'relative', zIndex: 3100 }}>
                             <h2>ONNX Text-to-Image</h2>
                             <p><em>Note: This requires a pre-converted ONNX model (e.g., a small Stable Diffusion variant) placed in your <code>public</code> folder and correctly pathed. The preprocessing/postprocessing functions are placeholders and need to be adapted to your specific model.</em></p>
-                            <input type="text" id="onnxPromptInput" ref={onnxPromptInputRef} placeholder="Enter text for ONNX model" style={{width: 'calc(100% - 100px)', padding: '8px'}} />
+                            <input type="text" id="onnxPromptInput" ref={onnxPromptInputRef} placeholder="Enter text for ONNX model" style={{width: 'calc(100% - 120px)', padding: '8px', marginRight:'5px'}} />
                             <button id="onnxGenerateButton" onClick={handleOnnxGenerateClick} style={{padding: '8px 15px'}}>Generate (ONNX)</button>
-                            <div id="onnxStatus" style={{margin: '10px 0', fontStyle: 'italic'}}>{onnxStatus}</div>
-                            <div id="onnxImageOutput" style={{marginTop: '10px'}}>
-                                {onnxImageSrc && <img src={onnxImageSrc} alt="Generated by ONNX" style={{maxWidth: '100%', maxHeight: '300px'}} />}
+                            <div id="onnxStatusDisplay" style={{margin: '10px 0', fontStyle: 'italic'}}>{onnxStatus}</div>
+                            <div id="onnxImageOutput" style={{marginTop: '10px', textAlign:'center'}}>
+                                {onnxImageSrc && <img src={onnxImageSrc} alt="Generated by ONNX" style={{maxWidth: '100%', maxHeight: '300px', border:'1px solid #ccc'}} />}
                             </div>
                         </div>
                         
-                        {/* Placeholder for where your original promptInput and generateButton were, now managed by onnxPromptInputRef */}
-                        {/* <input type="text" id="promptInput" placeholder="Enter text prompt" /> */}
-                        {/* <button id="generateButton"></button> */}
-                        {/* <div id="status"></div> */}
-                        {/* <div id="imageOutput"></div> */}
-
 
                         <div style={{ padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px', backgroundColor: 'rgba(230, 240, 250, 0.9)', position:'relative', zIndex: 3100 }}>
                             <h4>Auto-Speak Engine after LLM Generation:</h4>
@@ -594,45 +550,43 @@ function App() {
                         </div>
                     </div>
 
-                    {/* UI for LLM and Transformers.js TTS - positioned absolutely as in original */}
-                    <div style={{ position: 'fixed', bottom: '20px', left: '20px', right: '20px', padding: '20px', backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #ccc', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)', zIndex: 6000, display: 'flex', flexDirection: 'column', gap: '15px', pointerEvents: 'auto', maxHeight: '80vh', overflowY: 'auto' }}>
+                    <div style={{ position: 'fixed', bottom: '10px', left: '10px', right: '10px', padding: '15px', backgroundColor: 'rgba(250, 250, 250, 0.97)', border: '1px solid #ccc', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 6000, display: 'flex', flexDirection: 'column', gap: '10px', pointerEvents: 'auto', maxHeight: 'calc(100vh - 40px)', overflowY: 'auto' }}>
                         <h2>LLM Text Generation (LaMini-Flan-T5-783M)</h2>
-                        <div id="outputTextGlobalStatus" style={{ fontStyle: 'italic', marginBottom: '5px' }}>{llmStatusMessage}</div>
-                        <textarea ref={llmPromptTextareaRef} value={llmPrompt} onChange={(e) => setLlmPrompt(e.target.value)} placeholder="Enter prompt or use Speech-to-Text..." rows={3} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', pointerEvents: 'auto' }} disabled={!llmGenerator || isLlmGenerating} />
+                        <div id="llmStatusDisplay" style={{ fontStyle: 'italic', marginBottom: '5px', whiteSpace: 'pre-wrap'}}>{llmStatusMessage}</div>
+                        <textarea ref={llmPromptTextareaRef} value={llmPrompt} onChange={(e) => setLlmPrompt(e.target.value)} placeholder="Enter prompt or use Speech-to-Text..." rows={3} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', pointerEvents: 'auto', border:'1px solid #ddd', borderRadius:'4px' }} disabled={!llmGenerator || isLlmGenerating} />
                         <button onClick={handleGenerateText} disabled={!llmGenerator || isLlmGenerating || !llmPrompt.trim()} style={{ padding: '10px 15px', cursor: (!llmGenerator || isLlmGenerating || !llmPrompt.trim()) ? 'not-allowed' : 'pointer' }}>
                             {isLlmGenerating ? 'Generating...' : 'Generate Text (LLM)'}
                         </button>
                         
                         <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid #eee' }}>
-                            <button onClick={toggleListen} disabled={!recognitionRef.current || isLlmGenerating /* disable STT if LLM is busy? */} style={{ pointerEvents: 'auto' }}>
+                            <button onClick={toggleListen} disabled={!recognitionRef.current || isLlmGenerating } style={{ pointerEvents: 'auto' }}>
                                 {isSttListening ? 'Stop Listening' : 'Start STT (for LLM Prompt)'}
                             </button>
-                            {isSttListening && <p><i>Listening for LLM prompt...</i></p>}
-                            {sttError && <p style={{ color: 'red' }}>{sttError}</p>}
+                            {isSttListening && <span style={{marginLeft:'10px'}}><i>Listening for LLM prompt...</i></span>}
+                            {sttError && <p style={{ color: 'red', marginTop:'5px' }}>{sttError}</p>}
                         </div>
                         <h3>LLM Output:</h3>
-                        <div style={{ minHeight: '50px', padding: '10px', border: '1px solid #eee', backgroundColor: '#f9f9f9', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{llmGeneratedOutput}</div>
+                        <div style={{ minHeight: '50px', padding: '10px', border: '1px solid #eee', backgroundColor: '#f9f9f9', whiteSpace: 'pre-wrap', wordBreak: 'break-word', borderRadius:'4px' }}>{llmGeneratedOutput}</div>
 
-                        <div style={{ marginTop: '10px', padding: '15px', borderTop: '1px solid #ddd', backgroundColor: 'rgba(230, 250, 230, 0.95)' }}>
+                        <div style={{ marginTop: '10px', padding: '15px', borderTop: '1px solid #ddd', backgroundColor: 'rgba(230, 250, 230, 0.95)', borderRadius:'4px' }}>
                             <h2>Text to Speech (Transformers.js - SpeechT5)</h2>
-                            <textarea value={transformersTtsInput} onChange={(e) => setTransformersTtsInput(e.target.value)} placeholder="Enter text to synthesize with Transformers.js..." rows={3} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px', pointerEvents: 'auto' }} disabled={!ttsPipelineInstance || isTtsSpeaking} />
+                            <textarea value={transformersTtsInput} onChange={(e) => setTransformersTtsInput(e.target.value)} placeholder="Enter text to synthesize with Transformers.js..." rows={3} style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px', pointerEvents: 'auto', border:'1px solid #ddd', borderRadius:'4px' }} disabled={!ttsPipelineInstance || isTtsSpeaking} />
                             <button onClick={handleSynthesizeSpeech} disabled={!ttsPipelineInstance || !speakerEmbeddings || isTtsSpeaking || !transformersTtsInput.trim()} style={{ padding: '10px 15px' }}>
                                 {isTtsSpeaking ? 'Synthesizing...' : 'Synthesize & Play (Transformers.js)'}
                             </button>
                         </div>
                     </div>
                     
-                    {/* Other container elements */}
-                    <div id={'contain1a'} style={{ height: '75%', width: '75%' }}></div>
+                    <div id={'contain1a'} style={{ height: '75%', width: '75%' }}></div> {/* This div might need specific content or purpose */}
                 </div>
-                <div id={'contain2'}>
-                    <canvas id={'bcanvas'} hidden style={{ pointerEvents: 'none', display: 'none', zIndex: 2100, position: 'absolute', height: '100vh', width: '100vh', marginLeft: 'auto', marginRight: 'auto', backgroundColor: 'rgba(0,255,0,1.0)', top: '0', imageRendering: 'auto' }}></canvas>
-                    <img id={'resultImage'} src={''} alt="Result" style={{display: onnxImageSrc ? 'none': 'block'}} /> {/* Example, might conflict with onnxImageSrc */}
+                <div id={'contain2'}> {/* This div might need specific content or purpose */}
+                    <canvas id={'bcanvas'} hidden style={{ pointerEvents: 'none', display: 'none', zIndex: 2100, position: 'absolute', height: '100vh', width: '100vw', marginLeft: 'auto', marginRight: 'auto', backgroundColor: 'rgba(0,255,0,1.0)', top: '0', imageRendering: 'auto' }}></canvas>
+                    {/* The img#resultImage seems redundant if onnxImageSrc is used for the ONNX output. Consider removing or repurposing. */}
+                    {/* <img id={'resultImage'} src={''} alt="Result" style={{display: onnxImageSrc ? 'none': 'block'}} /> */}
                 </div>
             </main>
 
-            {/* Other hidden images and videos */}
-            <div style={{pointerEvents:'none', display:'none'}}> {/* Keep these completely out of layout if hidden */}
+            <div style={{pointerEvents:'none', display:'none'}}>
                 <img id={"imgAnimPNG"} src={''} alt="" />
                 <img id={'mvi'} src={'./image/901464_400093426755894_1205176414_o.jpg'} alt="" />
                 <video hidden muted src={'./video-1456459792.mp4'} loop crossOrigin="anonymous" playsInline id={'ivi'} preload={'auto'} style={{ pointerEvents: 'none', transform: 'scaleY(-1.0)' }}></video>
