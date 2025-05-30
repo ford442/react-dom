@@ -317,7 +317,7 @@ const handleGenerateText = async () => {
         speaker_embeddings: speakerEmbeddings,
       });
       // output.audio is a Float32Array
-      // output.sampling_rate is the number (e.g., 16000 or 22050)
+      output.sampling_rate=22050; // is the number (e.g., 16000 or 22050)
       playAudio(output.audio, output.sampling_rate);
       setStatusMessage("Speech synthesized and playing.");
     } catch (error) {
