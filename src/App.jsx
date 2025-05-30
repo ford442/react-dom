@@ -218,6 +218,16 @@ const playAudio = useCallback((audioArray, samplingRate) => {
       }
     }
   };
+  
+useEffect(() => {
+setupSpeechRecognition();
+}, [setupSpeechRecognition]);
+  
+useEffect(() => {
+if (generator && ttsPipelineInstance && promptTextareaRef.current) {
+promptTextareaRef.current.focus();
+}
+}, [generator, ttsPipelineInstance]);
 
 useEffect(() => {
   // Check if the prompt is not empty, STT just finished, and we are not already generating/speaking
