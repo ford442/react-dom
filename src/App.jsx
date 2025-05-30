@@ -17,7 +17,7 @@ useLayoutEffect(() => {
   env.remotePathTemplate = '{model}/resolve/main/'; // Ensure this is correct or test with Xenova's default if unsure
 
 async function loadModel(){
-const generator = pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-783M', {
+const generator = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-783M', {
 progress_callback: (progress) => {
 console.log(`Loading model: ${progress.file} (${(progress.loaded / progress.total * 100).toFixed(2)}%)`);
 if (typeof document !== 'undefined' && document.getElementById('outputText')) {
@@ -29,7 +29,7 @@ console.log("Pipeline loaded.");
 return generator;
 }
   
-const generator = await loadModel();
+const generator = loadModel();
   
 const imageChannel = new BroadcastChannel('imageChannel');
 const fileInput = document.getElementById('fileInput');
