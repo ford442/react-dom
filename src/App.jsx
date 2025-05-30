@@ -8,7 +8,7 @@ import './App.css'
 function App() {
 useLayoutEffect(() => {
 
-const appConfig: webllm.AppConfig = {
+const appConfig = {
   model_list: [
     {
       model: "https://huggingface.co/mlc-ai/Llama-3-8B-Instruct-q4f32_1-MLC",
