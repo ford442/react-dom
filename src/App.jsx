@@ -369,7 +369,7 @@ setIsSpeaking(true);
 setStatusMessage("Synthesizing speech...");
 
 try {
-      const output = await ttsPipelineInstance(textToSpeakInput.trim(), {
+      const output = ttsPipelineInstance(textToSpeakInput.trim(), {
         speaker_embeddings: speakerEmbeddings,
       });
       // output.audio is a Float32Array
