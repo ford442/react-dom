@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback,useLayoutEffect } from 'react'
-import { CreateMLCEngine } from "@mlc-ai/web-llm";
+
+import * as tf from '@tensorflow/tfjs';
+import '@tensorflow/tfjs-backend-webgpu';
 
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
@@ -8,10 +10,6 @@ import './App.css'
 function App() {
 useLayoutEffect(() => {
 
-const selectedModel = "Llama-3.1-8B-Instruct-q4f32_1-MLC";
-const engine = CreateMLCEngine(
-selectedModel,
-);
   
 const imageChannel = new BroadcastChannel('imageChannel');
 const fileInput = document.getElementById('fileInput');
@@ -69,6 +67,195 @@ Module.callMain();
 }
 };
 xhr.send();
+
+// --- Model and Tokenizer Configuration ---
+// IMPORTANT: Replace these URLs with the actual URLs to your model.json,
+// char_indices.json, and indices_char.json if you host them yourself
+// or find a working set from tfjs-examples.
+const MODEL_URL = 'https://storage.googleapis.com/tfjs-examples/lstm-text-generation/char-rnn-nietzsche/model.json';
+const CHAR_INDICES_URL = 'https://storage.googleapis.com/tfjs-examples/lstm-text-generation/char-rnn-nietzsche/char_indices.json';
+const INDICES_CHAR_URL = 'https://storage.googleapis.com/tfjs-examples/lstm-text-generation/char-rnn-nietzsche/indices_char.json';
+
+const statusDiv = document.getElementById('status');
+const generateButton = document.getElementById('generateButton');
+const outputTextDiv = document.getElementById('outputText');
+const seedTextInput = document.getElementById('seedText');
+const generateLengthInput = document.getElementById('generateLength');
+const temperatureInput = document.getElementById('temperature');
+
+let model;
+let charIndices; // Map: char -> index
+let indicesChar; // Array or Map: index -> char
+let maxLen; // Max length of sequence the model was trained on
+
+async function setupWebGPUBackend() {
+    try {
+        await tf.setBackend('webgpu');
+        await tf.ready(); // Wait for backend to be ready
+        statusDiv.textContent = `Using backend: ${tf.getBackend()}. WebGPU is ready.`;
+        console.log('WebGPU backend set successfully.');
+        return true;
+    } catch (error) {
+        console.error('Failed to set WebGPU backend:', error);
+        statusDiv.textContent = 'Error: Could not initialize WebGPU backend. Falling back to WASM or CPU.';
+        // Fallback to WASM or CPU if WebGPU is not available
+        await tf.setBackend('wasm');
+        await tf.ready();
+        statusDiv.textContent += ` Using fallback backend: ${tf.getBackend()}.`;
+        console.log('Using fallback backend:', tf.getBackend());
+        return false;
+    }
+}
+
+async function loadModelAndTokenizer() {
+    if (model && charIndices && indicesChar) {
+        return; // Already loaded
+    }
+    try {
+        statusDiv.textContent = 'Loading model...';
+        model = await tf.loadLayersModel(MODEL_URL);
+        // The model summary will show input shape, e.g., [null, maxLen, vocabSize]
+        // We need maxLen from the model's input shape if not known
+        // Assuming input shape is [batchSize, sequenceLength, features]
+        maxLen = model.inputs[0].shape[1]; // e.g., 40 for Nietzsche model
+        if (!maxLen) {
+            console.warn("Could not determine maxLen from model, defaulting to 40. Ensure this is correct.");
+            maxLen = 40; // Default, ensure this matches your model
+        }
+
+        statusDiv.textContent = 'Loading tokenizer vocabulary...';
+        const charIndicesResponse = await fetch(CHAR_INDICES_URL);
+        charIndices = await charIndicesResponse.json();
+
+        const indicesCharResponse = await fetch(INDICES_CHAR_URL);
+        indicesChar = await indicesCharResponse.json(); // This is often an array/object where index maps to char
+
+        statusDiv.textContent = 'Model and tokenizer loaded successfully!';
+        generateButton.disabled = false;
+    } catch (error) {
+        console.error('Error loading model or tokenizer:', error);
+        statusDiv.textContent = `Error: ${error.message}`;
+        generateButton.disabled = true;
+    }
+}
+
+function preprocessText(text, maxLength) {
+    const lowerText = text.toLowerCase();
+    let sequence = [];
+    for (let i = 0; i < lowerText.length; i++) {
+        const char = lowerText[i];
+        if (charIndices[char] !== undefined) {
+            sequence.push(charIndices[char]);
+        } else {
+            sequence.push(charIndices[' ']); // Use space for unknown characters
+        }
+    }
+    // Pad or truncate sequence to maxLength
+    if (sequence.length > maxLength) {
+        sequence = sequence.slice(sequence.length - maxLength);
+    } else {
+        while (sequence.length < maxLength) {
+            sequence.unshift(0); // Pad with 0 (often representing a padding char or space)
+        }
+    }
+    return sequence;
+}
+
+/**
+ * Sample a token index from a probability distribution (logits).
+ * @param {tf.Tensor} preds Logits/predictions from the model.
+ * @param {number} temperature Controls randomness. Higher values (e.g., 1.0) make output more random,
+ * lower values (e.g., 0.2) make it more deterministic.
+ * @returns {number} The index of the sampled token.
+ */
+function sample(preds, temperature) {
+    return tf.tidy(() => {
+        // Softmax with temperature
+        const logits = tf.div(preds, Math.max(temperature, 1e-6)); // Ensure temperature is not zero
+        const probabilities = tf.softmax(logits);
+        // Multinomial sampling (draws one sample)
+        const nextTokenTensor = tf.multinomial(probabilities, 1);
+        return nextTokenTensor.dataSync()[0];
+    });
+}
+
+
+async function generateText(seed, length, temperature) {
+    if (!model) {
+        statusDiv.textContent = 'Model not loaded yet.';
+        return 'Error: Model not available.';
+    }
+
+    generateButton.disabled = true;
+    statusDiv.textContent = 'Generating text...';
+    outputTextDiv.textContent = seed;
+
+    let inputText = seed.toLowerCase();
+    let generatedText = seed;
+
+    // Prepare initial input sequence
+    let currentSequence = preprocessText(inputText, maxLen);
+
+    for (let i = 0; i < length; i++) {
+        // Reshape sequence to [1, maxLen, vocabSize]
+        // For char-level, vocabSize is implicit in one-hot encoding
+        // Input tensor should be [1, maxLen] with indices
+        const inputTensor = tf.tensor2d([currentSequence], [1, maxLen], 'int32');
+
+        // Predict the next character
+        const prediction = model.predict(inputTensor);
+
+        // The output shape from LSTM is usually [batchSize, sequenceLength, numFeatures]
+        // For char prediction, it's [1, maxLen, vocabSize]
+        // We want the prediction for the *last* character in the sequence.
+        const lastPrediction = tf.slice(prediction, [0, maxLen - 1, 0], [1, 1, Object.keys(charIndices).length]).squeeze();
+
+        // Sample the next character index
+        const nextCharIndex = sample(lastPrediction, temperature);
+        const nextChar = indicesChar[nextCharIndex.toString()]; // Ensure index is string if indicesChar is object
+
+        generatedText += nextChar;
+        outputTextDiv.textContent = generatedText; // Update UI progressively
+
+        // Update the current sequence for the next prediction
+        currentSequence.shift();
+        currentSequence.push(nextCharIndex);
+
+        // Dispose tensors to free WebGPU memory
+        tf.dispose(inputTensor);
+        tf.dispose(prediction);
+        tf.dispose(lastPrediction);
+
+        // Allow UI to update
+        await tf.nextFrame();
+    }
+
+    statusDiv.textContent = 'Text generation complete.';
+    generateButton.disabled = false;
+    return generatedText;
+}
+
+// --- Event Listeners and Initialization ---
+generateButton.addEventListener('click', async () => {
+    const seed = seedTextInput.value;
+    const length = parseInt(generateLengthInput.value, 10);
+    const temp = parseFloat(temperatureInput.value);
+
+    if (seed && length > 0) {
+        await generateText(seed, length, temp);
+    } else {
+        alert('Please provide seed text and a valid length.');
+    }
+});
+
+async function main() {
+    generateButton.disabled = true; // Disable until everything is ready
+    await setupWebGPUBackend();
+    await loadModelAndTokenizer();
+}
+
+main();
+  
 }, [])
   
 return (
