@@ -159,56 +159,65 @@ const playAudio = useCallback((audioArray, samplingRate) => {
   source.start();
 }, [initializeAudioContext]);
 
-      
-const setupSpeechRecognition = useCallback(() => {
-  const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognitionAPI) {
-    // ... (your existing error handling) ...
-    setSttError("Your browser doesn't support Speech Recognition. Try Chrome or Edge.");
-    setStatusMessage(prev => `${prev} Speech Recognition not supported.`);
-    return;
-  }
-
-  const recognitionInstance = new SpeechRecognitionAPI();
-  recognitionInstance.continuous = false;
-  recognitionInstance.interimResults = false; // You have this, good for getting one final result
-  recognitionInstance.lang = 'en-US';
-
-  recognitionInstance.onresult = (event) => {
-    const last = event.results.length - 1;
-    const transcript = event.results[last][0].transcript.trim();
-    console.log('Speech recognized by onresult:', transcript);
-    setPrompt(transcript); // Directly set the prompt with the new transcript
-    sttJustFinishedRef.current = true; // Flag that STT provided this prompt update
-  };
-
-  recognitionInstance.onerror = (event) => {
-    console.error('Speech recognition error:', event.error, event.message);
-    setSttError(`Speech Error: ${event.error} - ${event.message || 'Unknown error'}`);
-    setIsListening(false);
-    sttJustFinishedRef.current = false; // Reset flag on error
-  };
-
-  recognitionInstance.onend = () => {
-    console.log('Speech recognition ended.');
-    setIsListening(false);
-    // If sttJustFinishedRef.current is true, it means onresult has just updated the prompt.
-    // The useEffect below will handle triggering the LLM.
-    // We can also update the status message here.
-    if (sttJustFinishedRef.current) {
-      setStatusMessage("STT finished. Processing with LLM...");
-    } else {
-      setStatusMessage(prev => prev.includes("Listening") ? "Model ready." : prev);
+ const setupSpeechRecognition = useCallback(() => {
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI) {
+      setSttError("Your browser doesn't support Speech Recognition. Try Chrome or Edge.");
+      setStatusMessage(prev => `${prev} Speech Recognition not supported.`); // Use prev for safety
+      return;
     }
-    // No need to call handleGenerateText directly here anymore.
+
+    const recognitionInstance = new SpeechRecognitionAPI();
+    recognitionInstance.continuous = false;
+    recognitionInstance.interimResults = false;
+    recognitionInstance.lang = 'en-US';
+
+    recognitionInstance.onresult = (event) => {
+      const last = event.results.length - 1;
+      const transcript = event.results[last][0].transcript.trim();
+      console.log('Speech recognized:', transcript);
+      setPrompt(prevPrompt => prevPrompt ? `${prevPrompt} ${transcript}` : transcript);
+      setIsListening(false); // Usage of setIsListening
+    };
+
+    recognitionInstance.onerror = (event) => {
+      console.error('Speech recognition error:', event.error, event.message);
+      setSttError(`Speech Error: ${event.error} - ${event.message || 'Unknown error'}`);
+      setIsListening(false); // Usage of setIsListening
+    };
+
+    recognitionInstance.onend = () => {
+      setIsListening(false); // Usage of setIsListening
+      console.log('Speech recognition ended.');
+      // Check if statusMessage still contains "Listening..." and update it
+      setStatusMessage(prevStatus => prevStatus.includes("Listening...") ? "Speech recognition finished." : prevStatus);
+    };
+    recognitionRef.current = recognitionInstance;
+  }, [setPrompt, setStatusMessage, setSttError, setIsListening]); // setIsListening in dependency array
+
+  const toggleListen = () => {
+    if (!recognitionRef.current) {
+      setSttError("Speech recognition not initialized.");
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current.stop();
+      // setIsListening(false); // onend will handle this
+    } else {
+      try {
+        setPrompt(''); // Clear prompt for new STT input
+        // sttJustFinishedRef.current = false; // If you re-introduce this flag
+        recognitionRef.current.start();
+        setIsListening(true); // Usage of setIsListening
+        setSttError('');
+        setStatusMessage("Listening for speech...");
+      } catch (e) {
+        console.error("Error starting recognition (already started?):", e);
+        setSttError("Failed to start listening. Microphone might be in use or permission denied.");
+        setIsListening(false); // Usage of setIsListening
+      }
+    }
   };
-
-  recognitionRef.current = recognitionInstance;
-}, [setPrompt, setStatusMessage, setSttError, setIsListening]); // Added setIsListening
-
-useEffect(() => {
-    setupSpeechRecognition();
-}, [setupSpeechRecognition]);
 
 useEffect(() => {
   // Check if the prompt is not empty, STT just finished, and we are not already generating/speaking
