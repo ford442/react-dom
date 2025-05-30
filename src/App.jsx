@@ -205,32 +205,28 @@ loadModel();
     
 }, []);
 
-const synthesizeAndPlayText = useCallback(async (text) => {
-  // Check if TTS models are ready
+const synthesizeAndPlayText = async (text) => {
   if (!ttsPipelineInstance || !speakerEmbeddings) {
     setStatusMessage("TTS model or speaker embeddings not loaded yet.");
     alert("TTS model or speaker embeddings not loaded yet.");
-    return false;
+    return false; // Indicate failure
   }
   if (!text || !text.trim()) {
     setStatusMessage("No text provided to synthesize.");
-    return false;
+    // alert("No text to synthesize."); // Might be too noisy if called automatically
+    return false; // Indicate failure
   }
 
-  // Ensure AudioContext is active
-  const audioCtx = initializeAudioContext(); // Assuming initializeAudioContext is defined elsewhere
-  if (!audioCtx) {
-    alert("Could not initialize audio player.");
-    return false;
-  }
-  if (audioCtx.state === 'suspended') {
+  // Ensure AudioContext is active (important for autoplay)
+  initializeAudioContext();
+  if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
     try {
-      await audioCtx.resume(); // This await also needs this function to be async
+      await audioContextRef.current.resume();
     } catch (resumeError) {
-      console.error("Failed to resume audio context:", resumeError);
+      console.error("Failed to resume audio context automatically:", resumeError);
       setStatusMessage("TTS Error: Could not resume audio. Please click to interact.");
-      alert("Could not play audio automatically. Please click a button on the page first.");
-      return false;
+      alert("Could not play audio automatically. Please click 'Synthesize & Play Speech' button once.");
+      return false; // Indicate failure
     }
   }
 
@@ -326,7 +322,7 @@ const initializeAudioContext = () => {
       // Create AudioContext on user gesture if possible, or on demand
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
       if (audioContextRef.current.state === 'suspended') {
-       await audioContextRef.current.resume();
+        audioContextRef.current.resume();
       }
     }
     return audioContextRef.current;
@@ -366,7 +362,7 @@ const handleSynthesizeSpeech = async () => {
 
 initializeAudioContext();
 if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-      audioContextRef.current.resume();
+      await audioContextRef.current.resume();
 }
 
 setIsSpeaking(true);
