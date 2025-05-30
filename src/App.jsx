@@ -218,6 +218,69 @@ const playAudio = useCallback((audioArray, samplingRate) => {
       }
     }
   };
+
+
+  
+const handleGenerateText = async () => {
+  if (!generator) {
+    alert("The text generation model is not loaded yet. Please wait.");
+    return;
+  }
+
+  let textToProcess = prompt.trim(); // Text from the main LLM prompt
+
+  if (!textToProcess && generatedOutput.trim()) {
+    // If main prompt is empty, consider using the last generated output
+    // This part depends on your desired UX for an empty prompt.
+    // For now, let's assume we want to re-speak the last generated output if prompt is empty.
+    textToProcess = generatedOutput.trim();
+    if (!textToProcess) {
+        alert("Please enter some text in the prompt.");
+        return;
+    }
+    // Update text areas to reflect what's being spoken
+    setTextToSpeakInput(textToProcess); // For Transformers.js TTS section
+    setWebSpeechApiInput(textToProcess);  // For Web Speech API TTS section
+
+  } else if (!textToProcess) {
+    alert("Please enter some text to generate from.");
+    return;
+  }
+
+  setIsGenerating(true);
+  setGeneratedOutput("Generating, please wait...");
+  setStatusMessage("Generating text...");
+  let newLLMText = ""; // Use a distinct variable name
+
+  try {
+    const outputs = await generator(textToProcess, { max_new_tokens: 150 });
+
+    if (outputs && outputs.length > 0 && outputs[0].generated_text) {
+      newLLMText = outputs[0].generated_text;
+      setGeneratedOutput(newLLMText); // Display LLM output
+      setStatusMessage("Text generation complete. Auto-speaking...");
+
+      // --- Automatically send to PREFERRED TTS ---
+      if (preferredTtsEngine === 'webSpeechAPI') {
+        setWebSpeechApiInput(newLLMText); // Update the WebSpeech textarea
+        speakWithWebAPI(newLLMText);       // Call the refactored Web Speech function
+      } else if (preferredTtsEngine === 'transformersJS') {
+        setTextToSpeakInput(newLLMText);   // Update the Transformers.js TTS textarea
+        await synthesizeAndPlayText(newLLMText); // Call your existing Transformers.js function
+      }
+      // --- End of auto TTS ---
+
+    } else {
+      setGeneratedOutput("No text was generated or output format was unexpected.");
+      setStatusMessage("Text generation failed to produce output.");
+    }
+  } catch (error) {
+    console.error("Error during text generation:", error);
+    setGeneratedOutput(`Error generating text: ${error.message}`);
+    setStatusMessage(`Error in LLM generation: ${error.message}`);
+  }
+  setIsGenerating(false);
+};
   
 useEffect(() => {
 setupSpeechRecognition();
@@ -437,66 +500,6 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   setIsSpeaking
 ]);
   
-const handleGenerateText = async () => {
-  if (!generator) {
-    alert("The text generation model is not loaded yet. Please wait.");
-    return;
-  }
-
-  let textToProcess = prompt.trim(); // Text from the main LLM prompt
-
-  if (!textToProcess && generatedOutput.trim()) {
-    // If main prompt is empty, consider using the last generated output
-    // This part depends on your desired UX for an empty prompt.
-    // For now, let's assume we want to re-speak the last generated output if prompt is empty.
-    textToProcess = generatedOutput.trim();
-    if (!textToProcess) {
-        alert("Please enter some text in the prompt.");
-        return;
-    }
-    // Update text areas to reflect what's being spoken
-    setTextToSpeakInput(textToProcess); // For Transformers.js TTS section
-    setWebSpeechApiInput(textToProcess);  // For Web Speech API TTS section
-
-  } else if (!textToProcess) {
-    alert("Please enter some text to generate from.");
-    return;
-  }
-
-  setIsGenerating(true);
-  setGeneratedOutput("Generating, please wait...");
-  setStatusMessage("Generating text...");
-  let newLLMText = ""; // Use a distinct variable name
-
-  try {
-    const outputs = await generator(textToProcess, { max_new_tokens: 150 });
-
-    if (outputs && outputs.length > 0 && outputs[0].generated_text) {
-      newLLMText = outputs[0].generated_text;
-      setGeneratedOutput(newLLMText); // Display LLM output
-      setStatusMessage("Text generation complete. Auto-speaking...");
-
-      // --- Automatically send to PREFERRED TTS ---
-      if (preferredTtsEngine === 'webSpeechAPI') {
-        setWebSpeechApiInput(newLLMText); // Update the WebSpeech textarea
-        speakWithWebAPI(newLLMText);       // Call the refactored Web Speech function
-      } else if (preferredTtsEngine === 'transformersJS') {
-        setTextToSpeakInput(newLLMText);   // Update the Transformers.js TTS textarea
-        await synthesizeAndPlayText(newLLMText); // Call your existing Transformers.js function
-      }
-      // --- End of auto TTS ---
-
-    } else {
-      setGeneratedOutput("No text was generated or output format was unexpected.");
-      setStatusMessage("Text generation failed to produce output.");
-    }
-  } catch (error) {
-    console.error("Error during text generation:", error);
-    setGeneratedOutput(`Error generating text: ${error.message}`);
-    setStatusMessage(`Error in LLM generation: ${error.message}`);
-  }
-  setIsGenerating(false);
-};
 
 
   // --- Handle Text-to-Speech Generation ---
