@@ -192,12 +192,9 @@ xhr.send();
         alert("Please enter a prompt.");
         return;
     }
-
     document.getElementById('status').innerText = "Loading model and generating...";
     document.getElementById('imageOutput').innerHTML = ""; // Clear previous image
-
     const imageElement = await runTextToImageWASM(prompt);
-
     if (imageElement) {
         document.getElementById('imageOutput').appendChild(imageElement);
         document.getElementById('status').innerText = "Image generated!";
