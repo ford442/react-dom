@@ -23,6 +23,8 @@ document.getElementById('outputText').textContent = `Loading model: ${progress.f
 console.log("Pipeline loaded.");
 }
   
+loadModel();
+  
 const imageChannel = new BroadcastChannel('imageChannel');
 const fileInput = document.getElementById('fileInput');
 fileInput.addEventListener('change', (event) => {
