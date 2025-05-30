@@ -6,10 +6,11 @@ import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import './App.css'
 
-async function App() {
+function App() {
   
 useLayoutEffect(() => {
   
+async function loadModel(){
 const generator = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-783M', {
 progress_callback: (progress) => {
 console.log(`Loading model: ${progress.file} (${(progress.loaded / progress.total * 100).toFixed(2)}%)`);
@@ -20,7 +21,7 @@ document.getElementById('outputText').textContent = `Loading model: ${progress.f
 });
   
 console.log("Pipeline loaded.");
-  
+}
   
 const imageChannel = new BroadcastChannel('imageChannel');
 const fileInput = document.getElementById('fileInput');
