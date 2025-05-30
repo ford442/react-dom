@@ -8,9 +8,24 @@ import './App.css'
 function App() {
 useLayoutEffect(() => {
 
-const selectedModel = "Llama-3.1-8B-Instruct-q4f32_1-MLC";
-const engine = CreateMLCEngine(
+const appConfig: webllm.AppConfig = {
+  model_list: [
+    {
+      model: "https://huggingface.co/mlc-ai/Llama-3-8B-Instruct-q4f32_1-MLC",
+      model_id: "Llama-3-8B-Instruct-q4f32_1-MLC",
+      model_lib:
+        webllm.modelLibURLPrefix +
+        webllm.modelVersion +
+        "/Llama-3-8B-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm",
+    },
+  ],
+};
+  
+const selectedModel = "Llama-3-8B-Instruct-q4f32_1-MLC";
+  
+const engine: webllm.MLCEngineInterface = await webllm.CreateMLCEngine(
 selectedModel,
+{appConfig: appConfig},
 );
   
 const imageChannel = new BroadcastChannel('imageChannel');
