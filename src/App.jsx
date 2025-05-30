@@ -326,6 +326,11 @@ max={2.0}
 
 <div style={{ marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd', backgroundColor: 'rgba(230, 240, 250, 0.9)' }}>
 
+<input type="text" id="promptInput" placeholder="Enter text prompt" /> 
+<button id="generateButton"></button>
+<div id="status"></div>
+<div id="imageOutput"></div>
+        
   <div style={{ padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
   <h4>Auto-Speak Engine after LLM Generation:</h4>
   <label style={{ marginRight: '15px', cursor: 'pointer' }}>
