@@ -205,7 +205,7 @@ loadModel();
     
 }, []);
 
-const synthesizeAndPlayText = async (text) => {
+const synthesizeAndPlayText = useCallback(async (text) => {
   if (!ttsPipelineInstance || !speakerEmbeddings) {
     setStatusMessage("TTS model or speaker embeddings not loaded yet.");
     alert("TTS model or speaker embeddings not loaded yet.");
@@ -257,7 +257,7 @@ const synthesizeAndPlayText = async (text) => {
   // Let's set it after a short delay or assume playback started.
   setTimeout(() => setIsSpeaking(false), 500); // Reset after a short delay
   return true; // Indicate success
-};
+}, [ttsPipelineInstance, speakerEmbeddings, initializeAudioContext, playAudio, setStatusMessage /*, setIsSpeaking */]); // Add all dependencies
   
 const handleGenerateText = async () => {
   if (!generator) {
