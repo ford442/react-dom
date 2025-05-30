@@ -362,7 +362,7 @@ const handleSynthesizeSpeech = async () => {
 
 initializeAudioContext();
 if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-      await audioContextRef.current.resume();
+      audioContextRef.current.resume();
 }
 
 setIsSpeaking(true);
