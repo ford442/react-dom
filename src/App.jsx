@@ -160,127 +160,142 @@ const playAudio = useCallback((audioArray, samplingRate) => {
 }, [initializeAudioContext]);
 
  const setupSpeechRecognition = useCallback(() => {
-    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognitionAPI) {
-      setSttError("Your browser doesn't support Speech Recognition. Try Chrome or Edge.");
-      setStatusMessage(prev => `${prev} Speech Recognition not supported.`); // Use prev for safety
-      return;
-    }
+  const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognitionAPI) {
+    setSttError("Your browser doesn't support Speech Recognition. Try Chrome or Edge.");
+    // Also update general status message if it's not just for STT error
+    setStatusMessage(prev => `${prev} Speech Recognition not supported.`);
+    return;
+  }
 
-    const recognitionInstance = new SpeechRecognitionAPI();
-    recognitionInstance.continuous = false;
-    recognitionInstance.interimResults = false;
-    recognitionInstance.lang = 'en-US';
+  const recognitionInstance = new SpeechRecognitionAPI();
+  recognitionInstance.continuous = false;
+  recognitionInstance.interimResults = false;
+  recognitionInstance.lang = 'en-US';
 
-    recognitionInstance.onresult = (event) => {
-      const last = event.results.length - 1;
-      const transcript = event.results[last][0].transcript.trim();
-      console.log('Speech recognized:', transcript);
-      setPrompt(prevPrompt => prevPrompt ? `${prevPrompt} ${transcript}` : transcript);
-      setIsListening(false); // Usage of setIsListening
-    };
-
-    recognitionInstance.onerror = (event) => {
-      console.error('Speech recognition error:', event.error, event.message);
-      setSttError(`Speech Error: ${event.error} - ${event.message || 'Unknown error'}`);
-      setIsListening(false); // Usage of setIsListening
-    };
-
-    recognitionInstance.onend = () => {
-      setIsListening(false); // Usage of setIsListening
-      console.log('Speech recognition ended.');
-      // Check if statusMessage still contains "Listening..." and update it
-      setStatusMessage(prevStatus => prevStatus.includes("Listening...") ? "Speech recognition finished." : prevStatus);
-    };
-    recognitionRef.current = recognitionInstance;
-  }, [setPrompt, setStatusMessage, setSttError, setIsListening]); // setIsListening in dependency array
-
-  const toggleListen = () => {
-    if (!recognitionRef.current) {
-      setSttError("Speech recognition not initialized.");
-      return;
-    }
-    if (isListening) {
-      recognitionRef.current.stop();
-      // setIsListening(false); // onend will handle this
-    } else {
-      try {
-        setPrompt(''); // Clear prompt for new STT input
-        // sttJustFinishedRef.current = false; // If you re-introduce this flag
-        recognitionRef.current.start();
-        setIsListening(true); // Usage of setIsListening
-        setSttError('');
-        setStatusMessage("Listening for speech...");
-      } catch (e) {
-        console.error("Error starting recognition (already started?):", e);
-        setSttError("Failed to start listening. Microphone might be in use or permission denied.");
-        setIsListening(false); // Usage of setIsListening
-      }
-    }
+  recognitionInstance.onresult = (event) => {
+    const last = event.results.length - 1;
+    const transcript = event.results[last][0].transcript.trim();
+    console.log('Speech recognized by onresult:', transcript);
+    setPrompt(transcript); // Set the prompt with the new transcript
+    sttJustFinishedRef.current = true; // <--- SET THE FLAG HERE
+    // setIsListening(false); // Typically onend or onstart of next action handles this
   };
 
+  recognitionInstance.onerror = (event) => {
+    console.error('Speech recognition error:', event.error, event.message);
+    setSttError(`Speech Error: ${event.error} - ${event.message || 'Unknown error'}`);
+    setIsListening(false);
+    sttJustFinishedRef.current = false; // Reset flag on error
+  };
 
-  
-const handleGenerateText = async () => {
+  recognitionInstance.onend = () => {
+    setIsListening(false); // Ensure listening is set to false
+    console.log('Speech recognition ended.');
+    // The useEffect below will now handle triggering based on sttJustFinishedRef
+    // You can set a general status message if needed:
+    // setStatusMessage("Speech input processed.");
+  };
+
+  recognitionRef.current = recognitionInstance;
+}, [setPrompt, setStatusMessage, setSttError, setIsListening]);
+
+const toggleListen = () => {
+  if (!recognitionRef.current) {
+    setSttError("Speech recognition not initialized.");
+    return;
+  }
+  if (isListening) {
+    recognitionRef.current.stop();
+    // onend will set setIsListening(false)
+  } else {
+    try {
+      setPrompt(''); // Clear prompt for new STT input
+      sttJustFinishedRef.current = false; // Reset flag before starting a new session
+      recognitionRef.current.start();
+      setIsListening(true);
+      setSttError('');
+      setStatusMessage("Listening for speech...");
+    } catch (e) {
+      console.error("Error starting recognition (already started?):", e);
+      setIsListening(false);
+    }
+  }
+};
+
+const handleGenerateText = useCallback(async () => {
+  // ... (your existing logic for handleGenerateText is ALREADY ASYNC - keep it)
+  // This function should use the `prompt` state variable for its input.
+  // It will then call `setGeneratedOutput`, `setTextToSpeakInput`, and `synthesizeAndPlayText`.
+
   if (!generator) {
     alert("The text generation model is not loaded yet. Please wait.");
     return;
   }
 
-  let textToProcess = prompt.trim(); // Text from the main LLM prompt
+  let textToProcess = prompt.trim(); // Directly use the current prompt from STT
 
   if (!textToProcess && generatedOutput.trim()) {
-    // If main prompt is empty, consider using the last generated output
-    // This part depends on your desired UX for an empty prompt.
-    // For now, let's assume we want to re-speak the last generated output if prompt is empty.
+    // This block is for manually clicking "Generate Text" when prompt is empty
+    // to re-speak the previous generatedOutput.
+    // For STT-triggered generation, prompt should have content.
     textToProcess = generatedOutput.trim();
-    if (!textToProcess) {
-        alert("Please enter some text in the prompt.");
+    if (!textToProcess) { // Both prompt and generatedOutput are empty
+        alert("Please enter some text or use speech-to-text to provide a prompt.");
         return;
     }
-    // Update text areas to reflect what's being spoken
-    setTextToSpeakInput(textToProcess); // For Transformers.js TTS section
-    setWebSpeechApiInput(textToProcess);  // For Web Speech API TTS section
+     // If we are here, it means prompt was empty, but generatedOutput wasn't.
+     // We will use generatedOutput as textToProcess for the LLM (if that's desired for button click)
+     // OR directly speak it (if that's the desired behavior for empty prompt + button click)
+     // The STT flow will ensure prompt has text.
 
+     // For STT flow, prompt will have text. For button click with empty prompt:
+     setTextToSpeakInput(textToProcess);
+     await synthesizeAndPlayText(textToProcess);
+     return; // Exit if we just re-spoke
   } else if (!textToProcess) {
-    alert("Please enter some text to generate from.");
+    alert("Please enter text to generate.");
     return;
-  }
+}
 
-  setIsGenerating(true);
-  setGeneratedOutput("Generating, please wait...");
-  setStatusMessage("Generating text...");
-  let newLLMText = ""; // Use a distinct variable name
 
-  try {
-    const outputs = await generator(textToProcess, { max_new_tokens: 150 });
+setIsGenerating(true);
+setGeneratedOutput("Generating, please wait...");
+setStatusMessage("Generating text...");
+let newLLMText = "";
 
+try {
+const outputs = await generator(textToProcess, { max_new_tokens: 150 });
     if (outputs && outputs.length > 0 && outputs[0].generated_text) {
       newLLMText = outputs[0].generated_text;
-      setGeneratedOutput(newLLMText); // Display LLM output
+      setGeneratedOutput(newLLMText);
       setStatusMessage("Text generation complete. Auto-speaking...");
 
-      // --- Automatically send to PREFERRED TTS ---
+      // Automatically send to PREFERRED TTS (ensure preferredTtsEngine state is implemented)
+      const preferredTtsEngine = 'transformersJS'; // Or get from state: const [preferredTtsEngine, ...] = useState('webSpeechAPI');
       if (preferredTtsEngine === 'webSpeechAPI') {
-        setWebSpeechApiInput(newLLMText); // Update the WebSpeech textarea
-        speakWithWebAPI(newLLMText);       // Call the refactored Web Speech function
+        // setWebSpeechApiInput(newLLMText); // Assuming you have this state for the WebSpeech textarea
+        // speakWithWebAPI(newLLMText);    // Assuming speakWithWebAPI(text) exists
       } else if (preferredTtsEngine === 'transformersJS') {
-        setTextToSpeakInput(newLLMText);   // Update the Transformers.js TTS textarea
-        await synthesizeAndPlayText(newLLMText); // Call your existing Transformers.js function
+        setTextToSpeakInput(newLLMText);
+        await synthesizeAndPlayText(newLLMText);
       }
-      // --- End of auto TTS ---
-
-    } else {
-      setGeneratedOutput("No text was generated or output format was unexpected.");
-      setStatusMessage("Text generation failed to produce output.");
-    }
-  } catch (error) {
-    console.error("Error during text generation:", error);
-    setGeneratedOutput(`Error generating text: ${error.message}`);
-    setStatusMessage(`Error in LLM generation: ${error.message}`);
-  }
+    } else { /* ... handle no output ... */ }
+  } catch (error) { /* ... handle error ... */ }
   setIsGenerating(false);
-};
+}, [
+  generator,
+  prompt,
+  generatedOutput,
+  isGenerating, // Though typically you don't depend on the setter's own state here
+  isSpeaking,   // Similarly
+  synthesizeAndPlayText,
+  setIsGenerating,
+  setGeneratedOutput,
+  setStatusMessage,
+  setTextToSpeakInput,
+  // preferredTtsEngine // Add if you implement the selector
+]);
   
 useEffect(() => {
 setupSpeechRecognition();
@@ -293,17 +308,21 @@ promptTextareaRef.current.focus();
 }, [generator, ttsPipelineInstance]);
 
 useEffect(() => {
-  // Check if the prompt is not empty, STT just finished, and we are not already generating/speaking
+  // Check if:
+  // 1. The prompt has text.
+  // 2. The sttJustFinishedRef flag is true (meaning STT just updated the prompt).
+  // 3. We are not currently generating text with the LLM.
+  // 4. We are not currently synthesizing speech with TTS.
   if (prompt.trim() && sttJustFinishedRef.current && !isGenerating && !isSpeaking) {
     console.log("STT provided new prompt, automatically triggering text generation:", prompt);
-    handleGenerateText(); // Call your existing LLM generation handler
+    // Call your existing LLM generation handler
+    // Ensure handleGenerateText is stable (memoized with useCallback) if it's a dependency
+    handleGenerateText(); 
     sttJustFinishedRef.current = false; // Reset the flag immediately after triggering
+    // to prevent re-triggering from other prompt changes.
   }
-  // We don't want to trigger if the prompt was changed by typing,
-  // or if the prompt was set by LLM output itself for the TTS input textarea.
-  // This flag helps differentiate.
-}, [prompt, isGenerating, isSpeaking, handleGenerateText]); // Watch these dependencies
-
+}, [prompt, isGenerating, isSpeaking, handleGenerateText]);
+  
 useLayoutEffect(() => {
     console.log('Forcing remote settings and disabling cache for loading.');
     env.localFilesOnly = false;
@@ -345,7 +364,6 @@ async function loadModel() {
         setTtsPipelineInstance(() => ttsPipe);
         setStatusMessage(prev => `${prev} TTS model loaded.`);
         console.log("TTS pipeline (SpeechT5 + Vocoder) loaded successfully.");
-
         // 2. Load speaker embeddings (example from Hugging Face datasets)
         setStatusMessage(prev => `${prev} Loading speaker embeddings...`);
         const speaker_embeddings_url = 'https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/speaker_embeddings.bin';
@@ -382,6 +400,7 @@ reader.readAsDataURL(file);
 }
 });
 
+  
 const xhrPath = document.querySelector('#loadPath').innerHTML;
 const xhr = new XMLHttpRequest();
 xhr.open('GET', xhrPath, true); // Replace with your filename
@@ -408,7 +427,7 @@ const utf32Data = xhr.response;
   //  const decoder = new TextDecoder('utf-32'); // Or 'utf-32be'
 const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
 const scr = document.createElement('script');
-// scr.type = 'module';
+scr.type = 'module';
 scr.text = jsCode;
 document.body.appendChild(scr);
 var Module = {}; // Initialize an empty Module object
@@ -424,9 +443,9 @@ Module.callMain();
 xhr.send();
     
 loadModel();
-    
 }, []);
-      
+
+  
 const synthesizeAndPlayText = useCallback(async (text) => {
   if (!ttsPipelineInstance || !speakerEmbeddings) {
     setStatusMessage("TTS model or speaker embeddings not loaded yet.");
@@ -436,14 +455,12 @@ const synthesizeAndPlayText = useCallback(async (text) => {
     setStatusMessage("No text provided to synthesize.");
     return false;
   }
-
-  const audioCtx = initializeAudioContext();
+ const audioCtx = initializeAudioContext();
   if (!audioCtx) {
     alert("Could not initialize audio player.");
     setIsSpeaking(false);
     return false;
   }
-
   if (audioCtx.state === 'suspended') {
     try {
       await audioCtx.resume();
@@ -454,17 +471,14 @@ const synthesizeAndPlayText = useCallback(async (text) => {
       return false;
     }
   }
-
   if (audioCtx.state !== 'running') {
     console.warn(`AudioContext not running (state: ${audioCtx.state}). TTS may fail.`);
     setStatusMessage("TTS Error: AudioContext not active. Please interact with the page.");
     setIsSpeaking(false);
     return false;
   }
-
   setIsSpeaking(true);
   setStatusMessage(`Synthesizing (Transformers.js): "${text.substring(0, 30)}..."`);
-
   try {
     const output = await ttsPipelineInstance(text.trim(), {
       speaker_embeddings: speakerEmbeddings,
@@ -499,11 +513,8 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   setStatusMessage,
   setIsSpeaking
 ]);
-  
-
 
   // --- Handle Text-to-Speech Generation ---
-
 const handleSynthesizeSpeech = async () => {
   // The text is already in textToSpeakInput state, bound to the TTS textarea
   if (!textToSpeakInput.trim()) {
@@ -551,7 +562,6 @@ max={2.0}
 </div></ul></section>
 </nav>
 <main id={'panel'}>
-  
 <iframe src={'./bezz.1ink'} id={'circle'} title='Circular mask'></iframe>
 <input type={'button'} id={'startBtn'} style={{backgroundColor:'gold',position:'absolute',display:'block',left:'6%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'menuBtn'} style={{backgroundColor:'black',position:'absolute',display:'block',left:'3%',top:'5%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}></input>
@@ -586,17 +596,14 @@ max={2.0}
 <div id={'outText'} style={{opacity:0.0,backgroundColor:'green',position:'absolute',top:'50vh',left:'47vw',zIndex:4200}}></div>
 <div id={'outText1'} style={{opacity:0.0,backgroundColor:'green',position:'absolute',top:'52vh',left:'47vw',zIndex:4200}}></div>
 <div id={'outText2'} style={{opacity:0.0,backgroundColor:'green',position:'absolute',top:'54vh',left:'47vw',zIndex:4200}}></div>
-
 <div id={'modPath'} hidden>https://wasm.noahcohn.com/b3hd/w0-035-mod.3ijs</div>
 <div id={'loadPath'} hidden>https://wasm.noahcohn.com/b3hd/w0-035-load-32.3ijs</div>
-
 <div id={'computePath'} hidden>https://glsl.1ink.us/wgsl/compute_070.wgsl'</div>
 <div id={'computePathNovid'} hidden>https://glsl.1ink.us/wgsl/compute_070v.wgsl'</div>
 <div id={'fragPath'} hidden>https://glsl.1ink.us/wgsl/fragment_007.wgsl'</div>
 <div id={'vertPath'} hidden>https://glsl.1ink.us/wgsl/vertex_003.wgsl'</div>
 <div id={'path'} hidden>https://glsl.1ink.us/wgsl/synapse.wgsl'</div>
 <div id={'imagePath'} hidden>https://www.noahcohn.com/image/901464_400093426755894_1205176414_o.jpg'</div>
-  
 <div className='emscripten' id={'stat'}></div>
 <div className='emscripten' id={'status'}></div>
 <div className='emscripten'>
