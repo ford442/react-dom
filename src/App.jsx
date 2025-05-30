@@ -14,8 +14,8 @@ const appConfig = {
       model: "https://huggingface.co/mlc-ai/Llama-3-8B-Instruct-q4f32_1-MLC",
       model_id: "Llama-3-8B-Instruct-q4f32_1-MLC",
       model_lib:
-        webllm.modelLibURLPrefix +
-        webllm.modelVersion +
+        modelLibURLPrefix +
+        modelVersion +
         "/Llama-3-8B-Instruct-q4f32_1-ctx4k_cs1k-webgpu.wasm",
     },
   ],
@@ -23,7 +23,7 @@ const appConfig = {
   
 const selectedModel = "Llama-3-8B-Instruct-q4f32_1-MLC";
   
-const engine: webllm.MLCEngineInterface = await webllm.CreateMLCEngine(
+const engine = await CreateMLCEngine(
 selectedModel,
 {appConfig: appConfig},
 );
