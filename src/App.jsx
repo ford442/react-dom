@@ -346,25 +346,19 @@ const initializeAudioContext = useCallback(() => {
   return audioContextRef.current;
 }, []);
 
-const playAudio = (audioArray, samplingRate) => {
-    const audioCtx = initializeAudioContext();
-    if (!audioCtx) {
-        alert("Could not initialize audio player. Please interact with the page first.");
-        return;
-    }
-    // Ensure context is running (it might be suspended initially)
-    if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
-
-    const buffer = audioCtx.createBuffer(1, audioArray.length, samplingRate); // 1 for mono
-    buffer.copyToChannel(audioArray, 0);
-
-    const source = audioCtx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(audioCtx.destination);
-    source.start();
-};
+const playAudio = useCallback((audioArray, samplingRate) => {
+  // ... (your playAudio logic using initializeAudioContext)
+  const audioCtx = initializeAudioContext();
+  if (!audioCtx) { /* ... */ return; }
+  if (audioCtx.state === 'suspended') { audioCtx.resume().catch(e => console.error("Resume in playAudio failed",e)); } // Best effort resume
+  
+  const buffer = audioCtx.createBuffer(1, audioArray.length, samplingRate);
+  buffer.copyToChannel(audioArray, 0);
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(audioCtx.destination);
+  source.start();
+}, [initializeAudioContext]);
 
   // --- Handle Text-to-Speech Generation ---
 const [textToSpeakInput, setTextToSpeakInput] = useState("Hello, this is a test of text to speech.");
