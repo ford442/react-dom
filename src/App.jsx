@@ -20,6 +20,90 @@ const [sttError, setSttError] = useState('');
 const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
 const [textToSpeakInput, setTextToSpeakInput] = useState("Hello, this is a test of text to speech.");
 const [isSpeaking, setIsSpeaking] = useState(false);
+const [webSpeechText, setWebSpeechText] = useState("Hello from the browser's built-in speech synthesis!");
+const [availableVoices, setAvailableVoices] = useState([]);
+const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
+const [isWebSpeaking, setIsWebSpeaking] = useState(false);
+const synthRef = useRef(null);
+
+useEffect(() => {
+  synthRef.current = window.speechSynthesis;
+  const populateVoices = () => {
+    if (synthRef.current) {
+      const voices = synthRef.current.getVoices();
+      setAvailableVoices(voices);
+      if (voices.length > 0) {
+        // Try to find a default or preferred English voice
+        const preferredVoice = voices.find(voice => voice.lang.startsWith('en') && voice.default) ||
+                               voices.find(voice => voice.lang.startsWith('en')) ||
+                               voices[0];
+        if (preferredVoice && !selectedVoiceURI) { // Set only if not already set
+          setSelectedVoiceURI(preferredVoice.voiceURI);
+        }
+      }
+    }
+  };
+
+  populateVoices();
+  if (synthRef.current && synthRef.current.onvoiceschanged !== undefined) {
+    synthRef.current.onvoiceschanged = populateVoices;
+  }
+
+return () => { // Cleanup
+    if (synthRef.current && synthRef.current.onvoiceschanged !== undefined) {
+      synthRef.current.onvoiceschanged = null;
+    }
+  };
+}, [selectedVoiceURI]); // Re-run if selectedVoiceURI changes, or just once on mount initially.
+
+// Handler for the Web Speech API TTS button
+const handleWebSpeechSpeak = () => {
+  if (!synthRef.current || !webSpeechText.trim()) {
+    alert("No text to speak or speech synthesis not available/supported.");
+    return;
+  }
+
+  if (synthRef.current.speaking) {
+    // To allow re-speaking or interrupting:
+    // synthRef.current.cancel();
+    // setTimeout(() => actuallySpeak(), 50); // Short delay to ensure cancel completes
+    console.warn("Speech synthesis is already active.");
+    return; // Or allow interruption
+  }
+
+const actuallySpeak = () => {
+const utterance = new SpeechSynthesisUtterance(webSpeechText);
+const selectedVoice = availableVoices.find(voice => voice.voiceURI === selectedVoiceURI);
+
+if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    } else if (availableVoices.length > 0) {
+      utterance.voice = availableVoices[0]; // Fallback
+    }
+    // You can set pitch, rate, volume for utterance if desired
+    // utterance.pitch = 1;
+    // utterance.rate = 1;
+    // utterance.volume = 1;
+
+    utterance.onstart = () => {
+      setIsWebSpeaking(true);
+      setStatusMessage("Speaking (Web Speech API)...");
+    };
+    utterance.onend = () => {
+      setIsWebSpeaking(false);
+      setStatusMessage("Web Speech API finished.");
+      console.log("Web Speech synthesis finished.");
+    };
+    utterance.onerror = (event) => {
+      console.error("Web Speech synthesis error:", event);
+      setIsWebSpeaking(false);
+      setStatusMessage(`Web Speech API Error: ${event.error}`);
+    };
+    synthRef.current.speak(utterance);
+};
+
+actuallySpeak();
+};
       
 const initializeAudioContext = useCallback(() => {
   if (!audioContextRef.current) {
@@ -231,10 +315,10 @@ xhr.send();
 loadModel();
     
 }, []);
-  const synthesizeAndPlayText = useCallback(async (text) => { // ASYNC
+      
+const synthesizeAndPlayText = useCallback(async (text) => {
   if (!ttsPipelineInstance || !speakerEmbeddings) {
     setStatusMessage("TTS model or speaker embeddings not loaded yet.");
-    // alert("TTS model or speaker embeddings not loaded yet."); // Redundant if status is shown
     return false;
   }
   if (!text || !text.trim()) {
@@ -242,66 +326,67 @@ loadModel();
     return false;
   }
 
-  const audioCtx = initializeAudioContext(); // Get the context
+  const audioCtx = initializeAudioContext();
   if (!audioCtx) {
     alert("Could not initialize audio player.");
-    setIsSpeaking(false); // Reset speaking state
+    setIsSpeaking(false);
     return false;
   }
 
-  // Ensure AudioContext is running before trying to play
   if (audioCtx.state === 'suspended') {
     try {
-      console.log("AudioContext suspended, attempting to resume before TTS...");
-      await audioCtx.resume(); // <<<< Your line 365, VALID here because this function is async
-      console.log("AudioContext state after resume attempt:", audioCtx.state);
+      await audioCtx.resume();
     } catch (resumeError) {
       console.error("Failed to resume audio context for TTS:", resumeError);
       setStatusMessage("TTS Error: Could not resume audio. Please click a button to interact.");
-      setIsSpeaking(false); // Reset speaking state
+      setIsSpeaking(false);
       return false;
     }
   }
 
   if (audioCtx.state !== 'running') {
     console.warn(`AudioContext not running (state: ${audioCtx.state}). TTS may fail.`);
-    setStatusMessage("TTS Error: AudioContext not active. Please interact with the page (e.g., click a button).");
-    setIsSpeaking(false); // Reset speaking state
+    setStatusMessage("TTS Error: AudioContext not active. Please interact with the page.");
+    setIsSpeaking(false);
     return false;
   }
 
   setIsSpeaking(true);
-  setStatusMessage(`Synthesizing: "${text.substring(0, 30)}..."`);
+  setStatusMessage(`Synthesizing (Transformers.js): "${text.substring(0, 30)}..."`);
 
   try {
     const output = await ttsPipelineInstance(text.trim(), {
       speaker_embeddings: speakerEmbeddings,
     });
 
-    if (output.audio && output.sampling_rate) {
-      // You had a hardcoded sampling rate here in the last snippet, ensure it's from output
-      output.sampling_rate=22050; // This line should be: const rate = output.sampling_rate;
-      playAudio(output.audio, output.sampling_rate);
-      setStatusMessage("Speech synthesized and playing.");
+    console.log("Transformers.js TTS Output:", output); // Log the entire output object
+
+    // Use the sampling rate from the model output
+    const modelSamplingRate = output.sampling_rate;
+
+    if (output.audio && typeof modelSamplingRate === 'number' && modelSamplingRate > 0) {
+      console.log(`Playing audio with sampling rate: ${modelSamplingRate}`);
+      playAudio(output.audio, modelSamplingRate); // Use the model's actual sampling rate
+      setStatusMessage("Speech synthesized and playing (Transformers.js).");
     } else {
-      throw new Error("TTS pipeline did not return valid audio data.");
+      console.error("TTS pipeline output missing valid audio or sampling_rate. Output was:", output);
+      throw new Error("TTS pipeline did not return valid audio data or sampling rate.");
     }
   } catch (error) {
-    console.error("Error during speech synthesis:", error);
-    setStatusMessage(`TTS Synthesis Error: ${error.message}`);
-    setIsSpeaking(false); // Reset on error
+    console.error("Error during Transformers.js speech synthesis:", error);
+    setStatusMessage(`Transformers.js TTS Error: ${error.message}`);
+    setIsSpeaking(false);
     return false;
   }
-
-  setTimeout(() => setIsSpeaking(false), 500); // Or a more robust way to detect audio end
+  setTimeout(() => setIsSpeaking(false), 500); // Adjust as needed, or use audio onended
   return true;
 }, [
   ttsPipelineInstance,
   speakerEmbeddings,
-  initializeAudioContext, // Ensure this is memoized with useCallback
-  playAudio,             // Ensure this is memoized with useCallback
+  initializeAudioContext,
+  playAudio,
   setStatusMessage,
-  setIsSpeaking          // Add setIsSpeaking to dependencies
+  setIsSpeaking
 ]);
   
 const handleGenerateText = async () => {
@@ -490,7 +575,42 @@ max={2.0}
 <div id={'contain1'}>
 <canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
 
-  
+<div style={{ marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd', backgroundColor: 'rgba(230, 240, 250, 0.9)' }}>
+<h2>Text to Speech (Browser Built-in)</h2>
+<textarea
+    value={webSpeechText}
+    onChange={(e) => setWebSpeechText(e.target.value)}
+    placeholder="Enter text for browser TTS..."
+    rows={3}
+    style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px' }}
+    disabled={isWebSpeaking}
+  />
+<div style={{ marginBottom: '10px' }}>
+<label htmlFor="voice-select-webapi" style={{ marginRight: '10px' }}>Voice:</label>
+<select
+      id="voice-select-webapi"
+      value={selectedVoiceURI}
+      onChange={(e) => setSelectedVoiceURI(e.target.value)}
+      style={{ padding: '8px', width: 'calc(100% - 70px)'}}
+      disabled={availableVoices.length === 0 || isWebSpeaking}
+    >
+      {availableVoices.length === 0 && <option value="">Loading voices...</option>}
+      {availableVoices.map((voice) => (
+        <option key={voice.voiceURI} value={voice.voiceURI}>
+          {voice.name} ({voice.lang}) {voice.default ? '[Default]' : ''}
+        </option>
+      ))}
+</select>
+</div>
+<button
+    onClick={handleWebSpeechSpeak}
+    disabled={isWebSpeaking || !webSpeechText.trim() || availableVoices.length === 0}
+    style={{ padding: '10px 15px', width: '100%' }}
+  >
+    {isWebSpeaking ? 'Speaking...' : 'Speak Text (Browser)'}
+</button>
+</div>
+
 <div style={{
         position: 'absolute', // Or 'absolute' if you prefer, relative to a parent
         bottom: '20px',
