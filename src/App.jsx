@@ -223,6 +223,75 @@ const toggleListen = () => {
   }
 };
 
+  
+const synthesizeAndPlayText = useCallback(async (text) => {
+  if (!ttsPipelineInstance || !speakerEmbeddings) {
+    setStatusMessage("TTS model or speaker embeddings not loaded yet.");
+    return false;
+  }
+  if (!text || !text.trim()) {
+    setStatusMessage("No text provided to synthesize.");
+    return false;
+  }
+ const audioCtx = initializeAudioContext();
+  if (!audioCtx) {
+    alert("Could not initialize audio player.");
+    setIsSpeaking(false);
+    return false;
+  }
+  if (audioCtx.state === 'suspended') {
+    try {
+      await audioCtx.resume();
+    } catch (resumeError) {
+      console.error("Failed to resume audio context for TTS:", resumeError);
+      setStatusMessage("TTS Error: Could not resume audio. Please click a button to interact.");
+      setIsSpeaking(false);
+      return false;
+    }
+  }
+  if (audioCtx.state !== 'running') {
+    console.warn(`AudioContext not running (state: ${audioCtx.state}). TTS may fail.`);
+    setStatusMessage("TTS Error: AudioContext not active. Please interact with the page.");
+    setIsSpeaking(false);
+    return false;
+  }
+  setIsSpeaking(true);
+  setStatusMessage(`Synthesizing (Transformers.js): "${text.substring(0, 30)}..."`);
+  try {
+    const output = await ttsPipelineInstance(text.trim(), {
+      speaker_embeddings: speakerEmbeddings,
+    });
+
+    console.log("Transformers.js TTS Output:", output); // Log the entire output object
+
+    // Use the sampling rate from the model output
+    const modelSamplingRate = output.sampling_rate;
+
+    if (output.audio && typeof modelSamplingRate === 'number' && modelSamplingRate > 0) {
+      console.log(`Playing audio with sampling rate: ${modelSamplingRate}`);
+      playAudio(output.audio, modelSamplingRate); // Use the model's actual sampling rate
+      setStatusMessage("Speech synthesized and playing (Transformers.js).");
+    } else {
+      console.error("TTS pipeline output missing valid audio or sampling_rate. Output was:", output);
+      throw new Error("TTS pipeline did not return valid audio data or sampling rate.");
+    }
+  } catch (error) {
+    console.error("Error during Transformers.js speech synthesis:", error);
+    setStatusMessage(`Transformers.js TTS Error: ${error.message}`);
+    setIsSpeaking(false);
+    return false;
+  }
+  setTimeout(() => setIsSpeaking(false), 500); // Adjust as needed, or use audio onended
+  return true;
+}, [
+  ttsPipelineInstance,
+  speakerEmbeddings,
+  initializeAudioContext,
+  playAudio,
+  setStatusMessage,
+  setIsSpeaking
+]);
+  
 const handleGenerateText = useCallback(async () => {
   // ... (your existing logic for handleGenerateText is ALREADY ASYNC - keep it)
   // This function should use the `prompt` state variable for its input.
@@ -446,73 +515,6 @@ loadModel();
 }, []);
 
   
-const synthesizeAndPlayText = useCallback(async (text) => {
-  if (!ttsPipelineInstance || !speakerEmbeddings) {
-    setStatusMessage("TTS model or speaker embeddings not loaded yet.");
-    return false;
-  }
-  if (!text || !text.trim()) {
-    setStatusMessage("No text provided to synthesize.");
-    return false;
-  }
- const audioCtx = initializeAudioContext();
-  if (!audioCtx) {
-    alert("Could not initialize audio player.");
-    setIsSpeaking(false);
-    return false;
-  }
-  if (audioCtx.state === 'suspended') {
-    try {
-      await audioCtx.resume();
-    } catch (resumeError) {
-      console.error("Failed to resume audio context for TTS:", resumeError);
-      setStatusMessage("TTS Error: Could not resume audio. Please click a button to interact.");
-      setIsSpeaking(false);
-      return false;
-    }
-  }
-  if (audioCtx.state !== 'running') {
-    console.warn(`AudioContext not running (state: ${audioCtx.state}). TTS may fail.`);
-    setStatusMessage("TTS Error: AudioContext not active. Please interact with the page.");
-    setIsSpeaking(false);
-    return false;
-  }
-  setIsSpeaking(true);
-  setStatusMessage(`Synthesizing (Transformers.js): "${text.substring(0, 30)}..."`);
-  try {
-    const output = await ttsPipelineInstance(text.trim(), {
-      speaker_embeddings: speakerEmbeddings,
-    });
-
-    console.log("Transformers.js TTS Output:", output); // Log the entire output object
-
-    // Use the sampling rate from the model output
-    const modelSamplingRate = output.sampling_rate;
-
-    if (output.audio && typeof modelSamplingRate === 'number' && modelSamplingRate > 0) {
-      console.log(`Playing audio with sampling rate: ${modelSamplingRate}`);
-      playAudio(output.audio, modelSamplingRate); // Use the model's actual sampling rate
-      setStatusMessage("Speech synthesized and playing (Transformers.js).");
-    } else {
-      console.error("TTS pipeline output missing valid audio or sampling_rate. Output was:", output);
-      throw new Error("TTS pipeline did not return valid audio data or sampling rate.");
-    }
-  } catch (error) {
-    console.error("Error during Transformers.js speech synthesis:", error);
-    setStatusMessage(`Transformers.js TTS Error: ${error.message}`);
-    setIsSpeaking(false);
-    return false;
-  }
-  setTimeout(() => setIsSpeaking(false), 500); // Adjust as needed, or use audio onended
-  return true;
-}, [
-  ttsPipelineInstance,
-  speakerEmbeddings,
-  initializeAudioContext,
-  playAudio,
-  setStatusMessage,
-  setIsSpeaking
-]);
 
   // --- Handle Text-to-Speech Generation ---
 const handleSynthesizeSpeech = async () => {
