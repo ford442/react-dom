@@ -17,6 +17,9 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const promptTextareaRef = useRef(null); // Ref for the prompt textarea
 
+  const [ttsPipeline, setTtsPipeline] = useState(null);
+const [speakerEmbeddings, setSpeakerEmbeddings] = useState(null);
+  
     const [isListening, setIsListening] = useState(false);
   const [sttError, setSttError] = useState('');
   const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
@@ -85,7 +88,10 @@ function App() {
     }
   };
 
-  
+    const [ttsPipelineInstance, setTtsPipelineInstance] = useState(null);
+  const [speakerEmbeddings, setSpeakerEmbeddings] = useState(null);
+  const audioContextRef = useRef(null); // For playing audio
+
   useLayoutEffect(() => {
     console.log('Forcing remote settings and disabling cache for loading.');
     env.localFilesOnly = false;
@@ -113,8 +119,40 @@ function App() {
         console.error("Failed to load pipeline:", error);
         setStatusMessage(`Error loading model: ${error.message}`);
       }
-      let sttPipeline = null;
-      
+       try {
+        setStatusMessage(prev => `${prev} Loading TTS model (SpeechT5)...`);
+        // 1. Load the TTS pipeline (vocoder is usually handled internally by this pipeline for SpeechT5)
+        const ttsPipe = await pipeline('text-to-speech', 'Xenova/speecht5_tts', {
+          progress_callback: (progress) => {
+            const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
+            const message = `Loading TTS: ${progress.file} (${percentage}%)`;
+            // console.log(message);
+            setStatusMessage(message);
+          },
+          // The 'Xenova/speecht5_tts' pipeline will automatically look for 'Xenova/speecht5_vocoder'
+        });
+        setTtsPipelineInstance(() => ttsPipe);
+        setStatusMessage(prev => `${prev} TTS model loaded.`);
+        console.log("TTS pipeline (SpeechT5 + Vocoder) loaded successfully.");
+
+        // 2. Load speaker embeddings (example from Hugging Face datasets)
+        setStatusMessage(prev => `${prev} Loading speaker embeddings...`);
+        const speaker_embeddings_url = 'https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/speaker_embeddings.bin';
+        const response = await fetch(speaker_embeddings_url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch speaker embeddings: ${response.statusText}`);
+        }
+        const speakerEmb = new Float32Array(await response.arrayBuffer());
+        // Reshape to [1, 512] as expected by the model
+        const reshapedSpeakerEmb = new env.Tensor('float32', speakerEmb, [1, 512]);
+        setSpeakerEmbeddings(reshapedSpeakerEmb);
+        setStatusMessage("All models loaded! Ready.");
+        console.log("Speaker embeddings loaded successfully.");
+
+      } catch (error) {
+        console.error("Failed to load TTS pipeline or speaker embeddings:", error);
+        setStatusMessage(prev => `${prev} TTS Error: ${error.message}.`);
+      }
     }
 
 
@@ -175,11 +213,11 @@ Module.callMain();
 };
 xhr.send();
     
-    loadModel();
+loadModel();
     
-  }, []);
+}, []);
 
-  const handleGenerateText = async () => {
+const handleGenerateText = async () => {
     if (!generator) {
       alert("The text generation model is not loaded yet. Please wait.");
       return;
@@ -216,8 +254,80 @@ xhr.send();
     }
 
     setIsGenerating(false);
+};
+
+
+   const initializeAudioContext = () => {
+    if (!audioContextRef.current) {
+      // Create AudioContext on user gesture if possible, or on demand
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume();
+      }
+    }
+    return audioContextRef.current;
   };
 
+  const playAudio = (audioArray, samplingRate) => {
+    const audioCtx = initializeAudioContext();
+    if (!audioCtx) {
+        alert("Could not initialize audio player. Please interact with the page first.");
+        return;
+    }
+    // Ensure context is running (it might be suspended initially)
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+
+    const buffer = audioCtx.createBuffer(1, audioArray.length, samplingRate); // 1 for mono
+    buffer.copyToChannel(audioArray, 0);
+
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioCtx.destination);
+    source.start();
+  };
+
+
+  // --- Handle Text-to-Speech Generation ---
+  const [textToSpeakInput, setTextToSpeakInput] = useState("Hello, this is a test of text to speech.");
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const handleSynthesizeSpeech = async () => {
+    if (!ttsPipelineInstance || !speakerEmbeddings) {
+      alert("TTS model or speaker embeddings not loaded yet.");
+      return;
+    }
+    if (!textToSpeakInput.trim()) {
+      alert("Please enter text to synthesize.");
+      return;
+    }
+
+    // Attempt to initialize/resume AudioContext on user gesture
+    initializeAudioContext();
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      await audioContextRef.current.resume();
+    }
+
+
+    setIsSpeaking(true);
+    setStatusMessage("Synthesizing speech...");
+
+    try {
+      const output = await ttsPipelineInstance(textToSpeakInput.trim(), {
+        speaker_embeddings: speakerEmbeddings,
+      });
+      // output.audio is a Float32Array
+      // output.sampling_rate is the number (e.g., 16000 or 22050)
+      playAudio(output.audio, output.sampling_rate);
+      setStatusMessage("Speech synthesized and playing.");
+    } catch (error) {
+      console.error("Error during speech synthesis:", error);
+      setStatusMessage(`TTS Synthesis Error: ${error.message}`);
+    }
+    setIsSpeaking(false);
+  };
+  
 return (
 <>
 <link charset={"utf-8"} crossorigin rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
@@ -335,7 +445,7 @@ max={2.0}
 <canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
 
   
-    <div style={{
+<div style={{
         position: 'absolute', // Or 'absolute' if you prefer, relative to a parent
         bottom: '20px',
         left: '20px',
@@ -361,20 +471,20 @@ max={2.0}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Enter prompt or use Speech-to-Text..."
           rows={3}
-          style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+          style={{ width: '100%', padding: '8px', boxSizing: 'border-box', pointerEvents: 'auto' }}
           disabled={!generator || isGenerating}
         />
         <button
           onClick={handleGenerateText}
           disabled={!generator || isGenerating}
-          style={{ padding: '10px 15px', cursor: (!generator || isGenerating) ? 'not-allowed' : 'pointer' }}
+          style={{ padding: '10px 15px', pointerEvents: 'auto', cursor: (!generator || isGenerating) ? 'not-allowed' : 'pointer' }}
         >
           {isGenerating ? 'Generating...' : 'Generate Text'}
         </button>
         
         {/* STT Button and status from Option A */}
         <div style={{ marginTop: '10px', paddingTop:'10px', borderTop: '1px solid #eee' }}>
-          <button onClick={toggleListen} disabled={!recognitionRef.current}> {/* Ensure toggleListen is defined */}
+          <button onClick={toggleListen} disabled={!recognitionRef.current} style={{ pointerEvents: 'auto' }}> {/* Ensure toggleListen is defined */}
             {isListening ? 'Stop Listening' : 'Start Listening'}
           </button>
           {isListening && <p><i>Listening...</i></p>}
@@ -388,6 +498,27 @@ max={2.0}
         }}>
           {generatedOutput}
         </div>
+      </div>
+      <div style={{
+        marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd',
+        backgroundColor: 'rgba(230, 250, 230, 0.9)', // Light green
+      }}>
+        <h2>Text to Speech (Transformers.js - SpeechT5)</h2>
+        <textarea
+          value={textToSpeakInput}
+          onChange={(e) => setTextToSpeakInput(e.target.value)}
+          placeholder="Enter text to synthesize..."
+          rows={3}
+          style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px', pointerEvents: 'auto' }}
+          disabled={!ttsPipelineInstance || isSpeaking}
+        />
+        <button
+          onClick={handleSynthesizeSpeech}
+          disabled={!ttsPipelineInstance || !speakerEmbeddings || isSpeaking || !textToSpeakInput.trim()}
+          style={{ padding: '10px 15px' }}
+        >
+          {isSpeaking ? 'Synthesizing...' : 'Synthesize & Play Speech'}
+        </button>
       </div>
 
   
