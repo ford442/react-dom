@@ -18,7 +18,7 @@ const appConfig = {
   ],
 };
   
-const selectedModel = "Llama-3-8B-Instruct-q4f32_1-MLC";
+const selectedModel = "wasm-TinyLlama-1.1B-Chat-q4f342_1";
   
 const engine = CreateMLCEngine(
 selectedModel,
