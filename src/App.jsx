@@ -16,6 +16,75 @@ function App() {
   // State to indicate if generation is in progress
   const [isGenerating, setIsGenerating] = useState(false);
 
+    const [isListening, setIsListening] = useState(false);
+  const [sttError, setSttError] = useState('');
+  const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
+
+  const setupSpeechRecognition = useCallback(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setSttError("Your browser doesn't support Speech Recognition. Try Chrome or Edge.");
+      setStatusMessage("Speech Recognition not supported."); // Update general status
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false; // Set to true for continuous listening, false for single phrases
+    recognition.interimResults = false; // Set to true to get interim results as user speaks
+    recognition.lang = 'en-US'; // Set language
+
+    recognition.onresult = (event) => {
+      const last = event.results.length - 1;
+      const transcript = event.results[last][0].transcript.trim();
+      console.log('Speech recognized:', transcript);
+      setPrompt(prevPrompt => prevPrompt ? `${prevPrompt} ${transcript}` : transcript); // Append or set
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      setSttError(`Speech Error: ${event.error}`);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      console.log('Speech recognition ended.');
+    };
+
+    recognitionRef.current = recognition;
+  }, [setPrompt]); // setPrompt is a dependency
+
+  // Initialize on mount
+  useEffect(() => {
+    setupSpeechRecognition();
+  }, [setupSpeechRecognition]);
+
+
+  const toggleListen = () => {
+    if (!recognitionRef.current) {
+      setSttError("Speech recognition not initialized.");
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+        setSttError(''); // Clear previous errors
+        setPrompt(''); // Optionally clear prompt before new speech input
+        setStatusMessage("Listening...");
+      } catch (e) {
+        // This can happen if recognition is already started
+        console.error("Error starting recognition (already started?):", e);
+        setIsListening(false); // Reset state
+      }
+    }
+  };
+
+  
   useLayoutEffect(() => {
     console.log('Forcing remote settings and disabling cache for loading.');
     env.localFilesOnly = false;
