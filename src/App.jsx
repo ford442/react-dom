@@ -394,7 +394,7 @@ const handleGenerateText = async () => {
     if (outputs && outputs.length > 0 && outputs[0].generated_text) {
       newGeneratedText = outputs[0].generated_text;
       setGeneratedOutput(newGeneratedText);
-      setStatusMessage("Text generation complete. Auto-speaking...");
+console.log("Auto-speaking with preferred engine:", preferredTtsEngine); // Assuming you implemented preferredTtsEngine state
 
       // --- Automatically send to PREFERRED TTS ---
       if (preferredTtsEngine === 'webSpeechAPI') {
