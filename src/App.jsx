@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback,useLayoutEffect } from 'react'
 
-import { pipeline, env, RawImage } from '@xenova/transformers';
+import { pipeline, env } from '@xenova/transformers';
 
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
@@ -10,6 +10,12 @@ function App() {
   
 useLayoutEffect(() => {
   
+console.log('Current transformers.js env settings:');
+console.log(`env.remoteHost: ${env.remoteHost}`);
+console.log(`env.remotePathTemplate: ${env.remotePathTemplate}`);
+console.log(`env.allowRemoteModels: ${env.allowRemoteModels}`);
+console.log(`env.localFilesOnly: ${env.localFilesOnly}`);
+
 async function loadModel(){
 const generator = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-783M', {
 progress_callback: (progress) => {
