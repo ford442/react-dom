@@ -200,47 +200,57 @@ xhr.send();
 loadModel();
     
 }, []);
-  
-const synthesizeAndPlayText = useCallback(async (text) => {
+  const synthesizeAndPlayText = useCallback(async (text) => { // ASYNC
   if (!ttsPipelineInstance || !speakerEmbeddings) {
     setStatusMessage("TTS model or speaker embeddings not loaded yet.");
+    // alert("TTS model or speaker embeddings not loaded yet."); // Redundant if status is shown
     return false;
   }
   if (!text || !text.trim()) {
     setStatusMessage("No text provided to synthesize.");
     return false;
   }
+
   const audioCtx = initializeAudioContext(); // Get the context
   if (!audioCtx) {
     alert("Could not initialize audio player.");
+    setIsSpeaking(false); // Reset speaking state
     return false;
   }
+
   // Ensure AudioContext is running before trying to play
   if (audioCtx.state === 'suspended') {
     try {
       console.log("AudioContext suspended, attempting to resume before TTS...");
-      await audioCtx.resume(); // <<<< This 'await' is valid here
+      await audioCtx.resume(); // <<<< Your line 365, VALID here because this function is async
       console.log("AudioContext state after resume attempt:", audioCtx.state);
     } catch (resumeError) {
       console.error("Failed to resume audio context for TTS:", resumeError);
       setStatusMessage("TTS Error: Could not resume audio. Please click a button to interact.");
-      setIsSpeaking(false);
+      setIsSpeaking(false); // Reset speaking state
       return false;
     }
   }
-  // Check state again after attempting resume
+
   if (audioCtx.state !== 'running') {
     console.warn(`AudioContext not running (state: ${audioCtx.state}). TTS may fail.`);
     setStatusMessage("TTS Error: AudioContext not active. Please interact with the page (e.g., click a button).");
-    // Depending on strictness, you might return false here too.
+    setIsSpeaking(false); // Reset speaking state
+    return false;
   }
+
   setIsSpeaking(true);
   setStatusMessage(`Synthesizing: "${text.substring(0, 30)}..."`);
- try {
+
+  try {
+    // This is your line 372 from the other error.
     const output = await ttsPipelineInstance(text.trim(), {
       speaker_embeddings: speakerEmbeddings,
     });
+
     if (output.audio && output.sampling_rate) {
+      // You had a hardcoded sampling rate here in the last snippet, ensure it's from output
+      // output.sampling_rate=22050; // This line should be: const rate = output.sampling_rate;
       playAudio(output.audio, output.sampling_rate);
       setStatusMessage("Speech synthesized and playing.");
     } else {
@@ -249,12 +259,20 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   } catch (error) {
     console.error("Error during speech synthesis:", error);
     setStatusMessage(`TTS Synthesis Error: ${error.message}`);
-    setIsSpeaking(false);
+    setIsSpeaking(false); // Reset on error
     return false;
   }
-  setTimeout(() => setIsSpeaking(false), 500);
+
+  setTimeout(() => setIsSpeaking(false), 500); // Or a more robust way to detect audio end
   return true;
-}, [ttsPipelineInstance, speakerEmbeddings, initializeAudioContext, playAudio, setStatusMessage, setIsSpeaking]);
+}, [
+  ttsPipelineInstance,
+  speakerEmbeddings,
+  initializeAudioContext, // Ensure this is memoized with useCallback
+  playAudio,             // Ensure this is memoized with useCallback
+  setStatusMessage,
+  setIsSpeaking          // Add setIsSpeaking to dependencies
+]);
   
 const handleGenerateText = async () => {
   if (!generator) {
@@ -367,21 +385,6 @@ if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
 
 setIsSpeaking(true);
 setStatusMessage("Synthesizing speech...");
-
-try {
-      const output = await ttsPipelineInstance(textToSpeakInput.trim(), {
-        speaker_embeddings: speakerEmbeddings,
-      });
-      // output.audio is a Float32Array
-      output.sampling_rate=22050; // is the number (e.g., 16000 or 22050)
-      playAudio(output.audio, output.sampling_rate);
-      setStatusMessage("Speech synthesized and playing.");
-    } catch (error) {
-      console.error("Error during speech synthesis:", error);
-      setStatusMessage(`TTS Synthesis Error: ${error.message}`);
-    }
-    setIsSpeaking(false);
-};
   
 return (
 <>
