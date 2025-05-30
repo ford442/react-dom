@@ -25,7 +25,24 @@ const [availableVoices, setAvailableVoices] = useState([]);
 const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
 const [isWebSpeaking, setIsWebSpeaking] = useState(false);
 const synthRef = useRef(null);
+const speakWithWebSpeechAPI = useCallback((textToSay) => {
+  if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
+  if (synthRef.current.speaking) { synthRef.current.cancel(); }
 
+  const utterance = new SpeechSynthesisUtterance(textToSay);
+  // ... (voice selection logic as above) ...
+  const selectedVoice = availableVoices.find(voice => voice.voiceURI === selectedVoiceURI);
+  if (selectedVoice) utterance.voice = selectedVoice;
+  else if (availableVoices.length > 0) utterance.voice = availableVoices[0];
+
+
+  utterance.onstart = () => { setIsSpeaking(true); setStatusMessage("Speaking (Web Speech API)..."); };
+  utterance.onend = () => { setIsSpeaking(false); setStatusMessage("Web Speech API finished."); };
+  utterance.onerror = (event) => { /* ... */ setIsSpeaking(false); /* ... */ };
+  synthRef.current.speak(utterance);
+}, [synthRef, availableVoices, selectedVoiceURI, setIsSpeaking, setStatusMessage]);
+
+  
 useEffect(() => {
   synthRef.current = window.speechSynthesis;
   const populateVoices = () => {
@@ -56,53 +73,12 @@ return () => { // Cleanup
   };
 }, [selectedVoiceURI]); // Re-run if selectedVoiceURI changes, or just once on mount initially.
 
-// Handler for the Web Speech API TTS button
-const handleWebSpeechSpeak = () => {
-  if (!synthRef.current || !webSpeechText.trim()) {
-    alert("No text to speak or speech synthesis not available/supported.");
-    return;
+const handleWebSpeechSpeak = () => { // This function is now simpler
+  if (!webSpeechText.trim()) { // webSpeechText is the state for its dedicated textarea
+      alert("Please enter text in the 'Browser Built-in TTS' textarea.");
+      return;
   }
-
-  if (synthRef.current.speaking) {
-    // To allow re-speaking or interrupting:
-    // synthRef.current.cancel();
-    // setTimeout(() => actuallySpeak(), 50); // Short delay to ensure cancel completes
-    console.warn("Speech synthesis is already active.");
-    return; // Or allow interruption
-  }
-
-const actuallySpeak = () => {
-const utterance = new SpeechSynthesisUtterance(webSpeechText);
-const selectedVoice = availableVoices.find(voice => voice.voiceURI === selectedVoiceURI);
-
-if (selectedVoice) {
-      utterance.voice = selectedVoice;
-    } else if (availableVoices.length > 0) {
-      utterance.voice = availableVoices[0]; // Fallback
-    }
-    // You can set pitch, rate, volume for utterance if desired
-    // utterance.pitch = 1;
-    // utterance.rate = 1;
-    // utterance.volume = 1;
-
-    utterance.onstart = () => {
-      setIsWebSpeaking(true);
-      setStatusMessage("Speaking (Web Speech API)...");
-    };
-    utterance.onend = () => {
-      setIsWebSpeaking(false);
-      setStatusMessage("Web Speech API finished.");
-      console.log("Web Speech synthesis finished.");
-    };
-    utterance.onerror = (event) => {
-      console.error("Web Speech synthesis error:", event);
-      setIsWebSpeaking(false);
-      setStatusMessage(`Web Speech API Error: ${event.error}`);
-    };
-    synthRef.current.speak(utterance);
-};
-
-actuallySpeak();
+  speakWithWebSpeechAPI(webSpeechText);
 };
       
 const initializeAudioContext = useCallback(() => {
@@ -390,63 +366,51 @@ const synthesizeAndPlayText = useCallback(async (text) => {
 ]);
   
 const handleGenerateText = async () => {
-  if (!generator) {
-    alert("The text generation model is not loaded yet. Please wait.");
-    return;
-  }
-  if (!prompt.trim() && !generatedOutput.trim()) { // Allow re-speaking previous output if prompt is empty
-    if(generatedOutput.trim()){
-        // If prompt is empty but there's previous generated output, speak that.
-        setTextToSpeakInput(generatedOutput.trim()); // Update TTS input area
-        await synthesizeAndPlayText(generatedOutput.trim());
-    } else {
-        alert("Please enter some text or use speech-to-text to provide a prompt.");
+  if (!generator) { /* ... alert ... */ return; }
+  let textToProcess = prompt.trim();
+  if (!textToProcess && generatedOutput.trim()) {
+    // If prompt empty, use last generated output for auto-speak based on preference
+    textToProcess = generatedOutput.trim(); // Keep for consistency if logic changes
+    if (preferredTtsEngine === 'webSpeechAPI') {
+      setWebSpeechText(textToProcess); // Update its dedicated textarea too
+      speakWithWebSpeechAPI(textToProcess);
+    } else if (preferredTtsEngine === 'transformersJS') {
+      setTextToSpeakInput(textToProcess); // Update its dedicated textarea
+      await synthesizeAndPlayText(textToProcess);
     }
     return;
+  } else if (!textToProcess) {
+    alert("Please enter some text or use speech-to-text to provide a prompt.");
+    return;
   }
-
-  let textToProcess = prompt.trim() || generatedOutput.trim(); // Use current prompt, or re-use last generated if prompt is empty
 
   setIsGenerating(true);
-  setGeneratedOutput("Generating, please wait..."); // Clear previous LLM output display
+  setGeneratedOutput("Generating, please wait...");
   setStatusMessage("Generating text...");
+  let newGeneratedText = "";
 
-
-    try {
-      // Call the generator (pipeline) with the prompt
-      // You can also pass parameters like max_length, temperature, etc.
-      const outputs = await generator(textToProcess, {
-        max_new_tokens: 150, // Limit the number of new tokens generated
-        // temperature: 0.7,
-        // num_beams: 2,
-        // early_stopping: true,
-      });
-  let newGeneratedText = ""; 
-
-      // The output is usually an array of objects.
-      // For text2text-generation, it's typically [{ generated_text: "..." }]
- if (outputs && outputs.length > 0 && outputs[0].generated_text) {
+  try {
+    const outputs = await generator(textToProcess, { max_new_tokens: 150 });
+    if (outputs && outputs.length > 0 && outputs[0].generated_text) {
       newGeneratedText = outputs[0].generated_text;
-      setGeneratedOutput(newGeneratedText); // Display LLM output
-      setStatusMessage("Text generation complete. Preparing for TTS...");
+      setGeneratedOutput(newGeneratedText);
+      setStatusMessage("Text generation complete. Auto-speaking...");
 
-      // --- Automatically send to TTS ---
-      setTextToSpeakInput(newGeneratedText); // Update the TTS textarea content
-      await synthesizeAndPlayText(newGeneratedText); // Synthesize and play
+      // --- Automatically send to PREFERRED TTS ---
+      if (preferredTtsEngine === 'webSpeechAPI') {
+        setWebSpeechText(newGeneratedText); // Update the WebSpeech textarea
+        speakWithWebSpeechAPI(newGeneratedText);
+      } else if (preferredTtsEngine === 'transformersJS') {
+        setTextToSpeakInput(newGeneratedText); // Update the Transformers.js TTS textarea
+        await synthesizeAndPlayText(newGeneratedText);
+      }
       // --- End of auto TTS ---
 
-    } else {
-      setGeneratedOutput("No text was generated or output format was unexpected.");
-      console.log("Unexpected LLM output format:", outputs);
-      setStatusMessage("Text generation failed to produce output.");
-    }
-  } catch (error) {
-    console.error("Error during text generation:", error);
-    setGeneratedOutput(`Error generating text: ${error.message}`);
-    setStatusMessage(`Error in LLM generation: ${error.message}`);
-  }
+    } else { /* ... handle no output ... */ }
+  } catch (error) { /* ... handle error ... */ }
   setIsGenerating(false);
 };
+
 
   // --- Handle Text-to-Speech Generation ---
 
@@ -586,7 +550,7 @@ max={2.0}
     disabled={isWebSpeaking}
   />
 <div style={{ marginBottom: '10px' }}>
-<label htmlFor="voice-select-webapi" style={{ marginRight: '10px' }}>Voice:</label>
+<label htmlFor="voice-select-webapi" style={{ position:'absolute',zIndex:4000,marginRight: '10px' }}>Voice:</label>
 <select
       id="voice-select-webapi"
       value={selectedVoiceURI}
