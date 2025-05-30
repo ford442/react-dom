@@ -19,19 +19,18 @@ const [isListening, setIsListening] = useState(false);
 const [sttError, setSttError] = useState('');
 const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
 
-  const setupSpeechRecognition = useCallback(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
+const setupSpeechRecognition = useCallback(() => {
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SpeechRecognition) {
       setSttError("Your browser doesn't support Speech Recognition. Try Chrome or Edge.");
       setStatusMessage("Speech Recognition not supported."); // Update general status
       return;
-    }
+}
 
 const recognition = new SpeechRecognition();
     recognition.continuous = false; // Set to true for continuous listening, false for single phrases
     recognition.interimResults = false; // Set to true to get interim results as user speaks
     recognition.lang = 'en-US'; // Set language
-
 recognition.onresult = (event) => {
       const last = event.results.length - 1;
       const transcript = event.results[last][0].transcript.trim();
@@ -39,18 +38,15 @@ recognition.onresult = (event) => {
       setPrompt(prevPrompt => prevPrompt ? `${prevPrompt} ${transcript}` : transcript); // Append or set
       setIsListening(false);
 };
-
 recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
       setSttError(`Speech Error: ${event.error}`);
       setIsListening(false);
     };
-
 recognition.onend = () => {
       setIsListening(false);
       console.log('Speech recognition ended.');
     };
-
 recognitionRef.current = recognition;
   }, [setPrompt]); // setPrompt is a dependency
 
@@ -204,40 +200,46 @@ xhr.send();
 loadModel();
     
 }, []);
-
+  
 const synthesizeAndPlayText = useCallback(async (text) => {
   if (!ttsPipelineInstance || !speakerEmbeddings) {
     setStatusMessage("TTS model or speaker embeddings not loaded yet.");
-    alert("TTS model or speaker embeddings not loaded yet.");
-    return false; // Indicate failure
+    return false;
   }
   if (!text || !text.trim()) {
     setStatusMessage("No text provided to synthesize.");
-    // alert("No text to synthesize."); // Might be too noisy if called automatically
-    return false; // Indicate failure
+    return false;
   }
-
-  // Ensure AudioContext is active (important for autoplay)
-  initializeAudioContext();
-  if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+  const audioCtx = initializeAudioContext(); // Get the context
+  if (!audioCtx) {
+    alert("Could not initialize audio player.");
+    return false;
+  }
+  // Ensure AudioContext is running before trying to play
+  if (audioCtx.state === 'suspended') {
     try {
-      await audioContextRef.current.resume();
+      console.log("AudioContext suspended, attempting to resume before TTS...");
+      await audioCtx.resume(); // <<<< This 'await' is valid here
+      console.log("AudioContext state after resume attempt:", audioCtx.state);
     } catch (resumeError) {
-      console.error("Failed to resume audio context automatically:", resumeError);
-      setStatusMessage("TTS Error: Could not resume audio. Please click to interact.");
-      alert("Could not play audio automatically. Please click 'Synthesize & Play Speech' button once.");
-      return false; // Indicate failure
+      console.error("Failed to resume audio context for TTS:", resumeError);
+      setStatusMessage("TTS Error: Could not resume audio. Please click a button to interact.");
+      setIsSpeaking(false);
+      return false;
     }
   }
-
+  // Check state again after attempting resume
+  if (audioCtx.state !== 'running') {
+    console.warn(`AudioContext not running (state: ${audioCtx.state}). TTS may fail.`);
+    setStatusMessage("TTS Error: AudioContext not active. Please interact with the page (e.g., click a button).");
+    // Depending on strictness, you might return false here too.
+  }
   setIsSpeaking(true);
   setStatusMessage(`Synthesizing: "${text.substring(0, 30)}..."`);
-
-  try {
+ try {
     const output = await ttsPipelineInstance(text.trim(), {
       speaker_embeddings: speakerEmbeddings,
     });
-
     if (output.audio && output.sampling_rate) {
       playAudio(output.audio, output.sampling_rate);
       setStatusMessage("Speech synthesized and playing.");
@@ -247,17 +249,12 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   } catch (error) {
     console.error("Error during speech synthesis:", error);
     setStatusMessage(`TTS Synthesis Error: ${error.message}`);
-    setIsSpeaking(false); // Reset on error
-    return false; // Indicate failure
+    setIsSpeaking(false);
+    return false;
   }
-
-  // setIsSpeaking(false); // playAudio is async but doesn't return a promise for when it's *done* playing.
-  // For now, we'll set isSpeaking to false quickly. A more robust solution might involve
-  // tracking audio playback completion if needed.
-  // Let's set it after a short delay or assume playback started.
-  setTimeout(() => setIsSpeaking(false), 500); // Reset after a short delay
-  return true; // Indicate success
-}, [ttsPipelineInstance, speakerEmbeddings, initializeAudioContext, playAudio, setStatusMessage /*, setIsSpeaking */]); // Add all dependencies
+  setTimeout(() => setIsSpeaking(false), 500);
+  return true;
+}, [ttsPipelineInstance, speakerEmbeddings, initializeAudioContext, playAudio, setStatusMessage, setIsSpeaking]);
   
 const handleGenerateText = async () => {
   if (!generator) {
@@ -317,16 +314,19 @@ const handleGenerateText = async () => {
   setIsGenerating(false);
 };
 
-const initializeAudioContext = () => {
-    if (!audioContextRef.current) {
-      // Create AudioContext on user gesture if possible, or on demand
-      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioContextRef.current.state === 'suspended') {
-        audioContextRef.current.resume();
-      }
-    }
-    return audioContextRef.current;
-};
+const initializeAudioContext = useCallback(() => {
+  if (!audioContextRef.current) {
+    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    console.log("AudioContext created. Initial state:", audioContextRef.current.state);
+  }
+  // You can try a non-blocking resume here, but it's more robust to await it before playing
+  if (audioContextRef.current.state === 'suspended') {
+     audioContextRef.current.resume().catch(err => {
+        console.warn("Initial attempt to resume AudioContext in initializeAudioContext failed. Will try again before playing.", err);
+     });
+  }
+  return audioContextRef.current;
+}, []);
 
 const playAudio = (audioArray, samplingRate) => {
     const audioCtx = initializeAudioContext();
