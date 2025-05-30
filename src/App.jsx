@@ -15,6 +15,7 @@ function App() {
   const [generatedOutput, setGeneratedOutput] = useState('');
   // State to indicate if generation is in progress
   const [isGenerating, setIsGenerating] = useState(false);
+  const promptTextareaRef = useRef(null); // Ref for the prompt textarea
 
     const [isListening, setIsListening] = useState(false);
   const [sttError, setSttError] = useState('');
