@@ -322,7 +322,7 @@ const initializeAudioContext = () => {
       // Create AudioContext on user gesture if possible, or on demand
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
       if (audioContextRef.current.state === 'suspended') {
-        audioContextRef.current.resume();
+       await audioContextRef.current.resume();
       }
     }
     return audioContextRef.current;
