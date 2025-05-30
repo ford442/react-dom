@@ -10,11 +10,11 @@ function App() {
   
 useLayoutEffect(() => {
   
-console.log('Current transformers.js env settings:');
-console.log(`env.remoteHost: ${env.remoteHost}`);
-console.log(`env.remotePathTemplate: ${env.remotePathTemplate}`);
-console.log(`env.allowRemoteModels: ${env.allowRemoteModels}`);
-console.log(`env.localFilesOnly: ${env.localFilesOnly}`);
+  console.log('Minimal Test: Forcing remote settings');
+  env.localFilesOnly = false;
+  env.allowRemoteModels = true;
+  env.remoteHost = 'https://huggingface.co';
+  env.remotePathTemplate = '{model}/resolve/main/'; // Ensure this is correct or test with Xenova's default if unsure
 
 async function loadModel(){
 const generator = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-783M', {
