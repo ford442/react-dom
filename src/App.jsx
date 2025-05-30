@@ -3,86 +3,10 @@ import { pipeline, env, Tensor } from '@xenova/transformers';
 import Box from '@mui/material/Box'; // Assuming you still use these
 import Slider from '@mui/material/Slider'; // Assuming you still use these
 import './App.css';
-
-function App() {
-const [generator, setGenerator] = useState(null);
-const [statusMessage, setStatusMessage] = useState('Initializing...');
-const [prompt, setPrompt] = useState('');
-const [generatedOutput, setGeneratedOutput] = useState('');
-const [isGenerating, setIsGenerating] = useState(false);
-const promptTextareaRef = useRef(null); // Ref for the prompt textarea
-const [ttsPipeline, setTtsPipeline] = useState(null);
-const [speakerEmbeddings, setSpeakerEmbeddings] = useState(null);
-const [ttsPipelineInstance, setTtsPipelineInstance] = useState(null);
-const audioContextRef = useRef(null); // For playing audio
-const [isListening, setIsListening] = useState(false);
-const [sttError, setSttError] = useState('');
-const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
-const [textToSpeakInput, setTextToSpeakInput] = useState("Hello, this is a test of text to speech.");
-const [isSpeaking, setIsSpeaking] = useState(false);
-const [webSpeechText, setWebSpeechText] = useState("Hello from the browser's built-in speech synthesis!");
-const [availableVoices, setAvailableVoices] = useState([]);
-const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
-const [isWebSpeaking, setIsWebSpeaking] = useState(false);
-const synthRef = useRef(null);
-const [preferredTtsEngine, setPreferredTtsEngine] = useState('webSpeechAPI'); // Default to 'webSpeechAPI' or 'transformersJS'
-const [finalSttTranscript, setFinalSttTranscript] = useState(null);
-const sttJustFinishedRef = useRef(false);
-  
-const speakWithWebSpeechAPI = useCallback((textToSay) => {
-  if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
-  if (synthRef.current.speaking) { synthRef.current.cancel(); }
-
-  const utterance = new SpeechSynthesisUtterance(textToSay);
-  // ... (voice selection logic as above) ...
-  const selectedVoice = availableVoices.find(voice => voice.voiceURI === selectedVoiceURI);
-  if (selectedVoice) utterance.voice = selectedVoice;
-  else if (availableVoices.length > 0) utterance.voice = availableVoices[0];
-
-
-  utterance.onstart = () => { setIsSpeaking(true); setStatusMessage("Speaking (Web Speech API)..."); };
-  utterance.onend = () => { setIsSpeaking(false); setStatusMessage("Web Speech API finished."); };
-  utterance.onerror = (event) => { /* ... */ setIsSpeaking(false); /* ... */ };
-  synthRef.current.speak(utterance);
-}, [synthRef, availableVoices, selectedVoiceURI, setIsSpeaking, setStatusMessage]);
-
-  
-useEffect(() => {
-  synthRef.current = window.speechSynthesis;
-  const populateVoices = () => {
-    if (synthRef.current) {
-      const voices = synthRef.current.getVoices();
-      setAvailableVoices(voices);
-      if (voices.length > 0) {
-        // Try to find a default or preferred English voice
-        const preferredVoice = voices.find(voice => voice.lang.startsWith('en') && voice.default) ||
-                               voices.find(voice => voice.lang.startsWith('en')) ||
-                               voices[0];
-        if (preferredVoice && !selectedVoiceURI) { // Set only if not already set
-          setSelectedVoiceURI(preferredVoice.voiceURI);
-        }
-      }
-    }
-  };
-
-  populateVoices();
-  if (synthRef.current && synthRef.current.onvoiceschanged !== undefined) {
-    synthRef.current.onvoiceschanged = populateVoices;
-  }
-
-return () => { // Cleanup
-    if (synthRef.current && synthRef.current.onvoiceschanged !== undefined) {
-      synthRef.current.onvoiceschanged = null;
-    }
-  };
-}, [selectedVoiceURI]); // Re-run if selectedVoiceURI changes, or just once on mount initially.
-  
-const [webSpeechApiInput, setWebSpeechApiInput] = useState("Hello from browser TTS!");
-
-  const speakWithWebAPI = useCallback((textToSay) => {
-  if (!recognitionRef.current || !synthRef.current) { // Check synthRef.current for SpeechSynthesis
-    setStatusMessage("Web Speech API not ready.");
-    console.warn("Web Speech API (Synthesis or Recognition) not ready.");
+const speakWithWebAPI = useCallback((textToSay) => {
+  if (!synthRef.current) {
+    setStatusMessage("Web Speech API (Synthesis) not initialized.");
+    console.warn("Web Speech API (Synthesis) not initialized.");
     return;
   }
   if (!textToSay || !textToSay.trim()) {
@@ -90,20 +14,28 @@ const [webSpeechApiInput, setWebSpeechApiInput] = useState("Hello from browser T
     return;
   }
 
+  // Cancel any ongoing speech from this engine before starting new
   if (synthRef.current.speaking) {
-    synthRef.current.cancel(); // Cancel previous speech to allow new one
+    synthRef.current.cancel();
   }
 
   const utterance = new SpeechSynthesisUtterance(textToSay);
   const selectedVoice = availableVoices.find(voice => voice.voiceURI === selectedVoiceURI);
+
   if (selectedVoice) {
     utterance.voice = selectedVoice;
   } else if (availableVoices.length > 0) {
-    utterance.voice = availableVoices[0]; // Fallback
+    // Fallback to a default or first available voice if selection is not made or invalid
+    const defaultEnVoice = availableVoices.find(v => v.lang.startsWith('en') && v.default) || availableVoices.find(v => v.lang.startsWith('en')) || availableVoices[0];
+    if (defaultEnVoice) utterance.voice = defaultEnVoice;
   }
+  
+  // Optional: set pitch, rate, volume on utterance
+  // utterance.rate = 1.0;
+  // utterance.pitch = 1.0;
 
   utterance.onstart = () => {
-    setIsSpeaking(true); // Use your global isSpeaking or a dedicated one
+    setIsSpeaking(true); // Use a global isSpeaking or a dedicated one like isWebAPISpeaking
     setStatusMessage("Speaking (Browser)...");
   };
   utterance.onend = () => {
@@ -115,12 +47,17 @@ const [webSpeechApiInput, setWebSpeechApiInput] = useState("Hello from browser T
     setIsSpeaking(false);
     setStatusMessage(`Browser TTS Error: ${event.error}`);
   };
-  synthRef.current.speak(utterance);
-}, [availableVoices, selectedVoiceURI, synthRef, setIsSpeaking, setStatusMessage]); // Dependencies
 
-// Your existing button handler for the "Browser Built-in TTS" section will call this
-const handleWebSpeechSpeakButton = () => { // Renamed to avoid conflict if needed
-    speakWithWebAPI(webSpeechApiInput); // Speaks text from its dedicated textarea
+  synthRef.current.speak(utterance);
+}, [availableVoices, selectedVoiceURI, synthRef, setIsSpeaking, setStatusMessage]); // Add synthRef to deps
+
+// Your button handler for the "Browser Built-in TTS" section would then call this:
+const handleWebSpeechSpeakButton = () => { // This is for the manual button
+  if (!webSpeechApiDedicatedInput.trim()) { // Assuming webSpeechApiDedicatedInput is state for its textarea
+      alert("Please enter text in the 'Browser Built-in TTS' textarea.");
+      return;
+  }
+  speakWithWebAPI(webSpeechApiDedicatedInput);
 };
   
 const handleWebSpeechSpeak = () => { // This function is now simpler
@@ -292,79 +229,70 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   setIsSpeaking
 ]);
   
-const handleGenerateText = useCallback(async () => {
-  // ... (your existing logic for handleGenerateText is ALREADY ASYNC - keep it)
-  // This function should use the `prompt` state variable for its input.
-  // It will then call `setGeneratedOutput`, `setTextToSpeakInput`, and `synthesizeAndPlayText`.
-
+const handleGenerateText = async () => {
   if (!generator) {
     alert("The text generation model is not loaded yet. Please wait.");
     return;
   }
 
-  let textToProcess = prompt.trim(); // Directly use the current prompt from STT
+  let textToProcess = prompt.trim();
+  let isRespeaking = false;
 
   if (!textToProcess && generatedOutput.trim()) {
-    // This block is for manually clicking "Generate Text" when prompt is empty
-    // to re-speak the previous generatedOutput.
-    // For STT-triggered generation, prompt should have content.
-    textToProcess = generatedOutput.trim();
-    if (!textToProcess) { // Both prompt and generatedOutput are empty
-        alert("Please enter some text or use speech-to-text to provide a prompt.");
-        return;
-    }
-     // If we are here, it means prompt was empty, but generatedOutput wasn't.
-     // We will use generatedOutput as textToProcess for the LLM (if that's desired for button click)
-     // OR directly speak it (if that's the desired behavior for empty prompt + button click)
-     // The STT flow will ensure prompt has text.
-
-     // For STT flow, prompt will have text. For button click with empty prompt:
-     setTextToSpeakInput(textToProcess);
-     await synthesizeAndPlayText(textToProcess);
-     return; // Exit if we just re-spoke
+    textToProcess = generatedOutput.trim(); // Use last generated output if prompt is empty
+    isRespeaking = true; 
+    setStatusMessage("Re-speaking previous output...");
   } else if (!textToProcess) {
-    alert("Please enter text to generate.");
+    alert("Please enter some text or use speech-to-text to provide a prompt.");
     return;
-}
+  }
 
+  // If not re-speaking, then generate new text
+  if (!isRespeaking) {
+    setIsGenerating(true);
+    setGeneratedOutput("Generating, please wait..."); // Clear/update previous LLM output display
+    setStatusMessage("Generating text...");
+  }
+  
+  let newLLMText = ""; // Declare here
 
-setIsGenerating(true);
-setGeneratedOutput("Generating, please wait...");
-setStatusMessage("Generating text...");
-let newLLMText = "";
-
-try {
-const outputs = await generator(textToProcess, { max_new_tokens: 150 });
-    if (outputs && outputs.length > 0 && outputs[0].generated_text) {
-      newLLMText = outputs[0].generated_text;
-      setGeneratedOutput(newLLMText);
-      setStatusMessage("Text generation complete. Auto-speaking...");
-
-      // Automatically send to PREFERRED TTS (ensure preferredTtsEngine state is implemented)
-      const preferredTtsEngine = 'transformersJS'; // Or get from state: const [preferredTtsEngine, ...] = useState('webSpeechAPI');
-      if (preferredTtsEngine === 'webSpeechAPI') {
-        // setWebSpeechApiInput(newLLMText); // Assuming you have this state for the WebSpeech textarea
-        // speakWithWebAPI(newLLMText);    // Assuming speakWithWebAPI(text) exists
-      } else if (preferredTtsEngine === 'transformersJS') {
-        setTextToSpeakInput(newLLMText);
-        await synthesizeAndPlayText(newLLMText);
+  try {
+    if (!isRespeaking) {
+      const outputs = await generator(textToProcess, { max_new_tokens: 150 });
+      if (outputs && outputs.length > 0 && outputs[0].generated_text) {
+        newLLMText = outputs[0].generated_text;
+        setGeneratedOutput(newLLMText); // Display LLM output
+      } else {
+        setGeneratedOutput("No text was generated or output format was unexpected.");
+        setStatusMessage("Text generation failed to produce output.");
+        setIsGenerating(false);
+        return;
       }
-    } else { /* ... handle no output ... */ }
-  } catch (error) { /* ... handle error ... */ }
-  setIsGenerating(false);
-}, [
-  generator,
-  prompt,
-  generatedOutput,
-  isGenerating, // Though typically you don't depend on the setter's own state here
-  isSpeaking,   // Similarly
-  synthesizeAndPlayText,
-  setIsGenerating,
-  setGeneratedOutput,
-  setStatusMessage,
-  setTextToSpeakInput,
-  // preferredTtsEngine // Add if you implement the selector
-]);
+    } else {
+      newLLMText = textToProcess; // If re-speaking, newLLMText is the existing generatedOutput
+    }
+
+    setStatusMessage("Text processing complete. Auto-speaking...");
+
+    // --- Automatically send to PREFERRED TTS ---
+    if (preferredTtsEngine === 'webSpeechAPI') {
+      setWebSpeechApiDedicatedInput(newLLMText); // Update the WebSpeech textarea for consistency
+      speakWithWebAPI(newLLMText);          // Call the refactored Web Speech function
+    } else if (preferredTtsEngine === 'transformersJS') {
+      setTextToSpeakInput(newLLMText);      // Update the Transformers.js TTS textarea
+      await synthesizeAndPlayText(newLLMText); // Call your existing Transformers.js function
+    }
+    // --- End of auto TTS ---
+
+  } catch (error) {
+    console.error("Error during text generation or auto-speak setup:", error);
+    setGeneratedOutput(`Error: ${error.message}`);
+    setStatusMessage(`Error in processing: ${error.message}`);
+  }
+  if (!isRespeaking) {
+    setIsGenerating(false);
+  }
+};
   
 useEffect(() => {
 setupSpeechRecognition();
