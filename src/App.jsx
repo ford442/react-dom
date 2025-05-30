@@ -4,447 +4,129 @@ import Box from '@mui/material/Box'; // Assuming you still use these
 import Slider from '@mui/material/Slider'; // Assuming you still use these
 import './App.css';
 
+import * as ort from 'onnxruntime-web'; 
+
 function App() {
-const [generator, setGenerator] = useState(null);
-const [statusMessage, setStatusMessage] = useState('Initializing...');
-const [prompt, setPrompt] = useState('');
-const [generatedOutput, setGeneratedOutput] = useState('');
-const [isGenerating, setIsGenerating] = useState(false);
-const promptTextareaRef = useRef(null); // Ref for the prompt textarea
-const [ttsPipeline, setTtsPipeline] = useState(null);
-const [speakerEmbeddings, setSpeakerEmbeddings] = useState(null);
-const [ttsPipelineInstance, setTtsPipelineInstance] = useState(null);
-const audioContextRef = useRef(null); // For playing audio
-const [isListening, setIsListening] = useState(false);
-const [sttError, setSttError] = useState('');
-const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
-const [textToSpeakInput, setTextToSpeakInput] = useState("Hello, this is a test of text to speech.");
-const [isSpeaking, setIsSpeaking] = useState(false);
-const [webSpeechText, setWebSpeechText] = useState("Hello from the browser's built-in speech synthesis!");
-const [availableVoices, setAvailableVoices] = useState([]);
-const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
-const [isWebSpeaking, setIsWebSpeaking] = useState(false);
-const synthRef = useRef(null);
-const [preferredTtsEngine, setPreferredTtsEngine] = useState('webSpeechAPI'); // Default to 'webSpeechAPI' or 'transformersJS'
-const [finalSttTranscript, setFinalSttTranscript] = useState(null);
-const sttJustFinishedRef = useRef(false);
-const [webSpeechApiDedicatedInput, setWebSpeechApiDedicatedInput] = useState("Hello from browser TTS!");
 
-const speakWithWebSpeechAPI = useCallback((textToSay) => {
-  if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
-  if (synthRef.current.speaking) { synthRef.current.cancel(); }
-
-  const utterance = new SpeechSynthesisUtterance(textToSay);
-  // ... (voice selection logic as above) ...
-  const selectedVoice = availableVoices.find(voice => voice.voiceURI === selectedVoiceURI);
-  if (selectedVoice) utterance.voice = selectedVoice;
-  else if (availableVoices.length > 0) utterance.voice = availableVoices[0];
-
-
-  utterance.onstart = () => { setIsSpeaking(true); setStatusMessage("Speaking (Web Speech API)..."); };
-  utterance.onend = () => { setIsSpeaking(false); setStatusMessage("Web Speech API finished."); };
-  utterance.onerror = (event) => { /* ... */ setIsSpeaking(false); /* ... */ };
-  synthRef.current.speak(utterance);
-}, [synthRef, availableVoices, selectedVoiceURI, setIsSpeaking, setStatusMessage]);
-
-  
-useEffect(() => {
-  synthRef.current = window.speechSynthesis;
-  const populateVoices = () => {
-    if (synthRef.current) {
-      const voices = synthRef.current.getVoices();
-      setAvailableVoices(voices);
-      if (voices.length > 0) {
-        // Try to find a default or preferred English voice
-        const preferredVoice = voices.find(voice => voice.lang.startsWith('en') && voice.default) ||
-                               voices.find(voice => voice.lang.startsWith('en')) ||
-                               voices[0];
-        if (preferredVoice && !selectedVoiceURI) { // Set only if not already set
-          setSelectedVoiceURI(preferredVoice.voiceURI);
-        }
-      }
-    }
-  };
-
-  populateVoices();
-  if (synthRef.current && synthRef.current.onvoiceschanged !== undefined) {
-    synthRef.current.onvoiceschanged = populateVoices;
-  }
-
-return () => { // Cleanup
-    if (synthRef.current && synthRef.current.onvoiceschanged !== undefined) {
-      synthRef.current.onvoiceschanged = null;
-    }
-  };
-}, [selectedVoiceURI]); // Re-run if selectedVoiceURI changes, or just once on mount initially.
-  
-const [webSpeechApiInput, setWebSpeechApiInput] = useState("Hello from browser TTS!");
-
-  const speakWithWebAPI = useCallback((textToSay) => {
-  if (!recognitionRef.current || !synthRef.current) { // Check synthRef.current for SpeechSynthesis
-    setStatusMessage("Web Speech API not ready.");
-    console.warn("Web Speech API (Synthesis or Recognition) not ready.");
-    return;
-  }
-  if (!textToSay || !textToSay.trim()) {
-    setStatusMessage("No text for Web Speech API to speak.");
-    return;
-  }
-
-  if (synthRef.current.speaking) {
-    synthRef.current.cancel(); // Cancel previous speech to allow new one
-  }
-
-  const utterance = new SpeechSynthesisUtterance(textToSay);
-  const selectedVoice = availableVoices.find(voice => voice.voiceURI === selectedVoiceURI);
-  if (selectedVoice) {
-    utterance.voice = selectedVoice;
-  } else if (availableVoices.length > 0) {
-    utterance.voice = availableVoices[0]; // Fallback
-  }
-
-  utterance.onstart = () => {
-    setIsSpeaking(true); // Use your global isSpeaking or a dedicated one
-    setStatusMessage("Speaking (Browser)...");
-  };
-  utterance.onend = () => {
-    setIsSpeaking(false);
-    setStatusMessage("Browser speech finished.");
-  };
-  utterance.onerror = (event) => {
-    console.error("Web Speech API Error:", event);
-    setIsSpeaking(false);
-    setStatusMessage(`Browser TTS Error: ${event.error}`);
-  };
-  synthRef.current.speak(utterance);
-}, [availableVoices, selectedVoiceURI, synthRef, setIsSpeaking, setStatusMessage]); // Dependencies
-
-// Your existing button handler for the "Browser Built-in TTS" section will call this
-const handleWebSpeechSpeakButton = () => { // Renamed to avoid conflict if needed
-    speakWithWebAPI(webSpeechApiInput); // Speaks text from its dedicated textarea
-};
-  
-const handleWebSpeechSpeak = () => { // This function is now simpler
-  if (!webSpeechText.trim()) { // webSpeechText is the state for its dedicated textarea
-      alert("Please enter text in the 'Browser Built-in TTS' textarea.");
-      return;
-  }
-  speakWithWebSpeechAPI(webSpeechText);
-};
-      
-const initializeAudioContext = useCallback(() => {
-  if (!audioContextRef.current) {
-    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    console.log("AudioContext created. Initial state:", audioContextRef.current.state);
-  }
-  // You can try a non-blocking resume here, but it's more robust to await it before playing
-  if (audioContextRef.current.state === 'suspended') {
-     audioContextRef.current.resume().catch(err => {
-        console.warn("Initial attempt to resume AudioContext in initializeAudioContext failed. Will try again before playing.", err);
-     });
-  }
-  return audioContextRef.current;
-}, []);
-
-const playAudio = useCallback((audioArray, samplingRate) => {
-  // ... (your playAudio logic using initializeAudioContext)
-  const audioCtx = initializeAudioContext();
-  if (!audioCtx) { /* ... */ return; }
-  if (audioCtx.state === 'suspended') { audioCtx.resume().catch(e => console.error("Resume in playAudio failed",e)); } // Best effort resume
-  
-  const buffer = audioCtx.createBuffer(1, audioArray.length, samplingRate);
-  buffer.copyToChannel(audioArray, 0);
-  const source = audioCtx.createBufferSource();
-  source.buffer = buffer;
-  source.connect(audioCtx.destination);
-  source.start();
-}, [initializeAudioContext]);
-
- const setupSpeechRecognition = useCallback(() => {
-  const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognitionAPI) {
-    setSttError("Your browser doesn't support Speech Recognition. Try Chrome or Edge.");
-    // Also update general status message if it's not just for STT error
-    setStatusMessage(prev => `${prev} Speech Recognition not supported.`);
-    return;
-  }
-
-  const recognitionInstance = new SpeechRecognitionAPI();
-  recognitionInstance.continuous = false;
-  recognitionInstance.interimResults = false;
-  recognitionInstance.lang = 'en-US';
-
-  recognitionInstance.onresult = (event) => {
-    const last = event.results.length - 1;
-    const transcript = event.results[last][0].transcript.trim();
-    console.log('Speech recognized by onresult:', transcript);
-    setPrompt(transcript); // Set the prompt with the new transcript
-    sttJustFinishedRef.current = true; // <--- SET THE FLAG HERE
-    // setIsListening(false); // Typically onend or onstart of next action handles this
-  };
-
-  recognitionInstance.onerror = (event) => {
-    console.error('Speech recognition error:', event.error, event.message);
-    setSttError(`Speech Error: ${event.error} - ${event.message || 'Unknown error'}`);
-    setIsListening(false);
-    sttJustFinishedRef.current = false; // Reset flag on error
-  };
-
-  recognitionInstance.onend = () => {
-    setIsListening(false); // Ensure listening is set to false
-    console.log('Speech recognition ended.');
-    // The useEffect below will now handle triggering based on sttJustFinishedRef
-    // You can set a general status message if needed:
-    // setStatusMessage("Speech input processed.");
-  };
-
-  recognitionRef.current = recognitionInstance;
-}, [setPrompt, setStatusMessage, setSttError, setIsListening]);
-
-const toggleListen = () => {
-  if (!recognitionRef.current) {
-    setSttError("Speech recognition not initialized.");
-    return;
-  }
-  if (isListening) {
-    recognitionRef.current.stop();
-    // onend will set setIsListening(false)
-  } else {
+async function runTextToImageWASM(promptText) {
     try {
-      setPrompt(''); // Clear prompt for new STT input
-      sttJustFinishedRef.current = false; // Reset flag before starting a new session
-      recognitionRef.current.start();
-      setIsListening(true);
-      setSttError('');
-      setStatusMessage("Listening for speech...");
+        // 1. Create an inference session with the ONNX model
+        // The model.onnx file would be your pre-trained text-to-image model
+        // converted to ONNX format and placed in your web server's public path.
+        const session = await ort.InferenceSession.create('./path/to/your_model.onnx', {
+            executionProviders: ['wasm'], // Use WebAssembly backend
+            // graphOptimizationLevel: 'all' // Optional: for performance
+        });
+        console.log("ONNX session created.");
+
+        // 2. Pre-process the input text
+        // This is highly model-specific. You'll need a tokenizer and a way
+        // to convert text to the tensor format your model expects.
+        // For simplicity, let's assume a function preprocessText exists.
+        const inputTensor = await preprocessTextToExpectedTensor(promptText, session.inputNames[0]); // Placeholder
+
+        if (!inputTensor) {
+            console.error("Failed to create input tensor.");
+            return null;
+        }
+
+        const feeds = {};
+        feeds[session.inputNames[0]] = inputTensor;
+
+        // 3. Run inference
+        console.log("Running model inference...");
+        const results = await session.run(feeds);
+        console.log("Inference complete.");
+
+        // 4. Post-process the output
+        // This is also highly model-specific. The output might be raw pixel data,
+        // probabilities, etc., that you need to convert into a displayable image.
+        // Let's assume a function postprocessOutputToImage exists.
+        const outputTensor = results[session.outputNames[0]];
+        const imageElement = await postprocessOutputToTensorToImage(outputTensor); // Placeholder
+
+        return imageElement;
+
     } catch (e) {
-      console.error("Error starting recognition (already started?):", e);
-      setIsListening(false);
+        console.error(`Failed to run ONNX model: ${e}`);
+        // Display error to user
+        document.getElementById('status').innerText = `Error: ${e.message}`;
+        return null;
     }
-  }
-};
-
-  
-const synthesizeAndPlayText = useCallback(async (text) => {
-  if (!ttsPipelineInstance || !speakerEmbeddings) {
-    setStatusMessage("TTS model or speaker embeddings not loaded yet.");
-    return false;
-  }
-  if (!text || !text.trim()) {
-    setStatusMessage("No text provided to synthesize.");
-    return false;
-  }
- const audioCtx = initializeAudioContext();
-  if (!audioCtx) {
-    alert("Could not initialize audio player.");
-    setIsSpeaking(false);
-    return false;
-  }
-  if (audioCtx.state === 'suspended') {
-    try {
-      await audioCtx.resume();
-    } catch (resumeError) {
-      console.error("Failed to resume audio context for TTS:", resumeError);
-      setStatusMessage("TTS Error: Could not resume audio. Please click a button to interact.");
-      setIsSpeaking(false);
-      return false;
-    }
-  }
-  if (audioCtx.state !== 'running') {
-    console.warn(`AudioContext not running (state: ${audioCtx.state}). TTS may fail.`);
-    setStatusMessage("TTS Error: AudioContext not active. Please interact with the page.");
-    setIsSpeaking(false);
-    return false;
-  }
-  setIsSpeaking(true);
-  setStatusMessage(`Synthesizing (Transformers.js): "${text.substring(0, 30)}..."`);
-  try {
-    const output = await ttsPipelineInstance(text.trim(), {
-      speaker_embeddings: speakerEmbeddings,
-    });
-
-    console.log("Transformers.js TTS Output:", output); // Log the entire output object
-
-    // Use the sampling rate from the model output
-    const modelSamplingRate = output.sampling_rate;
-
-    if (output.audio && typeof modelSamplingRate === 'number' && modelSamplingRate > 0) {
-      console.log(`Playing audio with sampling rate: ${modelSamplingRate}`);
-      playAudio(output.audio, modelSamplingRate); // Use the model's actual sampling rate
-      setStatusMessage("Speech synthesized and playing (Transformers.js).");
-    } else {
-      console.error("TTS pipeline output missing valid audio or sampling_rate. Output was:", output);
-      throw new Error("TTS pipeline did not return valid audio data or sampling rate.");
-    }
-  } catch (error) {
-    console.error("Error during Transformers.js speech synthesis:", error);
-    setStatusMessage(`Transformers.js TTS Error: ${error.message}`);
-    setIsSpeaking(false);
-    return false;
-  }
-  setTimeout(() => setIsSpeaking(false), 500); // Adjust as needed, or use audio onended
-  return true;
-}, [
-  ttsPipelineInstance,
-  speakerEmbeddings,
-  initializeAudioContext,
-  playAudio,
-  setStatusMessage,
-  setIsSpeaking
-]);
-  
-const handleGenerateText = async () => {
-  if (!generator) {
-    alert("The text generation model is not loaded yet. Please wait.");
-    return;
-  }
-
-  let textToProcess = prompt.trim();
-  let isRespeaking = false;
-
-  if (!textToProcess && generatedOutput.trim()) {
-    textToProcess = generatedOutput.trim(); // Use last generated output if prompt is empty
-    isRespeaking = true; 
-    setStatusMessage("Re-speaking previous output...");
-  } else if (!textToProcess) {
-    alert("Please enter some text or use speech-to-text to provide a prompt.");
-    return;
-  }
-
-  // If not re-speaking, then generate new text
-  if (!isRespeaking) {
-    setIsGenerating(true);
-    setGeneratedOutput("Generating, please wait..."); // Clear/update previous LLM output display
-    setStatusMessage("Generating text...");
-  }
-  
-  let newLLMText = ""; // Declare here
-
-  try {
-    if (!isRespeaking) {
-      const outputs = await generator(textToProcess, { max_new_tokens: 150 });
-      if (outputs && outputs.length > 0 && outputs[0].generated_text) {
-        newLLMText = outputs[0].generated_text;
-        setGeneratedOutput(newLLMText); // Display LLM output
-      } else {
-        setGeneratedOutput("No text was generated or output format was unexpected.");
-        setStatusMessage("Text generation failed to produce output.");
-        setIsGenerating(false);
-        return;
-      }
-    } else {
-      newLLMText = textToProcess; // If re-speaking, newLLMText is the existing generatedOutput
-    }
-
-    setStatusMessage("Text processing complete. Auto-speaking...");
-
-    // --- Automatically send to PREFERRED TTS ---
-    if (preferredTtsEngine === 'webSpeechAPI') {
-      setWebSpeechApiDedicatedInput(newLLMText); // Update the WebSpeech textarea for consistency
-      speakWithWebAPI(newLLMText);          // Call the refactored Web Speech function
-    } else if (preferredTtsEngine === 'transformersJS') {
-      setTextToSpeakInput(newLLMText);      // Update the Transformers.js TTS textarea
-      await synthesizeAndPlayText(newLLMText); // Call your existing Transformers.js function
-    }
-    // --- End of auto TTS ---
-
-  } catch (error) {
-    console.error("Error during text generation or auto-speak setup:", error);
-    setGeneratedOutput(`Error: ${error.message}`);
-    setStatusMessage(`Error in processing: ${error.message}`);
-  }
-  if (!isRespeaking) {
-    setIsGenerating(false);
-  }
-};
-  
-useEffect(() => {
-setupSpeechRecognition();
-}, [setupSpeechRecognition]);
-  
-useEffect(() => {
-if (generator && ttsPipelineInstance && promptTextareaRef.current) {
-promptTextareaRef.current.focus();
 }
-}, [generator, ttsPipelineInstance]);
 
-useEffect(() => {
-  // Check if:
-  // 1. The prompt has text.
-  // 2. The sttJustFinishedRef flag is true (meaning STT just updated the prompt).
-  // 3. We are not currently generating text with the LLM.
-  // 4. We are not currently synthesizing speech with TTS.
-  if (prompt.trim() && sttJustFinishedRef.current && !isGenerating && !isSpeaking) {
-    console.log("STT provided new prompt, automatically triggering text generation:", prompt);
-    // Call your existing LLM generation handler
-    // Ensure handleGenerateText is stable (memoized with useCallback) if it's a dependency
-    handleGenerateText(); 
-    sttJustFinishedRef.current = false; // Reset the flag immediately after triggering
-    // to prevent re-triggering from other prompt changes.
-  }
-}, [prompt, isGenerating, isSpeaking, handleGenerateText]);
-  
-useLayoutEffect(() => {
-    console.log('Forcing remote settings and disabling cache for loading.');
-    env.localFilesOnly = false;
-    env.allowLocalModels = false; // Explicitly disallow local models for fetching
-    env.useBrowserCache = false;  // Disable browser cache for model files
-    env.remoteHost = 'https://huggingface.co';
-    env.remotePathTemplate = '{model}/resolve/main/';
-    setStatusMessage('Loading model, please wait...');
+async function preprocessTextToExpectedTensor(text, inputName) {
+    console.log(`Preprocessing text for input: ${inputName}, text: "${text}"`);
+    // Example: If your model expects a tensor of shape [1, sequence_length] with int32 token IDs
+    // This is a VAST simplification. Real tokenization is complex.
+    const tokenizedText = text.split('').map(char => char.charCodeAt(0) % 100); // Highly simplistic tokenization
+    const sequenceLength = 64; // Example, model dependent
+    const paddedTokens = new Array(sequenceLength).fill(0);
+    for (let i = 0; i < Math.min(tokenizedText.length, sequenceLength); i++) {
+        paddedTokens[i] = tokenizedText[i];
+    }
+    const data = Int32Array.from(paddedTokens);
+    return new ort.Tensor('int32', data, [1, sequenceLength]);
+}
 
-async function loadModel() {
-      try {
-        const pipelineInstance = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-783M', {
-          progress_callback: (progress) => {
-            const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
-            const message = `Loading: ${progress.file} - ${progress.status} (${percentage}%)`;
-            console.log(message);
-            setStatusMessage(message); // Update status message
-          }
-        });
-        console.log("Pipeline loaded successfully.");
-        setStatusMessage("Model loaded! Ready to generate.");
-        setGenerator(() => pipelineInstance); // Store the loaded pipeline using functional update
-      } catch (error) {
-        console.error("Failed to load pipeline:", error);
-        setStatusMessage(`Error loading model: ${error.message}`);
-      }
-       try {
-        setStatusMessage(prev => `${prev} Loading TTS model (SpeechT5)...`);
-        // 1. Load the TTS pipeline (vocoder is usually handled internally by this pipeline for SpeechT5)
-        const ttsPipe = await pipeline('text-to-speech', 'Xenova/speecht5_tts', {
-          progress_callback: (progress) => {
-            const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
-            const message = `Loading TTS: ${progress.file} (${percentage}%)`;
-            // console.log(message);
-            setStatusMessage(message);
-          },
-          // The 'Xenova/speecht5_tts' pipeline will automatically look for 'Xenova/speecht5_vocoder'
-        });
-        setTtsPipelineInstance(() => ttsPipe);
-        setStatusMessage(prev => `${prev} TTS model loaded.`);
-        console.log("TTS pipeline (SpeechT5 + Vocoder) loaded successfully.");
-        // 2. Load speaker embeddings (example from Hugging Face datasets)
-        setStatusMessage(prev => `${prev} Loading speaker embeddings...`);
-        const speaker_embeddings_url = 'https://huggingface.co/datasets/Xenova/transformers.js-docs/resolve/main/speaker_embeddings.bin';
-        const response = await fetch(speaker_embeddings_url);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch speaker embeddings: ${response.statusText}`);
+// Placeholder for output postprocessing:
+// The output tensor needs to be converted to an image.
+// This depends heavily on the model's output format (e.g., [batch, height, width, channels]).
+async function postprocessOutputToTensorToImage(tensor) {
+    console.log("Postprocessing output tensor:", tensor);
+    // Assuming tensor.data contains pixel values (e.g., RGB) and tensor.dims gives dimensions.
+    // This is a very simplified example of creating a canvas and drawing pixels.
+    // A real implementation would handle normalization, color spaces, etc.
+    const [batchSize, channels, height, width] = tensor.dims; // Or [b,h,w,c] depending on model
+    if (batchSize !== 1) console.warn("Batch size is not 1, displaying first image only.");
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.createImageData(width, height);
+    const data = imageData.data; // Uint8ClampedArray: R, G, B, A, R, G, B, A...
+
+    // Assuming tensor.data is Float32Array of normalized pixel values (0-1)
+    // And model output is in CHW (Channels, Height, Width) format
+    const pixelData = tensor.data;
+
+    if (channels === 3) { // RGB
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const rIdx = (0 * height * width) + (y * width) + x;
+                const gIdx = (1 * height * width) + (y * width) + x;
+                const bIdx = (2 * height * width) + (y * width) + x;
+                const dataIdx = (y * width + x) * 4;
+                data[dataIdx]     = pixelData[rIdx] * 255; // R
+                data[dataIdx + 1] = pixelData[gIdx] * 255; // G
+                data[dataIdx + 2] = pixelData[bIdx] * 255; // B
+                data[dataIdx + 3] = 255;                   // Alpha (opaque)
+            }
         }
-        const speakerEmb = new Float32Array(await response.arrayBuffer());
-        // Reshape to [1, 512] as expected by the model
-        const reshapedSpeakerEmb = new Tensor('float32', speakerEmb, [1, 512]);
-        setSpeakerEmbeddings(reshapedSpeakerEmb);
-        setStatusMessage("All models loaded! Ready.");
-        console.log("Speaker embeddings loaded successfully.");
+    } else if (channels === 1) { // Grayscale
+         for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const valIdx = (y * width) + x;
+                const dataIdx = (y * width + x) * 4;
+                const intensity = pixelData[valIdx] * 255;
+                data[dataIdx]     = intensity; // R
+                data[dataIdx + 1] = intensity; // G
+                data[dataIdx + 2] = intensity; // B
+                data[dataIdx + 3] = 255;       // Alpha
+            }
+        }
+    } else {
+        console.error("Unsupported channel count:", channels);
+        return null;
+    }
 
-      } catch (error) {
-        console.error("Failed to load TTS pipeline or speaker embeddings:", error);
-        setStatusMessage(prev => `${prev} TTS Error: ${error.message}.`);
-      }
+    ctx.putImageData(imageData, 0, 0);
+    const img = document.createElement('img');
+    img.src = canvas.toDataURL();
+    return img;
 }
-
+  
 const imageChannel = new BroadcastChannel('imageChannel');
 const fileInput = document.getElementById('fileInput');
 fileInput.addEventListener('change', (event) => {
@@ -502,21 +184,33 @@ Module.callMain();
 }
 };
 xhr.send();
-    
-loadModel();
+
+
+  document.getElementById('generateButton').addEventListener('click', async () => {
+    const prompt = document.getElementById('promptInput').value;
+    if (!prompt) {
+        alert("Please enter a prompt.");
+        return;
+    }
+
+    document.getElementById('status').innerText = "Loading model and generating...";
+    document.getElementById('imageOutput').innerHTML = ""; // Clear previous image
+
+    const imageElement = await runTextToImageWASM(prompt);
+
+    if (imageElement) {
+        document.getElementById('imageOutput').appendChild(imageElement);
+        document.getElementById('status').innerText = "Image generated!";
+    } else {
+        document.getElementById('status').innerText = "Failed to generate image. Check console for errors.";
+    }
+});
+
+  
 }, []);
 
   
 
-  // --- Handle Text-to-Speech Generation ---
-const handleSynthesizeSpeech = async () => {
-  // The text is already in textToSpeakInput state, bound to the TTS textarea
-  if (!textToSpeakInput.trim()) {
-      alert("Please enter text in the TTS input area to synthesize.");
-      return;
-  }
-  await synthesizeAndPlayText(textToSpeakInput);
-};
 
 return (
 <>
