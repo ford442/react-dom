@@ -18,7 +18,8 @@ const audioContextRef = useRef(null); // For playing audio
 const [isListening, setIsListening] = useState(false);
 const [sttError, setSttError] = useState('');
 const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
-
+const [textToSpeakInput, setTextToSpeakInput] = useState("Hello, this is a test of text to speech.");
+const [isSpeaking, setIsSpeaking] = useState(false);
       
 const initializeAudioContext = useCallback(() => {
   if (!audioContextRef.current) {
@@ -362,8 +363,7 @@ const handleGenerateText = async () => {
 };
 
   // --- Handle Text-to-Speech Generation ---
-const [textToSpeakInput, setTextToSpeakInput] = useState("Hello, this is a test of text to speech.");
-const [isSpeaking, setIsSpeaking] = useState(false);
+
 const handleSynthesizeSpeech = async () => {
   // The text is already in textToSpeakInput state, bound to the TTS textarea
   if (!textToSpeakInput.trim()) {
