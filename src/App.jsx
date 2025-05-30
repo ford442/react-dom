@@ -28,7 +28,8 @@ const synthRef = useRef(null);
 const [preferredTtsEngine, setPreferredTtsEngine] = useState('webSpeechAPI'); // Default to 'webSpeechAPI' or 'transformersJS'
 const [finalSttTranscript, setFinalSttTranscript] = useState(null);
 const sttJustFinishedRef = useRef(false);
-  
+const [webSpeechApiDedicatedInput, setWebSpeechApiDedicatedInput] = useState("Hello from browser TTS!");
+
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
   if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
   if (synthRef.current.speaking) { synthRef.current.cancel(); }
@@ -654,14 +655,14 @@ max={2.0}
   </label>
 </div>
   
-<h2>Text to Speech (Browser Built-in)</h2>
-<textarea
-    value={webSpeechText}
-    onChange={(e) => setWebSpeechText(e.target.value)}
+  <h2>Text to Speech (Browser Built-in)</h2>
+  <textarea
+    value={webSpeechApiDedicatedInput} // Use the new state here
+    onChange={(e) => setWebSpeechApiDedicatedInput(e.target.value)} // Update the new state
     placeholder="Enter text for browser TTS..."
     rows={3}
     style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px' }}
-    disabled={isWebSpeaking}
+    disabled={isSpeaking} // Or a dedicated isWebSpeaking state
   />
 <div style={{ marginBottom: '10px' }}>
 <label htmlFor="voice-select-webapi" style={{ position:'absolute',zIndex:4000,marginRight: '10px' }}>Voice:</label>
