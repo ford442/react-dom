@@ -143,7 +143,7 @@ const [speakerEmbeddings, setSpeakerEmbeddings] = useState(null);
         }
         const speakerEmb = new Float32Array(await response.arrayBuffer());
         // Reshape to [1, 512] as expected by the model
-        const reshapedSpeakerEmb = new env.Tensor('float32', speakerEmb, [1, 512]);
+        const reshapedSpeakerEmb = new Tensor('float32', speakerEmb, [1, 512]);
         setSpeakerEmbeddings(reshapedSpeakerEmb);
         setStatusMessage("All models loaded! Ready.");
         console.log("Speaker embeddings loaded successfully.");
