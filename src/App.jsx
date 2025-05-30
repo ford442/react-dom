@@ -1,29 +1,26 @@
 import { useState, useRef, useEffect, useCallback,useLayoutEffect } from 'react'
-import { CreateMLCEngine } from "@mlc-ai/web-llm";
+
+import { pipeline, env, RawImage } from '@xenova/transformers';
 
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import './App.css'
 
 function App() {
+  
 useLayoutEffect(() => {
-
-const appConfig = {
-  model_list: [
-    {
-      model: "https://1ink.us/files/",
-      model_id: "wasm-TinyLlama-1.1B-Chat-q4f342_1",
-      model_lib: "https://1ink.us/files/TinyLlama-1.1B-Chat-v1.0-q4f32_1-webgpu.wasm",
-    },
-  ],
-};
   
-const selectedModel = "wasm-TinyLlama-1.1B-Chat-q4f342_1";
+const generator = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-783M', {
+progress_callback: (progress) => {
+console.log(`Loading model: ${progress.file} (${(progress.loaded / progress.total * 100).toFixed(2)}%)`);
+if (typeof document !== 'undefined' && document.getElementById('outputText')) {
+document.getElementById('outputText').textContent = `Loading model: ${progress.file} - ${progress.status}... (${(progress.loaded / progress.total * 100).toFixed(2)}%)`;
+}
+}
+});
   
-const engine = CreateMLCEngine(
-selectedModel,
-{appConfig: appConfig},
-);
+console.log("Pipeline loaded.");
+  
   
 const imageChannel = new BroadcastChannel('imageChannel');
 const fileInput = document.getElementById('fileInput');
