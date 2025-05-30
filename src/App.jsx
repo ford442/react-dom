@@ -234,7 +234,7 @@ const synthesizeAndPlayText = async (text) => {
   setStatusMessage(`Synthesizing: "${text.substring(0, 30)}..."`);
 
   try {
-    const output = ttsPipelineInstance(text.trim(), {
+    const output = await ttsPipelineInstance(text.trim(), {
       speaker_embeddings: speakerEmbeddings,
     });
 
@@ -369,7 +369,7 @@ setIsSpeaking(true);
 setStatusMessage("Synthesizing speech...");
 
 try {
-      const output = ttsPipelineInstance(textToSpeakInput.trim(), {
+      const output = await ttsPipelineInstance(textToSpeakInput.trim(), {
         speaker_embeddings: speakerEmbeddings,
       });
       // output.audio is a Float32Array
