@@ -90,7 +90,6 @@ function App() {
     env.localFilesOnly = false;
     env.allowLocalModels = false; // Explicitly disallow local models for fetching
     env.useBrowserCache = false;  // Disable browser cache for model files
-
     env.remoteHost = 'https://huggingface.co';
     env.remotePathTemplate = '{model}/resolve/main/';
 
@@ -113,10 +112,69 @@ function App() {
         console.error("Failed to load pipeline:", error);
         setStatusMessage(`Error loading model: ${error.message}`);
       }
+      let sttPipeline = null;
+      
     }
 
     loadModel();
 
+const imageChannel = new BroadcastChannel('imageChannel');
+const fileInput = document.getElementById('fileInput');
+fileInput.addEventListener('change', (event) => {
+let file = event.target.files[0];
+if (file) {
+const reader = new FileReader();
+reader.onload = (e) => {
+const imageDataURL = e.target.result;
+window.open('./depth.1ink');
+setTimeout(function(){
+imageChannel.postMessage({ imageDataURL });
+},4500);      };
+reader.readAsDataURL(file);
+}
+});
+
+const xhrPath = document.querySelector('#loadPath').innerHTML;
+const xhr = new XMLHttpRequest();
+xhr.open('GET', xhrPath, true); // Replace with your filename
+xhr.responseType = 'arraybuffer'; // Get raw binary data
+console.log('got react run');
+function decodeUTF32(uint8Array, isLittleEndian = true) {
+const dataView = new DataView(uint8Array.buffer);
+let result = "";
+for (let i = 0; i < uint8Array.length; i += 4) {
+let codePoint;
+if (isLittleEndian) {
+codePoint = dataView.getUint32(i, true); // Little-endian
+} else {
+codePoint = dataView.getUint32(i, false); // Big-endian
+}
+result += String.fromCodePoint(codePoint);
+}
+return result;
+}
+xhr.onload = function() {
+console.log('got load loader');
+if (xhr.status === 200) {
+const utf32Data = xhr.response;
+  //  const decoder = new TextDecoder('utf-32'); // Or 'utf-32be'
+const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
+const scr = document.createElement('script');
+// scr.type = 'module';
+scr.text = jsCode;
+document.body.appendChild(scr);
+var Module = {}; // Initialize an empty Module object
+setTimeout(function(){
+Module = libload();
+Module.onRuntimeInitialized = function(){
+console.log('call main loader');
+Module.callMain();
+};
+},2500);
+}
+};
+xhr.send();
+    
   }, []);
 
   const handleGenerateText = async () => {
@@ -279,16 +337,17 @@ max={2.0}
         flexDirection: 'column',
         gap: '10px'
       }}>
-        <h2>Test Text Generation (LaMini-Flan-T5-783M)</h2>
-        <div id="outputText" style={{ fontStyle: 'italic', marginBottom: '10px' }}>
+    <h2>Test Text Generation (LaMini-Flan-T5-783M)</h2>
+        <div id="outputTextGlobalStatus" style={{ fontStyle: 'italic', marginBottom: '10px' }}>
           {statusMessage} {/* Display model loading status here */}
         </div>
         <textarea
+          ref={promptTextareaRef} // Assign the ref here
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Enter your prompt here (e.g., 'Translate to German: Good morning')"
+          placeholder="Enter prompt or use Speech-to-Text..."
           rows={3}
-          style={{ width: '100%', padding: '8px', boxSizing: 'border-box', pointerEvents: 'auto' }}
+          style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
           disabled={!generator || isGenerating}
         />
         <button
@@ -298,13 +357,20 @@ max={2.0}
         >
           {isGenerating ? 'Generating...' : 'Generate Text'}
         </button>
+        
+        {/* STT Button and status from Option A */}
+        <div style={{ marginTop: '10px', paddingTop:'10px', borderTop: '1px solid #eee' }}>
+          <button onClick={toggleListen} disabled={!recognitionRef.current}> {/* Ensure toggleListen is defined */}
+            {isListening ? 'Stop Listening' : 'Start Listening'}
+          </button>
+          {isListening && <p><i>Listening...</i></p>}
+          {sttError && <p style={{ color: 'red' }}>{sttError}</p>}
+        </div>
+
         <h3>Generated Output:</h3>
         <div style={{
-          minHeight: '50px',
-          padding: '10px',
-          border: '1px solid #eee',
-          backgroundColor: '#f9f9f9',
-          whiteSpace: 'pre-wrap' // To respect newlines in output
+          minHeight: '50px', padding: '10px', border: '1px solid #eee',
+          backgroundColor: '#f9f9f9', whiteSpace: 'pre-wrap'
         }}>
           {generatedOutput}
         </div>
