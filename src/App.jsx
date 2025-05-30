@@ -11,7 +11,7 @@ useLayoutEffect(() => {
 const appConfig = {
   model_list: [
     {
-      model: "https://1ink.us/files/params/",
+      model: "https://1ink.us/files/",
       model_id: "wasm-TinyLlama-1.1B-Chat-q4f342_1",
       model_lib_url: "https://huggingface.co/cfahlgren1/TinyLlama-1.1B-Chat-v1.0-q4f32_1-webgpu.wasm",
     },
