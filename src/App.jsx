@@ -5,26 +5,19 @@ import Slider from '@mui/material/Slider'; // Assuming you still use these
 import './App.css';
 
 function App() {
-  // State for the pipeline instance
-  const [generator, setGenerator] = useState(null);
-  // State for the current status message (model loading, errors, etc.)
-  const [statusMessage, setStatusMessage] = useState('Initializing...');
-  // State for the user's input prompt
-  const [prompt, setPrompt] = useState('');
-  // State for the generated text
-  const [generatedOutput, setGeneratedOutput] = useState('');
-  // State to indicate if generation is in progress
-  const [isGenerating, setIsGenerating] = useState(false);
-  const promptTextareaRef = useRef(null); // Ref for the prompt textarea
-
-  const [ttsPipeline, setTtsPipeline] = useState(null);
+const [generator, setGenerator] = useState(null);
+const [statusMessage, setStatusMessage] = useState('Initializing...');
+const [prompt, setPrompt] = useState('');
+const [generatedOutput, setGeneratedOutput] = useState('');
+const [isGenerating, setIsGenerating] = useState(false);
+const promptTextareaRef = useRef(null); // Ref for the prompt textarea
+const [ttsPipeline, setTtsPipeline] = useState(null);
 const [speakerEmbeddings, setSpeakerEmbeddings] = useState(null);
-    const [ttsPipelineInstance, setTtsPipelineInstance] = useState(null);
-  const audioContextRef = useRef(null); // For playing audio
-  
-    const [isListening, setIsListening] = useState(false);
-  const [sttError, setSttError] = useState('');
-  const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
+const [ttsPipelineInstance, setTtsPipelineInstance] = useState(null);
+const audioContextRef = useRef(null); // For playing audio
+const [isListening, setIsListening] = useState(false);
+const [sttError, setSttError] = useState('');
+const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
 
   const setupSpeechRecognition = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -34,40 +27,39 @@ const [speakerEmbeddings, setSpeakerEmbeddings] = useState(null);
       return;
     }
 
-    const recognition = new SpeechRecognition();
+const recognition = new SpeechRecognition();
     recognition.continuous = false; // Set to true for continuous listening, false for single phrases
     recognition.interimResults = false; // Set to true to get interim results as user speaks
     recognition.lang = 'en-US'; // Set language
 
-    recognition.onresult = (event) => {
+recognition.onresult = (event) => {
       const last = event.results.length - 1;
       const transcript = event.results[last][0].transcript.trim();
       console.log('Speech recognized:', transcript);
       setPrompt(prevPrompt => prevPrompt ? `${prevPrompt} ${transcript}` : transcript); // Append or set
       setIsListening(false);
-    };
+};
 
-    recognition.onerror = (event) => {
+recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
       setSttError(`Speech Error: ${event.error}`);
       setIsListening(false);
     };
 
-    recognition.onend = () => {
+recognition.onend = () => {
       setIsListening(false);
       console.log('Speech recognition ended.');
     };
 
-    recognitionRef.current = recognition;
+recognitionRef.current = recognition;
   }, [setPrompt]); // setPrompt is a dependency
 
-  // Initialize on mount
-  useEffect(() => {
+useEffect(() => {
     setupSpeechRecognition();
-  }, [setupSpeechRecognition]);
+}, [setupSpeechRecognition]);
 
 
-  const toggleListen = () => {
+const toggleListen = () => {
     if (!recognitionRef.current) {
       setSttError("Speech recognition not initialized.");
       return;
@@ -88,20 +80,18 @@ const [speakerEmbeddings, setSpeakerEmbeddings] = useState(null);
         setIsListening(false); // Reset state
       }
     }
-  };
+};
 
-
-  useLayoutEffect(() => {
+useLayoutEffect(() => {
     console.log('Forcing remote settings and disabling cache for loading.');
     env.localFilesOnly = false;
     env.allowLocalModels = false; // Explicitly disallow local models for fetching
     env.useBrowserCache = false;  // Disable browser cache for model files
     env.remoteHost = 'https://huggingface.co';
     env.remotePathTemplate = '{model}/resolve/main/';
-
     setStatusMessage('Loading model, please wait...');
 
-    async function loadModel() {
+async function loadModel() {
       try {
         const pipelineInstance = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-783M', {
           progress_callback: (progress) => {
@@ -152,8 +142,7 @@ const [speakerEmbeddings, setSpeakerEmbeddings] = useState(null);
         console.error("Failed to load TTS pipeline or speaker embeddings:", error);
         setStatusMessage(prev => `${prev} TTS Error: ${error.message}.`);
       }
-    }
-
+}
 
 const imageChannel = new BroadcastChannel('imageChannel');
 const fileInput = document.getElementById('fileInput');
@@ -216,23 +205,87 @@ loadModel();
     
 }, []);
 
-const handleGenerateText = async () => {
-    if (!generator) {
-      alert("The text generation model is not loaded yet. Please wait.");
-      return;
-    }
-    if (!prompt.trim()) {
-      alert("Please enter some text to generate from.");
-      return;
-    }
+const synthesizeAndPlayText = async (text) => {
+  if (!ttsPipelineInstance || !speakerEmbeddings) {
+    setStatusMessage("TTS model or speaker embeddings not loaded yet.");
+    alert("TTS model or speaker embeddings not loaded yet.");
+    return false; // Indicate failure
+  }
+  if (!text || !text.trim()) {
+    setStatusMessage("No text provided to synthesize.");
+    // alert("No text to synthesize."); // Might be too noisy if called automatically
+    return false; // Indicate failure
+  }
 
-    setIsGenerating(true);
-    setGeneratedOutput("Generating, please wait...");
+  // Ensure AudioContext is active (important for autoplay)
+  initializeAudioContext();
+  if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+    try {
+      await audioContextRef.current.resume();
+    } catch (resumeError) {
+      console.error("Failed to resume audio context automatically:", resumeError);
+      setStatusMessage("TTS Error: Could not resume audio. Please click to interact.");
+      alert("Could not play audio automatically. Please click 'Synthesize & Play Speech' button once.");
+      return false; // Indicate failure
+    }
+  }
+
+  setIsSpeaking(true);
+  setStatusMessage(`Synthesizing: "${text.substring(0, 30)}..."`);
+
+  try {
+    const output = await ttsPipelineInstance(text.trim(), {
+      speaker_embeddings: speakerEmbeddings,
+    });
+
+    if (output.audio && output.sampling_rate) {
+      playAudio(output.audio, output.sampling_rate);
+      setStatusMessage("Speech synthesized and playing.");
+    } else {
+      throw new Error("TTS pipeline did not return valid audio data.");
+    }
+  } catch (error) {
+    console.error("Error during speech synthesis:", error);
+    setStatusMessage(`TTS Synthesis Error: ${error.message}`);
+    setIsSpeaking(false); // Reset on error
+    return false; // Indicate failure
+  }
+
+  // setIsSpeaking(false); // playAudio is async but doesn't return a promise for when it's *done* playing.
+  // For now, we'll set isSpeaking to false quickly. A more robust solution might involve
+  // tracking audio playback completion if needed.
+  // Let's set it after a short delay or assume playback started.
+  setTimeout(() => setIsSpeaking(false), 500); // Reset after a short delay
+  return true; // Indicate success
+};
+  
+const handleGenerateText = async () => {
+  if (!generator) {
+    alert("The text generation model is not loaded yet. Please wait.");
+    return;
+  }
+  if (!prompt.trim() && !generatedOutput.trim()) { // Allow re-speaking previous output if prompt is empty
+    if(generatedOutput.trim()){
+        // If prompt is empty but there's previous generated output, speak that.
+        setTextToSpeakInput(generatedOutput.trim()); // Update TTS input area
+        await synthesizeAndPlayText(generatedOutput.trim());
+    } else {
+        alert("Please enter some text or use speech-to-text to provide a prompt.");
+    }
+    return;
+  }
+
+  let textToProcess = prompt.trim() || generatedOutput.trim(); // Use current prompt, or re-use last generated if prompt is empty
+
+  setIsGenerating(true);
+  setGeneratedOutput("Generating, please wait..."); // Clear previous LLM output display
+  setStatusMessage("Generating text...");
+
 
     try {
       // Call the generator (pipeline) with the prompt
       // You can also pass parameters like max_length, temperature, etc.
-      const outputs = await generator(prompt, {
+      const outputs = await generator(textToProcess, {
         max_new_tokens: 150, // Limit the number of new tokens generated
         // temperature: 0.7,
         // num_beams: 2,
@@ -241,22 +294,30 @@ const handleGenerateText = async () => {
 
       // The output is usually an array of objects.
       // For text2text-generation, it's typically [{ generated_text: "..." }]
-      if (outputs && outputs.length > 0 && outputs[0].generated_text) {
-        setGeneratedOutput(outputs[0].generated_text);
-      } else {
-        setGeneratedOutput("No text was generated. Output format might be unexpected.");
-        console.log("Unexpected output format:", outputs);
-      }
-    } catch (error) {
-      console.error("Error during text generation:", error);
-      setGeneratedOutput(`Error generating text: ${error.message}`);
-    }
+ if (outputs && outputs.length > 0 && outputs[0].generated_text) {
+      newGeneratedText = outputs[0].generated_text;
+      setGeneratedOutput(newGeneratedText); // Display LLM output
+      setStatusMessage("Text generation complete. Preparing for TTS...");
 
-    setIsGenerating(false);
+      // --- Automatically send to TTS ---
+      setTextToSpeakInput(newGeneratedText); // Update the TTS textarea content
+      await synthesizeAndPlayText(newGeneratedText); // Synthesize and play
+      // --- End of auto TTS ---
+
+    } else {
+      setGeneratedOutput("No text was generated or output format was unexpected.");
+      console.log("Unexpected LLM output format:", outputs);
+      setStatusMessage("Text generation failed to produce output.");
+    }
+  } catch (error) {
+    console.error("Error during text generation:", error);
+    setGeneratedOutput(`Error generating text: ${error.message}`);
+    setStatusMessage(`Error in LLM generation: ${error.message}`);
+  }
+  setIsGenerating(false);
 };
 
-
-   const initializeAudioContext = () => {
+const initializeAudioContext = () => {
     if (!audioContextRef.current) {
       // Create AudioContext on user gesture if possible, or on demand
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -265,9 +326,9 @@ const handleGenerateText = async () => {
       }
     }
     return audioContextRef.current;
-  };
+};
 
-  const playAudio = (audioArray, samplingRate) => {
+const playAudio = (audioArray, samplingRate) => {
     const audioCtx = initializeAudioContext();
     if (!audioCtx) {
         alert("Could not initialize audio player. Please interact with the page first.");
@@ -285,34 +346,29 @@ const handleGenerateText = async () => {
     source.buffer = buffer;
     source.connect(audioCtx.destination);
     source.start();
-  };
-
+};
 
   // --- Handle Text-to-Speech Generation ---
-  const [textToSpeakInput, setTextToSpeakInput] = useState("Hello, this is a test of text to speech.");
-  const [isSpeaking, setIsSpeaking] = useState(false);
-
-  const handleSynthesizeSpeech = async () => {
-    if (!ttsPipelineInstance || !speakerEmbeddings) {
-      alert("TTS model or speaker embeddings not loaded yet.");
+const [textToSpeakInput, setTextToSpeakInput] = useState("Hello, this is a test of text to speech.");
+const [isSpeaking, setIsSpeaking] = useState(false);
+const handleSynthesizeSpeech = async () => {
+  // The text is already in textToSpeakInput state, bound to the TTS textarea
+  if (!textToSpeakInput.trim()) {
+      alert("Please enter text in the TTS input area to synthesize.");
       return;
-    }
-    if (!textToSpeakInput.trim()) {
-      alert("Please enter text to synthesize.");
-      return;
-    }
+  }
+  await synthesizeAndPlayText(textToSpeakInput);
+};
 
-    // Attempt to initialize/resume AudioContext on user gesture
-    initializeAudioContext();
-    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+initializeAudioContext();
+if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
       await audioContextRef.current.resume();
-    }
+}
 
+setIsSpeaking(true);
+setStatusMessage("Synthesizing speech...");
 
-    setIsSpeaking(true);
-    setStatusMessage("Synthesizing speech...");
-
-    try {
+try {
       const output = await ttsPipelineInstance(textToSpeakInput.trim(), {
         speaker_embeddings: speakerEmbeddings,
       });
@@ -325,7 +381,7 @@ const handleGenerateText = async () => {
       setStatusMessage(`TTS Synthesis Error: ${error.message}`);
     }
     setIsSpeaking(false);
-  };
+};
   
 return (
 <>
@@ -460,11 +516,11 @@ max={2.0}
         gap: '10px',
         pointerEvents:'auto',
       }}>
-    <h2>Test Text Generation (LaMini-Flan-T5-783M)</h2>
-        <div id="outputTextGlobalStatus" style={{ fontStyle: 'italic', marginBottom: '10px' }}>
+<h2>Test Text Generation (LaMini-Flan-T5-783M)</h2>
+<div id="outputTextGlobalStatus" style={{ fontStyle: 'italic', marginBottom: '10px' }}>
           {statusMessage} {/* Display model loading status here */}
-        </div>
-        <textarea
+</div>
+<textarea
           ref={promptTextareaRef} // Assign the ref here
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
@@ -472,56 +528,54 @@ max={2.0}
           rows={3}
           style={{ position: 'absolute', zIndex: 4000, width: '100%', padding: '8px', boxSizing: 'border-box', pointerEvents: 'auto' }}
           disabled={!generator || isGenerating}
-        />
-        <button
+/>
+<button
           onClick={handleGenerateText}
           disabled={!generator || isGenerating}
           style={{ position: 'absolute', zIndex: 4000, padding: '10px 15px', pointerEvents: 'auto', cursor: (!generator || isGenerating) ? 'not-allowed' : 'pointer' }}
-        >
+>
           {isGenerating ? 'Generating...' : 'Generate Text'}
-        </button>
+</button>
         
         {/* STT Button and status from Option A */}
-        <div style={{ position: 'absolute', zIndex: 4000, marginTop: '10px', paddingTop:'10px', borderTop: '1px solid #eee' }}>
+<div style={{ position: 'absolute', zIndex: 4000, marginTop: '10px', paddingTop:'10px', borderTop: '1px solid #eee' }}>
           <button onClick={toggleListen} disabled={!recognitionRef.current} style={{ pointerEvents: 'auto' }}> {/* Ensure toggleListen is defined */}
             {isListening ? 'Stop Listening' : 'Start Listening'}
           </button>
           {isListening && <p><i>Listening...</i></p>}
           {sttError && <p style={{ color: 'red' }}>{sttError}</p>}
-        </div>
-
-        <h3>Generated Output:</h3>
-        <div style={{
+</div>
+<h3>Generated Output:</h3>
+<div style={{
           minHeight: '50px', padding: '10px', border: '1px solid #eee',
           backgroundColor: '#f9f9f9', whiteSpace: 'pre-wrap'
-        }}>
+}}>
           {generatedOutput}
-        </div>
-      </div>
-      <div style={{
+</div>
+</div>
+<div style={{
         position: 'absolute', zIndex: 4000, marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd',
         backgroundColor: 'rgba(230, 250, 230, 0.9)', // Light green
-      }}>
-        <h2>Text to Speech (Transformers.js - SpeechT5)</h2>
-        <textarea
+}}>
+<h2>Text to Speech (Transformers.js - SpeechT5)</h2>
+<textarea
           value={textToSpeakInput}
           onChange={(e) => setTextToSpeakInput(e.target.value)}
           placeholder="Enter text to synthesize..."
           rows={3}
           style={{ position: 'absolute', zIndex: 4000, width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px', pointerEvents: 'auto' }}
           disabled={!ttsPipelineInstance || isSpeaking}
-        />
-        <button
+/>
+<button
           onClick={handleSynthesizeSpeech}
           disabled={!ttsPipelineInstance || !speakerEmbeddings || isSpeaking || !textToSpeakInput.trim()}
           style={{ position: 'absolute', zIndex: 4000, padding: '10px 15px' }}
         >
           {isSpeaking ? 'Synthesizing...' : 'Synthesize & Play Speech'}
         </button>
-      </div>
-
+</div>
   
-  <div id={'contain1a'} style={{height:'75%',width:'75%'}}>
+<div id={'contain1a'} style={{height:'75%',width:'75%'}}>
 </div>
 </div>
 <div id={'contain2'}>
