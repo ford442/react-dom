@@ -230,23 +230,6 @@ useEffect(() => {
   // or if the prompt was set by LLM output itself for the TTS input textarea.
   // This flag helps differentiate.
 }, [prompt, isGenerating, isSpeaking, handleGenerateText]); // Watch these dependencies
-  
-const toggleListen = () => {
-  if (!recognitionRef.current) { /* ... */ return; }
-  if (isListening) {
-    recognitionRef.current.stop();
-    // onend will set setIsListening(false)
-  } else {
-    try {
-      setPrompt(''); // Clear prompt for new STT input
-      sttJustFinishedRef.current = false; // Reset flag before starting
-      recognitionRef.current.start();
-      setIsListening(true);
-      setSttError('');
-      setStatusMessage("Listening for speech...");
-    } catch (e) { /* ... */ }
-  }
-};
 
 useLayoutEffect(() => {
     console.log('Forcing remote settings and disabling cache for loading.');
