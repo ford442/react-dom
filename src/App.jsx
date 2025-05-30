@@ -470,19 +470,19 @@ max={2.0}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Enter prompt or use Speech-to-Text..."
           rows={3}
-          style={{ width: '100%', padding: '8px', boxSizing: 'border-box', pointerEvents: 'auto' }}
+          style={{ position: 'absolute', zIndex: 4000, width: '100%', padding: '8px', boxSizing: 'border-box', pointerEvents: 'auto' }}
           disabled={!generator || isGenerating}
         />
         <button
           onClick={handleGenerateText}
           disabled={!generator || isGenerating}
-          style={{ padding: '10px 15px', pointerEvents: 'auto', cursor: (!generator || isGenerating) ? 'not-allowed' : 'pointer' }}
+          style={{ position: 'absolute', zIndex: 4000, padding: '10px 15px', pointerEvents: 'auto', cursor: (!generator || isGenerating) ? 'not-allowed' : 'pointer' }}
         >
           {isGenerating ? 'Generating...' : 'Generate Text'}
         </button>
         
         {/* STT Button and status from Option A */}
-        <div style={{ marginTop: '10px', paddingTop:'10px', borderTop: '1px solid #eee' }}>
+        <div style={{ position: 'absolute', zIndex: 4000, marginTop: '10px', paddingTop:'10px', borderTop: '1px solid #eee' }}>
           <button onClick={toggleListen} disabled={!recognitionRef.current} style={{ pointerEvents: 'auto' }}> {/* Ensure toggleListen is defined */}
             {isListening ? 'Stop Listening' : 'Start Listening'}
           </button>
@@ -499,7 +499,7 @@ max={2.0}
         </div>
       </div>
       <div style={{
-        marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd',
+        position: 'absolute', zIndex: 4000, marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd',
         backgroundColor: 'rgba(230, 250, 230, 0.9)', // Light green
       }}>
         <h2>Text to Speech (Transformers.js - SpeechT5)</h2>
@@ -508,13 +508,13 @@ max={2.0}
           onChange={(e) => setTextToSpeakInput(e.target.value)}
           placeholder="Enter text to synthesize..."
           rows={3}
-          style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px', pointerEvents: 'auto' }}
+          style={{ position: 'absolute', zIndex: 4000, width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px', pointerEvents: 'auto' }}
           disabled={!ttsPipelineInstance || isSpeaking}
         />
         <button
           onClick={handleSynthesizeSpeech}
           disabled={!ttsPipelineInstance || !speakerEmbeddings || isSpeaking || !textToSpeakInput.trim()}
-          style={{ padding: '10px 15px' }}
+          style={{ position: 'absolute', zIndex: 4000, padding: '10px 15px' }}
         >
           {isSpeaking ? 'Synthesizing...' : 'Synthesize & Play Speech'}
         </button>
