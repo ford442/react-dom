@@ -348,7 +348,8 @@ max={2.0}
         zIndex: 6000, // Ensure it's above other elements
         display: 'flex',
         flexDirection: 'column',
-        gap: '10px'
+        gap: '10px',
+        pointerEvents:'auto',
       }}>
     <h2>Test Text Generation (LaMini-Flan-T5-783M)</h2>
         <div id="outputTextGlobalStatus" style={{ fontStyle: 'italic', marginBottom: '10px' }}>
