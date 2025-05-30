@@ -117,7 +117,6 @@ function App() {
       
     }
 
-    loadModel();
 
 const imageChannel = new BroadcastChannel('imageChannel');
 const fileInput = document.getElementById('fileInput');
@@ -175,6 +174,8 @@ Module.callMain();
 }
 };
 xhr.send();
+    
+    loadModel();
     
   }, []);
 
