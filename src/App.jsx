@@ -205,28 +205,32 @@ loadModel();
     
 }, []);
 
-const synthesizeAndPlayText = async (text) => {
+const synthesizeAndPlayText = useCallback(async (text) => {
+  // Check if TTS models are ready
   if (!ttsPipelineInstance || !speakerEmbeddings) {
     setStatusMessage("TTS model or speaker embeddings not loaded yet.");
     alert("TTS model or speaker embeddings not loaded yet.");
-    return false; // Indicate failure
+    return false;
   }
   if (!text || !text.trim()) {
     setStatusMessage("No text provided to synthesize.");
-    // alert("No text to synthesize."); // Might be too noisy if called automatically
-    return false; // Indicate failure
+    return false;
   }
 
-  // Ensure AudioContext is active (important for autoplay)
-  initializeAudioContext();
-  if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+  // Ensure AudioContext is active
+  const audioCtx = initializeAudioContext(); // Assuming initializeAudioContext is defined elsewhere
+  if (!audioCtx) {
+    alert("Could not initialize audio player.");
+    return false;
+  }
+  if (audioCtx.state === 'suspended') {
     try {
-      await audioContextRef.current.resume();
+      await audioCtx.resume(); // This await also needs this function to be async
     } catch (resumeError) {
-      console.error("Failed to resume audio context automatically:", resumeError);
+      console.error("Failed to resume audio context:", resumeError);
       setStatusMessage("TTS Error: Could not resume audio. Please click to interact.");
-      alert("Could not play audio automatically. Please click 'Synthesize & Play Speech' button once.");
-      return false; // Indicate failure
+      alert("Could not play audio automatically. Please click a button on the page first.");
+      return false;
     }
   }
 
