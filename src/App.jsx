@@ -4,90 +4,78 @@ import Box from '@mui/material/Box'; // Assuming you still use these
 import Slider from '@mui/material/Slider'; // Assuming you still use these
 import './App.css';
 
+const personalityProfiles = {
+  default: {
+    displayName: "Default Assistant",
+    systemPrompt: "",
+    avatar: "/avatars/default.png", // Ensure these assets are in your public/avatars folder
+    introVideo: null,
+    introPhrase: "Hello! How can I assist you today?",
+    themeColors: {
+      '--ai-primary-color': '#4A90E2',
+      '--ai-secondary-color': '#F5F5F5',
+      '--ai-text-color': '#333333',
+      '--ai-bubble-bg': '#E8F0FE',
+    }
+  },
+  captainPlayful: {
+    displayName: "Captain Playful",
+    systemPrompt: "You are Captain Playful, a friendly, shiny red toy robot...",
+    avatar: "/avatars/captain_playful.png",
+    introVideo: "/intros/captain_playful.mp4", // Ensure these assets are in your public/intros folder
+    introPhrase: "Ahoy there, matey! Captain Playful reporting for duty!",
+    themeColors: {
+      '--ai-primary-color': '#FF6347',
+      '--ai-secondary-color': '#FFFF00',
+      '--ai-text-color': '#4B0082',
+      '--ai-bubble-bg': '#FFDAB9',
+    }
+  },
+  professorPuzzle: {
+    displayName: "Professor Puzzle (Owl)",
+    systemPrompt: "Hoo-hoo! You are Professor Puzzle...",
+    avatar: "/avatars/professor_puzzle.png",
+    introVideo: null,
+    introPhrase: "Hoo-hoo, a new challenger approaches! What puzzle can I help you unravel today?",
+    themeColors: {
+      '--ai-primary-color': '#228B22',
+      '--ai-secondary-color': '#F5DEB3',
+      '--ai-text-color': '#5D4037',
+      '--ai-bubble-bg': '#E8F5E9',
+    }
+  },
+  // Add more personalities as needed
+};
+
 function App() {
 const [generator, setGenerator] = useState(null);
 const [statusMessage, setStatusMessage] = useState('Initializing...');
 const [prompt, setPrompt] = useState('');
 const [generatedOutput, setGeneratedOutput] = useState('');
 const [isGenerating, setIsGenerating] = useState(false);
-const promptTextareaRef = useRef(null); // Ref for the prompt textarea
 const [ttsPipeline, setTtsPipeline] = useState(null);
 const [speakerEmbeddings, setSpeakerEmbeddings] = useState(null);
 const [ttsPipelineInstance, setTtsPipelineInstance] = useState(null);
-const audioContextRef = useRef(null); // For playing audio
 const [isListening, setIsListening] = useState(false);
 const [sttError, setSttError] = useState('');
-const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
 const [textToSpeakInput, setTextToSpeakInput] = useState("Hello, this is a test of text to speech.");
 const [isSpeaking, setIsSpeaking] = useState(false);
 const [webSpeechText, setWebSpeechText] = useState("Hello from the browser's built-in speech synthesis!");
 const [availableVoices, setAvailableVoices] = useState([]);
 const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
 const [isWebSpeaking, setIsWebSpeaking] = useState(false);
-const synthRef = useRef(null);
 const [preferredTtsEngine, setPreferredTtsEngine] = useState('webSpeechAPI'); // Default to 'webSpeechAPI' or 'transformersJS'
 const [finalSttTranscript, setFinalSttTranscript] = useState(null);
-const sttJustFinishedRef = useRef(false);
 const [webSpeechApiDedicatedInput, setWebSpeechApiDedicatedInput] = useState("Hello from browser TTS!");
 const [currentPersonalityKey, setCurrentPersonalityKey] = useState('default');
 const [currentProfile, setCurrentProfile] = useState(personalityProfiles.default); // Store the whole profile
 const [activeTtsEngine, setActiveTtsEngine] = useState('webSpeechAPI'); // Default: 'webSpeechAPI', 'speechT5', 'bark'
 const [barkPipelineInstance, setBarkPipelineInstance] = useState(null);
-
-const personalityProfiles = {
-  default: {
-    displayName: "Default Assistant",
-    systemPrompt: "You are a helpful AI assistant.",
-    avatar: "/avatars/default.png",
-    introPhrase: "Hello! How can I assist you today?",
-    themeColors: { /* ... */ },
-    // Audio FX for Transformers.js output
-    transformersAudioEffects: {
-      playbackRate: 1.0,
-      // No filter or reverb by default
-    },
-    // Parameters for Web Speech API Utterance
-    webSpeechApiParams: {
-      pitch: 1.0,
-      rate: 1.0,
-      // Voice selection is handled by selectedVoiceURI state
-    }
-  },
-  captainPlayful: {
-    displayName: "Captain Playful",
-    systemPrompt: "You are Captain Playful, a friendly toy robot...",
-    avatar: "/avatars/captain_playful.png",
-    introPhrase: "Ahoy there, matey! Captain Playful reporting for duty!",
-    themeColors: { /* ... */ },
-    transformersAudioEffects: {
-      playbackRate: 1.15, // Slightly faster and higher pitch
-      filter: { type: 'bandpass', frequency: 1800, Q: 0.8 }, // Robot-like filter
-      // gain: 0.9, // Slightly lower volume if desired
-    },
-    webSpeechApiParams: {
-      pitch: 1.3,
-      rate: 1.2,
-    }
-  },
-  professorPuzzle: {
-    displayName: "Professor Puzzle (Owl)",
-    systemPrompt: "Hoo-hoo! You are Professor Puzzle, a wise old owl...",
-    avatar: "/avatars/professor_puzzle.png",
-    introPhrase: "Hoo-hoo, a new query perhaps?",
-    themeColors: { /* ... */ },
-    transformersAudioEffects: {
-      playbackRate: 0.85, // Slower, deeper
-      filter: { type: 'lowpass', frequency: 6000 }, // Slightly soften high frequencies
-      reverbImpulseResponse: '/audio/impulses/small-room.wav' // Path to a reverb impulse file
-    },
-    webSpeechApiParams: {
-      pitch: 0.7,
-      rate: 0.85,
-    }
-  },
-  // Add more personalities
-};
-
+const promptTextareaRef = useRef(null); // Ref for the prompt textarea
+const audioContextRef = useRef(null); // For playing audio
+const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
+const synthRef = useRef(null);
+const sttJustFinishedRef = useRef(false);
 
   
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
