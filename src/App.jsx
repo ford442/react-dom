@@ -77,28 +77,20 @@ const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
 const synthRef = useRef(null);
 const sttJustFinishedRef = useRef(false);
 const playedIntroForPersonalityRef = useRef(null);
-  
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
   if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
   if (synthRef.current.speaking) { synthRef.current.cancel(); }
-
   const utterance = new SpeechSynthesisUtterance(textToSay);
-  // ... (voice selection logic as above) ...
   const selectedVoice = availableVoices.find(voice => voice.voiceURI === selectedVoiceURI);
   if (selectedVoice) utterance.voice = selectedVoice;
   else if (availableVoices.length > 0) utterance.voice = availableVoices[0];
-
-
   utterance.onstart = () => { setIsSpeaking(true); setStatusMessage("Speaking (Web Speech API)..."); };
   utterance.onend = () => { setIsSpeaking(false); setStatusMessage("Web Speech API finished."); };
   utterance.onerror = (event) => { /* ... */ setIsSpeaking(false); /* ... */ };
   synthRef.current.speak(utterance);
 }, [synthRef, availableVoices, selectedVoiceURI, setIsSpeaking, setStatusMessage]);
 
-
 const [webSpeechApiInput, setWebSpeechApiInput] = useState("Hello from browser TTS!");
-
-
   
 const initializeAudioContext = useCallback(() => {
   if (!audioContextRef.current) {
@@ -113,7 +105,6 @@ const initializeAudioContext = useCallback(() => {
   }
   return audioContextRef.current;
 }, []);
-
   
 const playAudio = useCallback((audioArray, samplingRate) => {
   const audioCtx = initializeAudioContext(); // Ensure this is robust
@@ -124,25 +115,19 @@ const playAudio = useCallback((audioArray, samplingRate) => {
   if (audioCtx.state === 'suspended') {
     audioCtx.resume().catch(e => console.error("Resume in playAudio failed during effect setup", e));
   }
-
   const buffer = audioCtx.createBuffer(1, audioArray.length, samplingRate);
   buffer.copyToChannel(audioArray, 0);
-
   const sourceNode = audioCtx.createBufferSource();
   sourceNode.buffer = buffer;
-
   let currentNode = sourceNode; // This will be the last node in our audio chain
-
   // Get effects for the current personality
   const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
   const effects = profile.transformersAudioEffects;
-
   if (effects) {
     // Apply Playback Rate
     if (typeof effects.playbackRate === 'number') {
       sourceNode.playbackRate.value = effects.playbackRate;
     }
-
     // Apply Biquad Filter
     if (effects.filter && effects.filter.type) {
       const filterNode = audioCtx.createBiquadFilter();
@@ -159,7 +144,6 @@ const playAudio = useCallback((audioArray, samplingRate) => {
       currentNode.connect(filterNode);
       currentNode = filterNode;
     }
-
     // Apply Gain (Volume)
     if (typeof effects.gain === 'number') {
       const gainNode = audioCtx.createGain();
@@ -167,8 +151,7 @@ const playAudio = useCallback((audioArray, samplingRate) => {
       currentNode.connect(gainNode);
       currentNode = gainNode;
     }
-    
-    // Apply Reverb (ConvolverNode) - More Advanced
+        // Apply Reverb (ConvolverNode) - More Advanced
     if (effects.reverbImpulseResponse) {
       // This part needs to be async if fetching impulse, or preload impulses
       // For simplicity, let's assume impulse is preloaded or this becomes async
@@ -194,19 +177,15 @@ const playAudio = useCallback((audioArray, samplingRate) => {
       console.warn("Reverb effect with ConvolverNode requires preloading or async handling of impulse responses. Not fully implemented in this example.");
     }
   }
-
   currentNode.connect(audioCtx.destination);
   sourceNode.start();
 }, [initializeAudioContext, currentPersonalityKey /*, preloadedImpulseBuffers (if you implement that) */]);
-
   
 const speakWithWebAPI = useCallback((textToSay) => {
   if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
   if (synthRef.current.speaking) { synthRef.current.cancel(); }
-
   const utterance = new SpeechSynthesisUtterance(textToSay);
   const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
-
   // Select voice
   let voiceToUse = availableVoices.find(voice => voice.voiceURI === selectedVoiceURI);
   if (!voiceToUse && availableVoices.length > 0) { // Fallback
@@ -217,7 +196,6 @@ const speakWithWebAPI = useCallback((textToSay) => {
   if (voiceToUse) {
     utterance.voice = voiceToUse;
   }
-
   // Apply pitch and rate from personality profile
   if (profile.webSpeechApiParams) {
     if (typeof profile.webSpeechApiParams.pitch === 'number') {
@@ -230,11 +208,9 @@ const speakWithWebAPI = useCallback((textToSay) => {
       utterance.volume = profile.webSpeechApiParams.volume;
     }
   }
-
   utterance.onstart = () => { setIsSpeaking(true); setStatusMessage("Speaking (Browser)..."); };
   utterance.onend = () => { setIsSpeaking(false); setStatusMessage("Browser speech finished."); };
   utterance.onerror = (event) => { /* ... */ setIsSpeaking(false); /* ... */ };
-  
   synthRef.current.speak(utterance);
 }, [
     availableVoices,
@@ -282,12 +258,9 @@ const synthesizeAndPlayText = useCallback(async (text) => {
     const output = await ttsPipelineInstance(text.trim(), {
       speaker_embeddings: speakerEmbeddings,
     });
-
     console.log("Transformers.js TTS Output:", output); // Log the entire output object
-
     // Use the sampling rate from the model output
     const modelSamplingRate = output.sampling_rate;
-
     if (output.audio && typeof modelSamplingRate === 'number' && modelSamplingRate > 0) {
       console.log(`Playing audio with sampling rate: ${modelSamplingRate}`);
       playAudio(output.audio, modelSamplingRate); // Use the model's actual sampling rate
@@ -312,7 +285,6 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   setStatusMessage,
   setIsSpeaking
 ]);
-
   
 const synthesizeWithBarkAndPlay = useCallback(async (text, personalityKey) => {
   if (!barkPipelineInstance) {
@@ -348,13 +320,10 @@ const synthesizeWithBarkAndPlay = useCallback(async (text, personalityKey) => {
         // Or in options if the pipeline supports it:
         // barkOptions.voice_preset = profile.barkVoicePreset;
         console.log(`Using Bark with options:`, barkOptions, "for text:", text.trim());
-    }
-
-    const output = await barkPipelineInstance(text.trim(), barkOptions);
-
-    console.log("Bark TTS Raw Output:", output);
-
-    if (output.audio && typeof output.sampling_rate === 'number' && output.sampling_rate > 0) {
+}
+const output = await barkPipelineInstance(text.trim(), barkOptions);
+console.log("Bark TTS Raw Output:", output);
+if (output.audio && typeof output.sampling_rate === 'number' && output.sampling_rate > 0) {
       // Bark audio might already be what you want, or you can apply further effects
       playAudio(output.audio, output.sampling_rate, personalityKey || currentPersonalityKey); // Pass personality for effects
       setStatusMessage("Speech synthesized and playing (Bark).");
@@ -378,7 +347,6 @@ const synthesizeWithBarkAndPlay = useCallback(async (text, personalityKey) => {
   currentPersonalityKey, // If using personality-specific bark presets
   // personalityProfiles // If accessing it directly here
 ]);
-
   
 const setupSpeechRecognition = useCallback(() => {
   const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -443,10 +411,8 @@ const handleGenerateText = useCallback(async () => {
     alert("The text generation model is not loaded yet. Please wait.");
     return;
   }
-
   let textToProcess = prompt.trim();
   let isRespeaking = false; // To track if we are just re-speaking old output
-
   if (!textToProcess && generatedOutput.trim()) {
     textToProcess = generatedOutput.trim();
     isRespeaking = true;
@@ -455,26 +421,21 @@ const handleGenerateText = useCallback(async () => {
     alert("Please enter some text or use speech-to-text to provide a prompt.");
     return;
   }
-
   // Set loading states
   if (!isRespeaking) { // Only show "Generating..." if it's new generation
     setIsGenerating(true);
     setGeneratedOutput("Generating, please wait..."); // Clear/update display
     setStatusMessage("Generating text with personality: " + (currentProfile?.displayName || 'Default'));
   }
-
   let newLLMText = ""; // <<<< DECLARE newLLMText HERE
-
   try {
     const systemInstruction = currentProfile.systemPrompt || ""; // Use currentProfile
-
     if (!isRespeaking) { // Only call the LLM if it's a new prompt
       const fullPromptForLLM = systemInstruction + textToProcess;
       console.log("Sending to LLM:", fullPromptForLLM);
       const outputs = await generator(fullPromptForLLM, {
         max_new_tokens: 150,
       });
-
       if (outputs && outputs.length > 0 && outputs[0].generated_text) {
         newLLMText = outputs[0].generated_text; // Assign to the declared variable
         setGeneratedOutput(newLLMText);
@@ -488,9 +449,7 @@ const handleGenerateText = useCallback(async () => {
     } else {
       newLLMText = textToProcess; // If re-speaking, newLLMText is the existing generatedOutput
     }
-
     setStatusMessage("Text processing complete. Auto-speaking...");
-
     // Automatically send to PREFERRED TTS
     if (preferredTtsEngine === 'webSpeechAPI') {
       setWebSpeechApiDedicatedInput(newLLMText);
@@ -502,13 +461,11 @@ const handleGenerateText = useCallback(async () => {
       setTextToSpeakInput(newLLMText); // Or a dedicated bark input state
       await synthesizeWithBarkAndPlay(newLLMText, currentPersonalityKey);
     }
-
   } catch (error) {
     console.error("Error during text generation or auto-speak setup:", error);
     setGeneratedOutput(`Error: ${error.message}`);
     setStatusMessage(`Error in processing: ${error.message}`);
   }
-
   if (!isRespeaking) {
     setIsGenerating(false);
   }
@@ -528,16 +485,12 @@ const handleGenerateText = useCallback(async () => {
   setWebSpeechApiDedicatedInput,
   currentPersonalityKey // If synthesizeWithBarkAndPlay uses it directly
 ]);
-
   
-// Your existing button handler for the "Browser Built-in TTS" section will call this
 const handleWebSpeechSpeakButton = () => { // Renamed to avoid conflict if needed
-    speakWithWebAPI(webSpeechApiInput); // Speaks text from its dedicated textarea
+speakWithWebAPI(webSpeechApiInput); // Speaks text from its dedicated textarea
 };
 
-    // --- Handle Text-to-Speech Generation ---
 const handleSynthesizeSpeech = async () => {
-  // The text is already in textToSpeakInput state, bound to the TTS textarea
   if (!textToSpeakInput.trim()) {
       alert("Please enter text in the TTS input area to synthesize.");
       return;
@@ -545,10 +498,8 @@ const handleSynthesizeSpeech = async () => {
   await synthesizeAndPlayText(textToSpeakInput);
 };
 
-  useEffect(() => {
-  // This line correctly gets the current profile based on the key
-  const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
-  
+useEffect(() => {
+const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
   // If you have a separate setCurrentProfile state, update it here:
   // setCurrentProfile(profile); // (You might already have this or derive currentProfile directly)
 
@@ -558,22 +509,18 @@ const handleSynthesizeSpeech = async () => {
       document.documentElement.style.setProperty(key, value);
     }
   }
-
   // Conceptual: Play intro video
   if (profile.introVideo) {
     console.log(`Personality changed to ${profile.displayName}. Should play intro video: ${profile.introVideo}`);
     // Add your video playing logic here (e.g., set state for a video player)
   }
-
   // Speak the intro phrase ONLY IF:
   // 1. The personality has actually changed (or intro hasn't been played for this one yet)
   // 2. No other TTS is currently active (isSpeaking is false)
   if (profile.introPhrase && playedIntroForPersonalityRef.current !== currentPersonalityKey && !isSpeaking) {
-    
     // Set the ref immediately to prevent re-plays if this effect re-runs quickly
     // before TTS starts and sets isSpeaking to true.
     playedIntroForPersonalityRef.current = currentPersonalityKey;
-
     const playIntroPhrase = async () => {
       console.log(`Playing intro phrase for ${profile.displayName} using ${preferredTtsEngine}`);
       if (preferredTtsEngine === 'webSpeechAPI') {
@@ -586,7 +533,6 @@ const handleSynthesizeSpeech = async () => {
       } else { // For 'speechT5' or 'bark' (consolidated as 'transformersJS' type in your selector)
         let ttsFunctionToCall = null;
         let ttsReady = false;
-
         if (preferredTtsEngine === 'speechT5') {
           if (ttsPipelineInstance && speakerEmbeddings) {
             ttsFunctionToCall = () => synthesizeAndPlayText(profile.introPhrase);
@@ -599,7 +545,6 @@ const handleSynthesizeSpeech = async () => {
           }
         }
         // If you add more 'transformersJS' types, add conditions here
-
         if (ttsReady && ttsFunctionToCall) {
           await ttsFunctionToCall();
         } else {
@@ -608,13 +553,10 @@ const handleSynthesizeSpeech = async () => {
         }
       }
     };
-
     // Use a short timeout to allow theme/video changes to render and ensure TTS engines are ready.
     const timerId = setTimeout(playIntroPhrase, profile.introVideo ? 1000 : 200); // Adjust delay
-
     return () => clearTimeout(timerId); // Cleanup timeout if effect re-runs
   }
-
 }, [
   currentPersonalityKey,
   preferredTtsEngine,
@@ -633,8 +575,8 @@ const handleSynthesizeSpeech = async () => {
 ]);
 
 useEffect(() => {
-  synthRef.current = window.speechSynthesis;
-  const populateVoices = () => {
+synthRef.current = window.speechSynthesis;
+const populateVoices = () => {
     if (synthRef.current) {
       const voices = synthRef.current.getVoices();
       setAvailableVoices(voices);
@@ -649,19 +591,16 @@ useEffect(() => {
       }
     }
   };
-
-  populateVoices();
+populateVoices();
   if (synthRef.current && synthRef.current.onvoiceschanged !== undefined) {
     synthRef.current.onvoiceschanged = populateVoices;
-  }
-
+}
 return () => { // Cleanup
     if (synthRef.current && synthRef.current.onvoiceschanged !== undefined) {
       synthRef.current.onvoiceschanged = null;
     }
   };
 }, [selectedVoiceURI]); // Re-run if selectedVoiceURI changes, or just once on mount initially.
-  
 
 const handleWebSpeechSpeak = () => { // This function is now simpler
   if (!webSpeechText.trim()) { // webSpeechText is the state for its dedicated textarea
@@ -670,13 +609,6 @@ const handleWebSpeechSpeak = () => { // This function is now simpler
   }
   speakWithWebSpeechAPI(webSpeechText);
 };
-      
-
-  
-  
-  
-
-  
   
 useEffect(() => {
 setupSpeechRecognition();
@@ -711,7 +643,7 @@ useLayoutEffect(() => {
     env.useBrowserCache = false;  // Disable browser cache for model files
     env.remoteHost = 'https://huggingface.co';
     env.remotePathTemplate = '{model}/resolve/main/';
-    setStatusMessage('Loading model, please wait...');
+setStatusMessage('Loading models, please wait...');
 
 async function loadModel() {
       try {
@@ -758,7 +690,6 @@ async function loadModel() {
         setSpeakerEmbeddings(reshapedSpeakerEmb);
         setStatusMessage("All models loaded! Ready.");
         console.log("Speaker embeddings loaded successfully.");
-
       } catch (error) {
         console.error("Failed to load TTS pipeline or speaker embeddings:", error);
         setStatusMessage(prev => `${prev} TTS Error: ${error.message}.`);
@@ -803,7 +734,6 @@ reader.readAsDataURL(file);
 }
 });
 
-  
 const xhrPath = document.querySelector('#loadPath').innerHTML;
 const xhr = new XMLHttpRequest();
 xhr.open('GET', xhrPath, true); // Replace with your filename
@@ -844,12 +774,8 @@ Module.callMain();
 }
 };
 xhr.send();
-    
 loadModel();
 }, []);
-
-  
-
 
 return (
 <>
@@ -962,9 +888,7 @@ max={2.0}
 <div id={'wrap'}>
 <div id={'contain1'}>
 <canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
-
 <div style={{ marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd', backgroundColor: 'rgba(230, 240, 250, 0.9)' }}>
-  
 <div style={{ position:'absolute',zIndex:4000,padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
   <h4>Active Text-to-Speech Engine:</h4>
   <select
@@ -982,7 +906,6 @@ max={2.0}
     {/* You can add more options here later */}
   </select>
 </div>
-  
   <div style={{ display: 'flex', alignItems: 'center', gap: '15px', borderBottom: '1px solid #ddd', paddingBottom: '15px' }}>
   {currentProfile.avatar && (
     <img 
@@ -998,7 +921,6 @@ max={2.0}
     {/* You can also put the select for currentPersonalityKey here if preferred */}
   </div>
 </div>
-
 {/* Selector for personality (if not already placed elsewhere) */}
 <div style={{ position:'absolute',zIndex:4000,padding: '10px 0' }}>
  <h4>Select AI Personality:</h4> {/* Changed label slightly for clarity */}
@@ -1015,9 +937,7 @@ max={2.0}
     ))}
   </select>
 </div>
-  
-  
-  <div style={{ position:'absolute',zIndex:4000,padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
+<div style={{ position:'absolute',zIndex:4000,padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
   <h4>Auto-Speak Engine after LLM Generation:</h4>
   <label style={{ marginRight: '15px', cursor: 'pointer' }}>
     <input
@@ -1039,9 +959,8 @@ max={2.0}
     /> Transformers.js (SpeechT5)
   </label>
 </div>
-  
-  <h2>Text to Speech (Browser Built-in)</h2>
-  <textarea
+<h2>Text to Speech (Browser Built-in)</h2>
+<textarea
     value={webSpeechApiDedicatedInput} // Use the new state here
     onChange={(e) => setWebSpeechApiDedicatedInput(e.target.value)} // Update the new state
     placeholder="Enter text for browser TTS..."
@@ -1074,7 +993,6 @@ max={2.0}
     {isWebSpeaking ? 'Speaking...' : 'Speak Text (Browser)'}
 </button>
 </div>
-
 <div style={{
         position: 'absolute', // Or 'absolute' if you prefer, relative to a parent
         bottom: '20px',
@@ -1149,7 +1067,6 @@ max={2.0}
           {isSpeaking ? 'Synthesizing...' : 'Synthesize & Play Speech'}
         </button>
 </div>
-  
 <div id={'contain1a'} style={{height:'75%',width:'75%'}}>
 </div>
 </div>
