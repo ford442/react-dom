@@ -29,7 +29,19 @@ const [preferredTtsEngine, setPreferredTtsEngine] = useState('webSpeechAPI'); //
 const [finalSttTranscript, setFinalSttTranscript] = useState(null);
 const sttJustFinishedRef = useRef(false);
 const [webSpeechApiDedicatedInput, setWebSpeechApiDedicatedInput] = useState("Hello from browser TTS!");
+const [currentPersonality, setCurrentPersonality] = useState('default'); // Default to no specific personality
 
+  const personalities = {
+  default: "", // No specific instruction, uses the model's default behavior
+  helpfulAssistant: "You are a very helpful and friendly assistant. Answer questions clearly, politely, and provide detailed explanations if needed. ",
+  sarcasticBot: "You are a witty and sarcastic bot. Your answers should be humorous and slightly mocking, but still subtly provide the information requested. ",
+  codeHelperPython: "You are an expert Python programming assistant. Explain Python code, help debug, or provide Python code snippets as requested. Assume the user is asking about Python. ",
+  summarizer: "Provide a concise summary of the following text in no more than three sentences: ",
+  translatorToPirate: "Translate the following text into authentic pirate speech, arrr!: ",
+  storytellerCreative: "You are a creative storyteller. Weave an engaging short narrative based on the user's prompt. ",
+};
+
+  
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
   if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
   if (synthRef.current.speaking) { synthRef.current.cancel(); }
@@ -293,70 +305,92 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   setIsSpeaking
 ]);
   
-const handleGenerateText = async () => {
+const handleGenerateText = useCallback(async () => {
   if (!generator) {
     alert("The text generation model is not loaded yet. Please wait.");
     return;
   }
 
-  let textToProcess = prompt.trim();
+  let userActualPrompt = prompt.trim(); // The text entered by the user or from STT
+  let textToProcessForLLM;
   let isRespeaking = false;
 
-  if (!textToProcess && generatedOutput.trim()) {
-    textToProcess = generatedOutput.trim(); // Use last generated output if prompt is empty
-    isRespeaking = true; 
-    setStatusMessage("Re-speaking previous output...");
-  } else if (!textToProcess) {
+  if (!userActualPrompt && generatedOutput.trim()) {
+    // If prompt is empty, and we have previous output, re-process that for TTS
+    // (The personality won't be applied to re-speaking old output unless you want it to)
+    textToProcessForLLM = generatedOutput.trim(); // This will be used by TTS
+    isRespeaking = true;
+    setStatusMessage("Re-speaking previous output with selected personality for TTS...");
+  } else if (!userActualPrompt) {
     alert("Please enter some text or use speech-to-text to provide a prompt.");
     return;
+  } else {
+    // Standard case: new prompt from user
+    // Apply personality here
+    const systemPrompt = personalities[currentPersonality] || "";
+    textToProcessForLLM = systemPrompt + userActualPrompt;
+    setIsGenerating(true);
+    setGeneratedOutput("Generating, please wait...");
+    setStatusMessage("Generating text with personality: " + currentPersonality);
   }
 
-  // If not re-speaking, then generate new text
-  if (!isRespeaking) {
-    setIsGenerating(true);
-    setGeneratedOutput("Generating, please wait..."); // Clear/update previous LLM output display
-    setStatusMessage("Generating text...");
-  }
-  
-  let newLLMText = ""; // Declare here
+  let newLLMText = "";
 
   try {
-    if (!isRespeaking) {
-      const outputs = await generator(textToProcess, { max_new_tokens: 450 });
+    if (!isRespeaking) { // Only call the LLM if it's not a re-speak action
+      console.log("Sending to LLM:", textToProcessForLLM); // Log what's actually sent
+      const outputs = await generator(textToProcessForLLM, { max_new_tokens: 150 });
+
       if (outputs && outputs.length > 0 && outputs[0].generated_text) {
         newLLMText = outputs[0].generated_text;
         setGeneratedOutput(newLLMText); // Display LLM output
       } else {
-        setGeneratedOutput("No text was generated or output format was unexpected.");
+        newLLMText = "No text was generated or output format was unexpected.";
+        setGeneratedOutput(newLLMText);
         setStatusMessage("Text generation failed to produce output.");
         setIsGenerating(false);
-        return;
+        return; // Don't proceed to TTS if LLM failed
       }
     } else {
-      newLLMText = textToProcess; // If re-speaking, newLLMText is the existing generatedOutput
+      newLLMText = textToProcessForLLM; // If re-speaking, this is the old generatedOutput
     }
 
     setStatusMessage("Text processing complete. Auto-speaking...");
 
-    // --- Automatically send to PREFERRED TTS ---
-    if (preferredTtsEngine === 'webSpeechAPI') {
-      setWebSpeechApiDedicatedInput(newLLMText); // Update the WebSpeech textarea for consistency
-      speakWithWebAPI(newLLMText);          // Call the refactored Web Speech function
+    // Automatically send to PREFERRED TTS
+    if (preferredTtsEngine === 'webSpeechAPI') { // Assuming preferredTtsEngine state exists
+      setWebSpeechApiDedicatedInput(newLLMText);
+      speakWithWebAPI(newLLMText);
     } else if (preferredTtsEngine === 'transformersJS') {
-      setTextToSpeakInput(newLLMText);      // Update the Transformers.js TTS textarea
-      await synthesizeAndPlayText(newLLMText); // Call your existing Transformers.js function
+      setTextToSpeakInput(newLLMText);
+      await synthesizeAndPlayText(newLLMText);
     }
-    // --- End of auto TTS ---
 
   } catch (error) {
     console.error("Error during text generation or auto-speak setup:", error);
-    setGeneratedOutput(`Error: ${error.message}`);
+    newLLMText = `Error: ${error.message}`;
+    setGeneratedOutput(newLLMText);
     setStatusMessage(`Error in processing: ${error.message}`);
   }
+
   if (!isRespeaking) {
     setIsGenerating(false);
   }
-};
+}, [
+  generator,
+  prompt,
+  generatedOutput,
+  currentPersonality, // Add currentPersonality as a dependency
+  preferredTtsEngine, // Add preferredTtsEngine if used for selection
+  synthesizeAndPlayText,
+  speakWithWebAPI,     // Add your WebSpeechAPI speak function
+  setIsGenerating,
+  setGeneratedOutput,
+  setStatusMessage,
+  setTextToSpeakInput,
+  setWebSpeechApiDedicatedInput // If you use this state
+  // Add other necessary dependencies
+]);
   
 useEffect(() => {
 setupSpeechRecognition();
@@ -632,6 +666,22 @@ max={2.0}
 
 <div style={{ marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd', backgroundColor: 'rgba(230, 240, 250, 0.9)' }}>
 
+  <div style={{ padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
+  <h4>Select AI Personality/Purpose:</h4>
+  <select
+    value={currentPersonality}
+    onChange={(e) => setCurrentPersonality(e.target.value)}
+    style={{ padding: '8px', width: '100%', boxSizing: 'border-box' }}
+  >
+    {Object.keys(personalities).map(key => (
+      <option key={key} value={key}>
+        {/* Simple way to format the key for display */}
+        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+      </option>
+    ))}
+  </select>
+</div>
+  
   <div style={{ padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
   <h4>Auto-Speak Engine after LLM Generation:</h4>
   <label style={{ marginRight: '15px', cursor: 'pointer' }}>
