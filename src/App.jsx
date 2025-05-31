@@ -97,50 +97,6 @@ const speakWithWebSpeechAPI = useCallback((textToSay) => {
 
 const [webSpeechApiInput, setWebSpeechApiInput] = useState("Hello from browser TTS!");
 
-const speakWithWebAPI = useCallback((textToSay) => {
-  if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
-  if (synthRef.current.speaking) { synthRef.current.cancel(); }
-
-  const utterance = new SpeechSynthesisUtterance(textToSay);
-  const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
-
-  // Select voice
-  let voiceToUse = availableVoices.find(voice => voice.voiceURI === selectedVoiceURI);
-  if (!voiceToUse && availableVoices.length > 0) { // Fallback
-    voiceToUse = availableVoices.find(v => v.lang.startsWith(profile.webSpeechApiParams?.langPrefix || 'en') && v.default) ||
-                 availableVoices.find(v => v.lang.startsWith(profile.webSpeechApiParams?.langPrefix || 'en')) ||
-                 availableVoices[0];
-  }
-  if (voiceToUse) {
-    utterance.voice = voiceToUse;
-  }
-
-  // Apply pitch and rate from personality profile
-  if (profile.webSpeechApiParams) {
-    if (typeof profile.webSpeechApiParams.pitch === 'number') {
-      utterance.pitch = profile.webSpeechApiParams.pitch;
-    }
-    if (typeof profile.webSpeechApiParams.rate === 'number') {
-      utterance.rate = profile.webSpeechApiParams.rate;
-    }
-    if (typeof profile.webSpeechApiParams.volume === 'number') {
-      utterance.volume = profile.webSpeechApiParams.volume;
-    }
-  }
-
-  utterance.onstart = () => { setIsSpeaking(true); setStatusMessage("Speaking (Browser)..."); };
-  utterance.onend = () => { setIsSpeaking(false); setStatusMessage("Browser speech finished."); };
-  utterance.onerror = (event) => { /* ... */ setIsSpeaking(false); /* ... */ };
-  
-  synthRef.current.speak(utterance);
-}, [
-    availableVoices,
-    selectedVoiceURI, // User might still want to override voice from dropdown
-    currentPersonalityKey, // To get profile params
-    synthRef,
-    setIsSpeaking,
-    setStatusMessage
-]);
 
   
 const initializeAudioContext = useCallback(() => {
@@ -242,6 +198,51 @@ const playAudio = useCallback((audioArray, samplingRate) => {
   sourceNode.start();
 }, [initializeAudioContext, currentPersonalityKey /*, preloadedImpulseBuffers (if you implement that) */]);
 
+  
+const speakWithWebAPI = useCallback((textToSay) => {
+  if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
+  if (synthRef.current.speaking) { synthRef.current.cancel(); }
+
+  const utterance = new SpeechSynthesisUtterance(textToSay);
+  const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
+
+  // Select voice
+  let voiceToUse = availableVoices.find(voice => voice.voiceURI === selectedVoiceURI);
+  if (!voiceToUse && availableVoices.length > 0) { // Fallback
+    voiceToUse = availableVoices.find(v => v.lang.startsWith(profile.webSpeechApiParams?.langPrefix || 'en') && v.default) ||
+                 availableVoices.find(v => v.lang.startsWith(profile.webSpeechApiParams?.langPrefix || 'en')) ||
+                 availableVoices[0];
+  }
+  if (voiceToUse) {
+    utterance.voice = voiceToUse;
+  }
+
+  // Apply pitch and rate from personality profile
+  if (profile.webSpeechApiParams) {
+    if (typeof profile.webSpeechApiParams.pitch === 'number') {
+      utterance.pitch = profile.webSpeechApiParams.pitch;
+    }
+    if (typeof profile.webSpeechApiParams.rate === 'number') {
+      utterance.rate = profile.webSpeechApiParams.rate;
+    }
+    if (typeof profile.webSpeechApiParams.volume === 'number') {
+      utterance.volume = profile.webSpeechApiParams.volume;
+    }
+  }
+
+  utterance.onstart = () => { setIsSpeaking(true); setStatusMessage("Speaking (Browser)..."); };
+  utterance.onend = () => { setIsSpeaking(false); setStatusMessage("Browser speech finished."); };
+  utterance.onerror = (event) => { /* ... */ setIsSpeaking(false); /* ... */ };
+  
+  synthRef.current.speak(utterance);
+}, [
+    availableVoices,
+    selectedVoiceURI, // User might still want to override voice from dropdown
+    currentPersonalityKey, // To get profile params
+    synthRef,
+    setIsSpeaking,
+    setStatusMessage
+]);
   
 const synthesizeAndPlayText = useCallback(async (text) => {
   if (!ttsPipelineInstance || !speakerEmbeddings) {
@@ -377,6 +378,119 @@ const synthesizeWithBarkAndPlay = useCallback(async (text, personalityKey) => {
   // personalityProfiles // If accessing it directly here
 ]);
 
+  
+const setupSpeechRecognition = useCallback(() => {
+  const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognitionAPI) {
+    setSttError("Your browser doesn't support Speech Recognition. Try Chrome or Edge.");
+    // Also update general status message if it's not just for STT error
+    setStatusMessage(prev => `${prev} Speech Recognition not supported.`);
+    return;
+  }
+  const recognitionInstance = new SpeechRecognitionAPI();
+  recognitionInstance.continuous = false;
+  recognitionInstance.interimResults = false;
+  recognitionInstance.lang = 'en-US';
+  recognitionInstance.onresult = (event) => {
+    const last = event.results.length - 1;
+    const transcript = event.results[last][0].transcript.trim();
+    console.log('Speech recognized by onresult:', transcript);
+    setPrompt(transcript); // Set the prompt with the new transcript
+    sttJustFinishedRef.current = true; // <--- SET THE FLAG HERE
+    // setIsListening(false); // Typically onend or onstart of next action handles this
+  };
+  recognitionInstance.onerror = (event) => {
+    console.error('Speech recognition error:', event.error, event.message);
+    setSttError(`Speech Error: ${event.error} - ${event.message || 'Unknown error'}`);
+    setIsListening(false);
+    sttJustFinishedRef.current = false; // Reset flag on error
+  };
+  recognitionInstance.onend = () => {
+    setIsListening(false); // Ensure listening is set to false
+    console.log('Speech recognition ended.');
+    // The useEffect below will now handle triggering based on sttJustFinishedRef
+    // You can set a general status message if needed:
+    // setStatusMessage("Speech input processed.");
+  };
+  recognitionRef.current = recognitionInstance;
+}, [setPrompt, setStatusMessage, setSttError, setIsListening]);
+
+const toggleListen = () => {
+  if (!recognitionRef.current) {
+    setSttError("Speech recognition not initialized.");
+    return;
+  }
+  if (isListening) {
+    recognitionRef.current.stop();
+    // onend will set setIsListening(false)
+  } else {
+    try {
+      setPrompt(''); // Clear prompt for new STT input
+      sttJustFinishedRef.current = false; // Reset flag before starting a new session
+      recognitionRef.current.start();
+      setIsListening(true);
+      setSttError('');
+      setStatusMessage("Listening for speech...");
+    } catch (e) {
+      console.error("Error starting recognition (already started?):", e);
+      setIsListening(false);
+    }
+  }
+};
+
+  const handleGenerateText = useCallback(async () => {
+  // ... (your existing LLM generation logic to get newLLMText) ...
+  // After newLLMText is generated by the LLM:
+
+  if (newLLMText) { // Ensure newLLMText is not empty
+    setStatusMessage("Text generation complete. Auto-speaking with: " + activeTtsEngine);
+
+    // Update the relevant textareas based on which engine will speak
+    // This helps if the user wants to see the text in the active engine's input box
+    if (activeTtsEngine === 'webSpeechAPI') {
+      setWebSpeechApiDedicatedInput(newLLMText); // Assuming you have this state
+      speakWithWebAPI(newLLMText);
+    } else if (activeTtsEngine === 'speechT5') {
+      setTextToSpeakInput(newLLMText); // This is the state for SpeechT5's textarea
+      await synthesizeAndPlayText(newLLMText);
+    } else if (activeTtsEngine === 'bark') {
+      // Bark might also use textToSpeakInput or its own dedicated state
+      setTextToSpeakInput(newLLMText); // Or a new state e.g., setBarkTextInput(newLLMText)
+      await synthesizeWithBarkAndPlay(newLLMText, currentPersonalityKey);
+    }
+  }
+  // ...
+  setIsGenerating(false); // From your existing logic
+}, [
+  generator,
+  prompt,
+  generatedOutput,
+  activeTtsEngine, // Add activeTtsEngine as a dependency
+  currentPersonalityKey,
+  synthesizeAndPlayText,
+  speakWithWebAPI, // Ensure this is memoized
+  synthesizeWithBarkAndPlay, // Ensure this is memoized
+  // ... other state setters and dependencies ...
+  setIsGenerating, setGeneratedOutput, setStatusMessage, setTextToSpeakInput, setWebSpeechApiDedicatedInput
+]);
+
+  
+// Your existing button handler for the "Browser Built-in TTS" section will call this
+const handleWebSpeechSpeakButton = () => { // Renamed to avoid conflict if needed
+    speakWithWebAPI(webSpeechApiInput); // Speaks text from its dedicated textarea
+};
+
+    // --- Handle Text-to-Speech Generation ---
+const handleSynthesizeSpeech = async () => {
+  // The text is already in textToSpeakInput state, bound to the TTS textarea
+  if (!textToSpeakInput.trim()) {
+      alert("Please enter text in the TTS input area to synthesize.");
+      return;
+  }
+  await synthesizeAndPlayText(textToSpeakInput);
+};
+
+  
 useEffect(() => {
   const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
   // setCurrentProfile(profile); // Not needed if currentProfile is derived directly as shown above
@@ -465,11 +579,6 @@ return () => { // Cleanup
 }, [selectedVoiceURI]); // Re-run if selectedVoiceURI changes, or just once on mount initially.
   
 
-// Your existing button handler for the "Browser Built-in TTS" section will call this
-const handleWebSpeechSpeakButton = () => { // Renamed to avoid conflict if needed
-    speakWithWebAPI(webSpeechApiInput); // Speaks text from its dedicated textarea
-};
-  
 const handleWebSpeechSpeak = () => { // This function is now simpler
   if (!webSpeechText.trim()) { // webSpeechText is the state for its dedicated textarea
       alert("Please enter text in the 'Browser Built-in TTS' textarea.");
@@ -478,103 +587,11 @@ const handleWebSpeechSpeak = () => { // This function is now simpler
   speakWithWebSpeechAPI(webSpeechText);
 };
       
-const setupSpeechRecognition = useCallback(() => {
-  const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognitionAPI) {
-    setSttError("Your browser doesn't support Speech Recognition. Try Chrome or Edge.");
-    // Also update general status message if it's not just for STT error
-    setStatusMessage(prev => `${prev} Speech Recognition not supported.`);
-    return;
-  }
-  const recognitionInstance = new SpeechRecognitionAPI();
-  recognitionInstance.continuous = false;
-  recognitionInstance.interimResults = false;
-  recognitionInstance.lang = 'en-US';
-  recognitionInstance.onresult = (event) => {
-    const last = event.results.length - 1;
-    const transcript = event.results[last][0].transcript.trim();
-    console.log('Speech recognized by onresult:', transcript);
-    setPrompt(transcript); // Set the prompt with the new transcript
-    sttJustFinishedRef.current = true; // <--- SET THE FLAG HERE
-    // setIsListening(false); // Typically onend or onstart of next action handles this
-  };
-  recognitionInstance.onerror = (event) => {
-    console.error('Speech recognition error:', event.error, event.message);
-    setSttError(`Speech Error: ${event.error} - ${event.message || 'Unknown error'}`);
-    setIsListening(false);
-    sttJustFinishedRef.current = false; // Reset flag on error
-  };
-  recognitionInstance.onend = () => {
-    setIsListening(false); // Ensure listening is set to false
-    console.log('Speech recognition ended.');
-    // The useEffect below will now handle triggering based on sttJustFinishedRef
-    // You can set a general status message if needed:
-    // setStatusMessage("Speech input processed.");
-  };
-  recognitionRef.current = recognitionInstance;
-}, [setPrompt, setStatusMessage, setSttError, setIsListening]);
-
-const toggleListen = () => {
-  if (!recognitionRef.current) {
-    setSttError("Speech recognition not initialized.");
-    return;
-  }
-  if (isListening) {
-    recognitionRef.current.stop();
-    // onend will set setIsListening(false)
-  } else {
-    try {
-      setPrompt(''); // Clear prompt for new STT input
-      sttJustFinishedRef.current = false; // Reset flag before starting a new session
-      recognitionRef.current.start();
-      setIsListening(true);
-      setSttError('');
-      setStatusMessage("Listening for speech...");
-    } catch (e) {
-      console.error("Error starting recognition (already started?):", e);
-      setIsListening(false);
-    }
-  }
-};
 
   
   
   
-const handleGenerateText = useCallback(async () => {
-  // ... (your existing LLM generation logic to get newLLMText) ...
-  // After newLLMText is generated by the LLM:
 
-  if (newLLMText) { // Ensure newLLMText is not empty
-    setStatusMessage("Text generation complete. Auto-speaking with: " + activeTtsEngine);
-
-    // Update the relevant textareas based on which engine will speak
-    // This helps if the user wants to see the text in the active engine's input box
-    if (activeTtsEngine === 'webSpeechAPI') {
-      setWebSpeechApiDedicatedInput(newLLMText); // Assuming you have this state
-      speakWithWebAPI(newLLMText);
-    } else if (activeTtsEngine === 'speechT5') {
-      setTextToSpeakInput(newLLMText); // This is the state for SpeechT5's textarea
-      await synthesizeAndPlayText(newLLMText);
-    } else if (activeTtsEngine === 'bark') {
-      // Bark might also use textToSpeakInput or its own dedicated state
-      setTextToSpeakInput(newLLMText); // Or a new state e.g., setBarkTextInput(newLLMText)
-      await synthesizeWithBarkAndPlay(newLLMText, currentPersonalityKey);
-    }
-  }
-  // ...
-  setIsGenerating(false); // From your existing logic
-}, [
-  generator,
-  prompt,
-  generatedOutput,
-  activeTtsEngine, // Add activeTtsEngine as a dependency
-  currentPersonalityKey,
-  synthesizeAndPlayText,
-  speakWithWebAPI, // Ensure this is memoized
-  synthesizeWithBarkAndPlay, // Ensure this is memoized
-  // ... other state setters and dependencies ...
-  setIsGenerating, setGeneratedOutput, setStatusMessage, setTextToSpeakInput, setWebSpeechApiDedicatedInput
-]);
   
   
 useEffect(() => {
@@ -749,15 +766,6 @@ loadModel();
 
   
 
-  // --- Handle Text-to-Speech Generation ---
-const handleSynthesizeSpeech = async () => {
-  // The text is already in textToSpeakInput state, bound to the TTS textarea
-  if (!textToSpeakInput.trim()) {
-      alert("Please enter text in the TTS input area to synthesize.");
-      return;
-  }
-  await synthesizeAndPlayText(textToSpeakInput);
-};
 
 return (
 <>
