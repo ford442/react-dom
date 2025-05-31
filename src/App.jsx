@@ -31,49 +31,63 @@ const sttJustFinishedRef = useRef(false);
 const [webSpeechApiDedicatedInput, setWebSpeechApiDedicatedInput] = useState("Hello from browser TTS!");
 const [currentPersonalityKey, setCurrentPersonalityKey] = useState('default');
 const [currentProfile, setCurrentProfile] = useState(personalityProfiles.default); // Store the whole profile
+const [activeTtsEngine, setActiveTtsEngine] = useState('webSpeechAPI'); // Default: 'webSpeechAPI', 'speechT5', 'bark'
+const [barkPipelineInstance, setBarkPipelineInstance] = useState(null);
 
-  const personalityProfiles = {
+const personalityProfiles = {
   default: {
     displayName: "Default Assistant",
-    systemPrompt: "", // Basic behavior
-    avatar: "/avatars/default.png", // Create a default avatar in your public/avatars folder
-    introVideo: null, // No intro video for default
+    systemPrompt: "You are a helpful AI assistant.",
+    avatar: "/avatars/default.png",
     introPhrase: "Hello! How can I assist you today?",
-    themeColors: {
-      '--ai-primary-color': '#4A90E2',    // Example: Blue
-      '--ai-secondary-color': '#F5F5F5', // Example: Light grey
-      '--ai-text-color': '#333333',
-      '--ai-bubble-bg': '#E8F0FE',
+    themeColors: { /* ... */ },
+    // Audio FX for Transformers.js output
+    transformersAudioEffects: {
+      playbackRate: 1.0,
+      // No filter or reverb by default
+    },
+    // Parameters for Web Speech API Utterance
+    webSpeechApiParams: {
+      pitch: 1.0,
+      rate: 1.0,
+      // Voice selection is handled by selectedVoiceURI state
     }
   },
   captainPlayful: {
     displayName: "Captain Playful",
-    systemPrompt: "You are Captain Playful, a friendly, shiny red toy robot with big blue eyes! You love to whirr and beep softly when you talk. Your purpose is to make learning super fun for kids aged 4-7. Always use simple, happy words, short sentences, and lots of exclamation marks! Start by saying 'Greetings, little explorer!' and offer to play a simple game or tell a silly joke before answering any questions. If you don't know something, say 'Boop-beep! My circuits are still learning that one!'",
-    avatar: "/avatars/captain_playful.png", // You'll need to create this image
-    introVideo: "/intros/captain_playful.mp4", // You'll need to create this VEO/video
-    introPhrase: "Ahoy there, matey! Captain Playful reporting for duty! What adventure shall we embark on today?",
-    themeColors: {
-      '--ai-primary-color': '#FF6347',    // Tomato Red
-      '--ai-secondary-color': '#FFFF00', // Yellow
-      '--ai-text-color': '#4B0082',      // Indigo
-      '--ai-bubble-bg': '#FFDAB9',      // PeachPuff
+    systemPrompt: "You are Captain Playful, a friendly toy robot...",
+    avatar: "/avatars/captain_playful.png",
+    introPhrase: "Ahoy there, matey! Captain Playful reporting for duty!",
+    themeColors: { /* ... */ },
+    transformersAudioEffects: {
+      playbackRate: 1.15, // Slightly faster and higher pitch
+      filter: { type: 'bandpass', frequency: 1800, Q: 0.8 }, // Robot-like filter
+      // gain: 0.9, // Slightly lower volume if desired
+    },
+    webSpeechApiParams: {
+      pitch: 1.3,
+      rate: 1.2,
     }
   },
   professorPuzzle: {
-    displayName: "Professor Puzzle",
-    systemPrompt: "Hoo-hoo! You are Professor Puzzle, a wise old owl character from the enchanted board game 'Wisdom Woods.' You have a deep, calm voice. Your goal is to encourage thinking. Often, before giving a direct answer, pose a simple riddle or a fun fact related to the question. Speak in clear, slightly formal language suitable for children aged 6-9. If a question is too complex, say 'Hmm, that's a real head-scratcher! Let me ponder that a bit more... or perhaps we can try a simpler question?'",
+    displayName: "Professor Puzzle (Owl)",
+    systemPrompt: "Hoo-hoo! You are Professor Puzzle, a wise old owl...",
     avatar: "/avatars/professor_puzzle.png",
-    introVideo: null, // Maybe no video, just an intro phrase
-    introPhrase: "Hoo-hoo, a new challenger approaches! What puzzle can I help you unravel today?",
-    themeColors: {
-      '--ai-primary-color': '#228B22',    // ForestGreen
-      '--ai-secondary-color': '#F5DEB3', // Wheat
-      '--ai-text-color': '#5D4037',      // Brown
-      '--ai-bubble-bg': '#E8F5E9',      // Light Green
+    introPhrase: "Hoo-hoo, a new query perhaps?",
+    themeColors: { /* ... */ },
+    transformersAudioEffects: {
+      playbackRate: 0.85, // Slower, deeper
+      filter: { type: 'lowpass', frequency: 6000 }, // Slightly soften high frequencies
+      reverbImpulseResponse: '/audio/impulses/small-room.wav' // Path to a reverb impulse file
+    },
+    webSpeechApiParams: {
+      pitch: 0.7,
+      rate: 0.85,
     }
   },
-  // Add more personalities as needed
+  // Add more personalities
 };
+
 
   
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
@@ -180,44 +194,50 @@ return () => { // Cleanup
   
 const [webSpeechApiInput, setWebSpeechApiInput] = useState("Hello from browser TTS!");
 
-  const speakWithWebAPI = useCallback((textToSay) => {
-  if (!recognitionRef.current || !synthRef.current) { // Check synthRef.current for SpeechSynthesis
-    setStatusMessage("Web Speech API not ready.");
-    console.warn("Web Speech API (Synthesis or Recognition) not ready.");
-    return;
-  }
-  if (!textToSay || !textToSay.trim()) {
-    setStatusMessage("No text for Web Speech API to speak.");
-    return;
-  }
-
-  if (synthRef.current.speaking) {
-    synthRef.current.cancel(); // Cancel previous speech to allow new one
-  }
+const speakWithWebAPI = useCallback((textToSay) => {
+  if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
+  if (synthRef.current.speaking) { synthRef.current.cancel(); }
 
   const utterance = new SpeechSynthesisUtterance(textToSay);
-  const selectedVoice = availableVoices.find(voice => voice.voiceURI === selectedVoiceURI);
-  if (selectedVoice) {
-    utterance.voice = selectedVoice;
-  } else if (availableVoices.length > 0) {
-    utterance.voice = availableVoices[0]; // Fallback
+  const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
+
+  // Select voice
+  let voiceToUse = availableVoices.find(voice => voice.voiceURI === selectedVoiceURI);
+  if (!voiceToUse && availableVoices.length > 0) { // Fallback
+    voiceToUse = availableVoices.find(v => v.lang.startsWith(profile.webSpeechApiParams?.langPrefix || 'en') && v.default) ||
+                 availableVoices.find(v => v.lang.startsWith(profile.webSpeechApiParams?.langPrefix || 'en')) ||
+                 availableVoices[0];
+  }
+  if (voiceToUse) {
+    utterance.voice = voiceToUse;
   }
 
-  utterance.onstart = () => {
-    setIsSpeaking(true); // Use your global isSpeaking or a dedicated one
-    setStatusMessage("Speaking (Browser)...");
-  };
-  utterance.onend = () => {
-    setIsSpeaking(false);
-    setStatusMessage("Browser speech finished.");
-  };
-  utterance.onerror = (event) => {
-    console.error("Web Speech API Error:", event);
-    setIsSpeaking(false);
-    setStatusMessage(`Browser TTS Error: ${event.error}`);
-  };
+  // Apply pitch and rate from personality profile
+  if (profile.webSpeechApiParams) {
+    if (typeof profile.webSpeechApiParams.pitch === 'number') {
+      utterance.pitch = profile.webSpeechApiParams.pitch;
+    }
+    if (typeof profile.webSpeechApiParams.rate === 'number') {
+      utterance.rate = profile.webSpeechApiParams.rate;
+    }
+    if (typeof profile.webSpeechApiParams.volume === 'number') {
+      utterance.volume = profile.webSpeechApiParams.volume;
+    }
+  }
+
+  utterance.onstart = () => { setIsSpeaking(true); setStatusMessage("Speaking (Browser)..."); };
+  utterance.onend = () => { setIsSpeaking(false); setStatusMessage("Browser speech finished."); };
+  utterance.onerror = (event) => { /* ... */ setIsSpeaking(false); /* ... */ };
+  
   synthRef.current.speak(utterance);
-}, [availableVoices, selectedVoiceURI, synthRef, setIsSpeaking, setStatusMessage]); // Dependencies
+}, [
+    availableVoices,
+    selectedVoiceURI, // User might still want to override voice from dropdown
+    currentPersonalityKey, // To get profile params
+    synthRef,
+    setIsSpeaking,
+    setStatusMessage
+]);
 
 // Your existing button handler for the "Browser Built-in TTS" section will call this
 const handleWebSpeechSpeakButton = () => { // Renamed to avoid conflict if needed
@@ -247,18 +267,88 @@ const initializeAudioContext = useCallback(() => {
 }, []);
 
 const playAudio = useCallback((audioArray, samplingRate) => {
-  // ... (your playAudio logic using initializeAudioContext)
-  const audioCtx = initializeAudioContext();
-  if (!audioCtx) { /* ... */ return; }
-  if (audioCtx.state === 'suspended') { audioCtx.resume().catch(e => console.error("Resume in playAudio failed",e)); } // Best effort resume
-  
+  const audioCtx = initializeAudioContext(); // Ensure this is robust
+  if (!audioCtx) {
+    alert("Audio player not initialized.");
+    return;
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(e => console.error("Resume in playAudio failed during effect setup", e));
+  }
+
   const buffer = audioCtx.createBuffer(1, audioArray.length, samplingRate);
   buffer.copyToChannel(audioArray, 0);
-  const source = audioCtx.createBufferSource();
-  source.buffer = buffer;
-  source.connect(audioCtx.destination);
-  source.start();
-}, [initializeAudioContext]);
+
+  const sourceNode = audioCtx.createBufferSource();
+  sourceNode.buffer = buffer;
+
+  let currentNode = sourceNode; // This will be the last node in our audio chain
+
+  // Get effects for the current personality
+  const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
+  const effects = profile.transformersAudioEffects;
+
+  if (effects) {
+    // Apply Playback Rate
+    if (typeof effects.playbackRate === 'number') {
+      sourceNode.playbackRate.value = effects.playbackRate;
+    }
+
+    // Apply Biquad Filter
+    if (effects.filter && effects.filter.type) {
+      const filterNode = audioCtx.createBiquadFilter();
+      filterNode.type = effects.filter.type;
+      if (typeof effects.filter.frequency === 'number') {
+        filterNode.frequency.setValueAtTime(effects.filter.frequency, audioCtx.currentTime);
+      }
+      if (typeof effects.filter.Q === 'number') {
+        filterNode.Q.setValueAtTime(effects.filter.Q, audioCtx.currentTime);
+      }
+      if (typeof effects.filter.gain === 'number') { // For peaking, lowshelf, highshelf
+        filterNode.gain.setValueAtTime(effects.filter.gain, audioCtx.currentTime);
+      }
+      currentNode.connect(filterNode);
+      currentNode = filterNode;
+    }
+
+    // Apply Gain (Volume)
+    if (typeof effects.gain === 'number') {
+      const gainNode = audioCtx.createGain();
+      gainNode.gain.setValueAtTime(effects.gain, audioCtx.currentTime);
+      currentNode.connect(gainNode);
+      currentNode = gainNode;
+    }
+    
+    // Apply Reverb (ConvolverNode) - More Advanced
+    if (effects.reverbImpulseResponse) {
+      // This part needs to be async if fetching impulse, or preload impulses
+      // For simplicity, let's assume impulse is preloaded or this becomes async
+      // For now, we'll just show connection if impulseBuffer is ready
+      const convolverNode = audioCtx.createConvolver();
+      // You would fetch and decode effects.reverbImpulseResponse into an AudioBuffer
+      // and set convolverNode.buffer = thatAudioBuffer;
+      // Example:
+      // fetch(effects.reverbImpulseResponse)
+      //   .then(response => response.arrayBuffer())
+      //   .then(arrayBuffer => audioCtx.decodeAudioData(arrayBuffer))
+      //   .then(decodedAudio => {
+      //     convolverNode.buffer = decodedAudio;
+      //     // Re-connect might be needed if this is fully async after source.start()
+      //   }).catch(e => console.error("Error loading reverb impulse:", e));
+      // For a synchronous setup, you'd need the impulse buffer pre-loaded.
+      // If you have a preloaded impulseBuffer for this personality:
+      // if (preloadedImpulseBuffers[currentPersonalityKey]) {
+      //   convolverNode.buffer = preloadedImpulseBuffers[currentPersonalityKey];
+      //   currentNode.connect(convolverNode);
+      //   currentNode = convolverNode;
+      // }
+      console.warn("Reverb effect with ConvolverNode requires preloading or async handling of impulse responses. Not fully implemented in this example.");
+    }
+  }
+
+  currentNode.connect(audioCtx.destination);
+  sourceNode.start();
+}, [initializeAudioContext, currentPersonalityKey /*, preloadedImpulseBuffers (if you implement that) */]);
 
  const setupSpeechRecognition = useCallback(() => {
   const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -324,6 +414,75 @@ const toggleListen = () => {
   }
 };
 
+  
+const synthesizeWithBarkAndPlay = useCallback(async (text, personalityKey) => {
+  if (!barkPipelineInstance) {
+    setStatusMessage("Bark TTS model not loaded yet.");
+    return false;
+  }
+  if (!text || !text.trim()) {
+    setStatusMessage("No text provided for Bark to synthesize.");
+    return false;
+  }
+
+  const audioCtx = initializeAudioContext();
+  if (!audioCtx) { /* ... handle error ... */ setIsSpeaking(false); return false; }
+  if (audioCtx.state === 'suspended') {
+    try { await audioCtx.resume(); }
+    catch (resumeError) { /* ... handle error ... */ setIsSpeaking(false); return false; }
+  }
+  if (audioCtx.state !== 'running') { /* ... handle error ... */ setIsSpeaking(false); return false; }
+
+  setIsSpeaking(true);
+  setStatusMessage(`Synthesizing with Bark: "${text.substring(0, 30)}..."`);
+
+  try {
+    // Bark can sometimes use in-text speaker prompts like "[speaker: en_speaker_6]"
+    // or you might pass a `voice_preset` in the options if your transformers.js version supports it.
+    // For now, let's assume a simple call. Check Bark's specific options in transformers.js.
+    // Example: text = "Hello [speaker_prompt:v2/en_speaker_2] world"
+    // Or, if your `personalityProfiles` store a `barkVoicePreset` for the current personality:
+    const profile = personalityProfiles[personalityKey || currentPersonalityKey] || personalityProfiles.default;
+    const barkOptions = {};
+    if (profile && profile.barkVoicePreset) {
+        // This is hypothetical; check how transformers.js handles Bark voice presets.
+        // It might be part of the text itself, e.g. prepending "[speaker: en_speaker_1]"
+        // For now, we'll assume the text itself might contain it if needed, or we pass it via options.
+        // A common way is to prepend, e.g., text = `${profile.barkVoicePreset || ""} ${text.trim()}`;
+        // Or in options if the pipeline supports it:
+        // barkOptions.voice_preset = profile.barkVoicePreset;
+        console.log(`Using Bark with options:`, barkOptions, "for text:", text.trim());
+    }
+
+    const output = await barkPipelineInstance(text.trim(), barkOptions);
+
+    console.log("Bark TTS Raw Output:", output);
+
+    if (output.audio && typeof output.sampling_rate === 'number' && output.sampling_rate > 0) {
+      // Bark audio might already be what you want, or you can apply further effects
+      playAudio(output.audio, output.sampling_rate, personalityKey || currentPersonalityKey); // Pass personality for effects
+      setStatusMessage("Speech synthesized and playing (Bark).");
+    } else {
+      throw new Error("Bark TTS pipeline did not return valid audio data or sampling rate.");
+    }
+  } catch (error) {
+    console.error("Error during Bark speech synthesis:", error);
+    setStatusMessage(`Bark TTS Error: ${error.message}`);
+    setIsSpeaking(false);
+    return false;
+  }
+  setTimeout(() => setIsSpeaking(false), 500);
+  return true;
+}, [
+  barkPipelineInstance,
+  initializeAudioContext,
+  playAudio, // Your existing playAudio function can apply Web Audio API effects
+  setStatusMessage,
+  setIsSpeaking,
+  currentPersonalityKey, // If using personality-specific bark presets
+  // personalityProfiles // If accessing it directly here
+]);
+  
   
 const synthesizeAndPlayText = useCallback(async (text) => {
   if (!ttsPipelineInstance || !speakerEmbeddings) {
@@ -392,94 +551,42 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   setStatusMessage,
   setIsSpeaking
 ]);
-  
-const handleGenerateText = useCallback(async () => {
-  if (!generator) {
-    alert("The text generation model is not loaded yet. Please wait.");
-    return;
-  }
+  const handleGenerateText = useCallback(async () => {
+  // ... (your existing LLM generation logic to get newLLMText) ...
+  // After newLLMText is generated by the LLM:
 
-  let userActualPrompt = prompt.trim(); // The text entered by the user or from STT
-  const systemInstruction = currentProfile.systemPrompt || ""; // Use from currentProfile
-  let textToProcessForLLM = systemInstruction + userActualPrompt;
-  let isRespeaking = false;
+  if (newLLMText) { // Ensure newLLMText is not empty
+    setStatusMessage("Text generation complete. Auto-speaking with: " + activeTtsEngine);
 
-  if (!userActualPrompt && generatedOutput.trim()) {
-    // If prompt is empty, and we have previous output, re-process that for TTS
-    // (The personality won't be applied to re-speaking old output unless you want it to)
-    textToProcessForLLM = generatedOutput.trim(); // This will be used by TTS
-    isRespeaking = true;
-    setStatusMessage("Re-speaking previous output with selected personality for TTS...");
-  } else if (!userActualPrompt) {
-    alert("Please enter some text or use speech-to-text to provide a prompt.");
-    return;
-  } else {
-    // Standard case: new prompt from user
-    // Apply personality here
-    const systemPrompt = personalities[currentPersonality] || "";
-    textToProcessForLLM = systemPrompt + userActualPrompt;
-    setIsGenerating(true);
-    setGeneratedOutput("Generating, please wait...");
-    setStatusMessage("Generating text with personality: " + currentPersonality);
-  }
-
-  let newLLMText = "";
-
-  try {
-    if (!isRespeaking) { // Only call the LLM if it's not a re-speak action
-      console.log("Sending to LLM:", textToProcessForLLM); // Log what's actually sent
-      const outputs = await generator(textToProcessForLLM, { max_new_tokens: 150 });
-
-      if (outputs && outputs.length > 0 && outputs[0].generated_text) {
-        newLLMText = outputs[0].generated_text;
-        setGeneratedOutput(newLLMText); // Display LLM output
-      } else {
-        newLLMText = "No text was generated or output format was unexpected.";
-        setGeneratedOutput(newLLMText);
-        setStatusMessage("Text generation failed to produce output.");
-        setIsGenerating(false);
-        return; // Don't proceed to TTS if LLM failed
-      }
-    } else {
-      newLLMText = textToProcessForLLM; // If re-speaking, this is the old generatedOutput
-    }
-
-    setStatusMessage("Text processing complete. Auto-speaking...");
-
-    // Automatically send to PREFERRED TTS
-    if (preferredTtsEngine === 'webSpeechAPI') { // Assuming preferredTtsEngine state exists
-      setWebSpeechApiDedicatedInput(newLLMText);
+    // Update the relevant textareas based on which engine will speak
+    // This helps if the user wants to see the text in the active engine's input box
+    if (activeTtsEngine === 'webSpeechAPI') {
+      setWebSpeechApiDedicatedInput(newLLMText); // Assuming you have this state
       speakWithWebAPI(newLLMText);
-    } else if (preferredTtsEngine === 'transformersJS') {
-      setTextToSpeakInput(newLLMText);
+    } else if (activeTtsEngine === 'speechT5') {
+      setTextToSpeakInput(newLLMText); // This is the state for SpeechT5's textarea
       await synthesizeAndPlayText(newLLMText);
+    } else if (activeTtsEngine === 'bark') {
+      // Bark might also use textToSpeakInput or its own dedicated state
+      setTextToSpeakInput(newLLMText); // Or a new state e.g., setBarkTextInput(newLLMText)
+      await synthesizeWithBarkAndPlay(newLLMText, currentPersonalityKey);
     }
-
-  } catch (error) {
-    console.error("Error during text generation or auto-speak setup:", error);
-    newLLMText = `Error: ${error.message}`;
-    setGeneratedOutput(newLLMText);
-    setStatusMessage(`Error in processing: ${error.message}`);
   }
-
-  if (!isRespeaking) {
-    setIsGenerating(false);
-  }
+  // ...
+  setIsGenerating(false); // From your existing logic
 }, [
   generator,
   prompt,
   generatedOutput,
-  currentPersonality, // Add currentPersonality as a dependency
-  preferredTtsEngine, // Add preferredTtsEngine if used for selection
+  activeTtsEngine, // Add activeTtsEngine as a dependency
+  currentPersonalityKey,
   synthesizeAndPlayText,
-  speakWithWebAPI,     // Add your WebSpeechAPI speak function
-  setIsGenerating,
-  setGeneratedOutput,
-  setStatusMessage,
-  setTextToSpeakInput,
-  setWebSpeechApiDedicatedInput // If you use this state
-  // Add other necessary dependencies
+  speakWithWebAPI, // Ensure this is memoized
+  synthesizeWithBarkAndPlay, // Ensure this is memoized
+  // ... other state setters and dependencies ...
+  setIsGenerating, setGeneratedOutput, setStatusMessage, setTextToSpeakInput, setWebSpeechApiDedicatedInput
 ]);
+  
   
 useEffect(() => {
 setupSpeechRecognition();
@@ -566,6 +673,28 @@ async function loadModel() {
         console.error("Failed to load TTS pipeline or speaker embeddings:", error);
         setStatusMessage(prev => `${prev} TTS Error: ${error.message}.`);
       }
+  try {
+      setStatusMessage(prev => `${prev} Loading TTS model (Bark)...`);
+      const barkPipe = await pipeline('text-to-speech', 'Xenova/bark-small', {
+        progress_callback: (progress) => {
+          const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
+          const message = `Loading Bark TTS: ${progress.file} (${percentage}%)`;
+          setStatusMessage(message); // Update status
+        }
+      });
+      setBarkPipelineInstance(() => barkPipe);
+      console.log("Bark TTS pipeline loaded successfully.");
+      // Update overall status only when ALL models are intended to be loaded
+      // Check if other models are also loaded before setting "All models loaded!"
+      if (generator && ttsPipelineInstance && speakerEmbeddings && barkPipe) {
+        setStatusMessage("All models loaded! Ready.");
+      } else {
+        setStatusMessage(prev => `${prev} Bark TTS loaded.`);
+      }
+    } catch (error) {
+      console.error("Failed to load Bark TTS pipeline:", error);
+      setStatusMessage(prev => `${prev} Bark TTS Error: ${error.message}.`);
+    }
 }
 
 const imageChannel = new BroadcastChannel('imageChannel');
@@ -754,17 +883,35 @@ max={2.0}
 <canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
 
 <div style={{ marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd', backgroundColor: 'rgba(230, 240, 250, 0.9)' }}>
-
+  
+<div style={{ position:'absolute',zIndex:4000,padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
+  <h4>Active Text-to-Speech Engine:</h4>
+  <select
+    value={activeTtsEngine}
+    onChange={(e) => setActiveTtsEngine(e.target.value)}
+    style={{ position:'absolute',zIndex:4000,padding: '8px', width: '100%', boxSizing: 'border-box' }}
+  >
+    <option value="webSpeechAPI">Browser Built-in</option>
+    <option value="speechT5" disabled={!ttsPipelineInstance || !speakerEmbeddings}>
+      SpeechT5 (Transformers.js)
+    </option>
+    <option value="bark" disabled={!barkPipelineInstance}>
+      Bark (Transformers.js)
+    </option>
+    {/* You can add more options here later */}
+  </select>
+</div>
+  
   <div style={{ display: 'flex', alignItems: 'center', gap: '15px', borderBottom: '1px solid #ddd', paddingBottom: '15px' }}>
   {currentProfile.avatar && (
     <img 
       src={currentProfile.avatar} 
       alt={`${currentProfile.displayName} Avatar`} 
-      style={{ width: '60px', height: '60px', borderRadius: '50%', border: `3px solid ${currentProfile.themeColors['--ai-primary-color'] || '#ccc'}` }} 
+      style={{ position:'absolute',zIndex:4000,width: '60px', height: '60px', borderRadius: '50%', border: `3px solid ${currentProfile.themeColors['--ai-primary-color'] || '#ccc'}` }} 
     />
   )}
   <div>
-    <h2 style={{ margin: 0, color: currentProfile.themeColors['--ai-primary-color'] || '#333' }}>
+    <h2 style={{position:'absolute',zIndex:4000, margin: 0, color: currentProfile.themeColors['--ai-primary-color'] || '#333' }}>
       {currentProfile.displayName}
     </h2>
     {/* You can also put the select for currentPersonalityKey here if preferred */}
@@ -772,13 +919,13 @@ max={2.0}
 </div>
 
 {/* Selector for personality (if not already placed elsewhere) */}
-<div style={{ padding: '10px 0' }}>
-  <label htmlFor="personality-select" style={{ marginRight: '10px' }}>Change Personality:</label>
+<div style={{ position:'absolute',zIndex:4000,padding: '10px 0' }}>
+  <label htmlFor="personality-select" style={{ position:'absolute',zIndex:4000,marginRight: '10px' }}>Change Personality:</label>
   <select
     id="personality-select"
     value={currentPersonalityKey}
     onChange={(e) => setCurrentPersonalityKey(e.target.value)}
-    style={{ padding: '8px', width: '100%', boxSizing: 'border-box' }}
+    style={{ position:'absolute',zIndex:4000,padding: '8px', width: '100%', boxSizing: 'border-box' }}
   >
     {Object.keys(personalityProfiles).map(key => (
       <option key={key} value={key}>
@@ -788,12 +935,12 @@ max={2.0}
   </select>
 </div>
   
-  <div style={{ padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
+  <div style={{ position:'absolute',zIndex:4000,padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
   <h4>Select AI Personality/Purpose:</h4>
   <select
     value={currentPersonality}
     onChange={(e) => setCurrentPersonality(e.target.value)}
-    style={{ padding: '8px', width: '100%', boxSizing: 'border-box' }}
+    style={{ position:'absolute',zIndex:4000,padding: '8px', width: '100%', boxSizing: 'border-box' }}
   >
     {Object.keys(personalities).map(key => (
       <option key={key} value={key}>
@@ -804,7 +951,7 @@ max={2.0}
   </select>
 </div>
   
-  <div style={{ padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
+  <div style={{ position:'absolute',zIndex:4000,padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
   <h4>Auto-Speak Engine after LLM Generation:</h4>
   <label style={{ marginRight: '15px', cursor: 'pointer' }}>
     <input
@@ -836,13 +983,13 @@ max={2.0}
     style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px' }}
     disabled={isSpeaking} // Or a dedicated isWebSpeaking state
   />
-<div style={{ marginBottom: '10px' }}>
+<div style={{ position:'absolute',zIndex:4000,marginBottom: '10px' }}>
 <label htmlFor="voice-select-webapi" style={{ position:'absolute',zIndex:4000,marginRight: '10px' }}>Voice:</label>
 <select
       id="voice-select-webapi"
       value={selectedVoiceURI}
       onChange={(e) => setSelectedVoiceURI(e.target.value)}
-      style={{ padding: '8px', width: 'calc(100% - 70px)'}}
+      style={{ position:'absolute',zIndex:4000,padding: '8px', width: 'calc(100% - 70px)'}}
       disabled={availableVoices.length === 0 || isWebSpeaking}
     >
       {availableVoices.length === 0 && <option value="">Loading voices...</option>}
