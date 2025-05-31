@@ -29,16 +29,50 @@ const [preferredTtsEngine, setPreferredTtsEngine] = useState('webSpeechAPI'); //
 const [finalSttTranscript, setFinalSttTranscript] = useState(null);
 const sttJustFinishedRef = useRef(false);
 const [webSpeechApiDedicatedInput, setWebSpeechApiDedicatedInput] = useState("Hello from browser TTS!");
-const [currentPersonality, setCurrentPersonality] = useState('default'); // Default to no specific personality
+const [currentPersonalityKey, setCurrentPersonalityKey] = useState('default');
+const [currentProfile, setCurrentProfile] = useState(personalityProfiles.default); // Store the whole profile
 
-  const personalities = {
-  default: "", // No specific instruction, uses the model's default behavior
-  helpfulAssistant: "You are a very helpful and friendly assistant. Answer questions clearly, politely, and provide detailed explanations if needed. ",
-  sarcasticBot: "You are a witty and sarcastic bot. Your answers should be humorous and slightly mocking, but still subtly provide the information requested. ",
-  codeHelperPython: "You are an expert Python programming assistant. Explain Python code, help debug, or provide Python code snippets as requested. Assume the user is asking about Python. ",
-  summarizer: "Provide a concise summary of the following text in no more than three sentences: ",
-  translatorToPirate: "Translate the following text into authentic pirate speech, arrr!: ",
-  storytellerCreative: "You are a creative storyteller. Weave an engaging short narrative based on the user's prompt. ",
+  const personalityProfiles = {
+  default: {
+    displayName: "Default Assistant",
+    systemPrompt: "", // Basic behavior
+    avatar: "/avatars/default.png", // Create a default avatar in your public/avatars folder
+    introVideo: null, // No intro video for default
+    introPhrase: "Hello! How can I assist you today?",
+    themeColors: {
+      '--ai-primary-color': '#4A90E2',    // Example: Blue
+      '--ai-secondary-color': '#F5F5F5', // Example: Light grey
+      '--ai-text-color': '#333333',
+      '--ai-bubble-bg': '#E8F0FE',
+    }
+  },
+  captainPlayful: {
+    displayName: "Captain Playful",
+    systemPrompt: "You are Captain Playful, a friendly, shiny red toy robot with big blue eyes! You love to whirr and beep softly when you talk. Your purpose is to make learning super fun for kids aged 4-7. Always use simple, happy words, short sentences, and lots of exclamation marks! Start by saying 'Greetings, little explorer!' and offer to play a simple game or tell a silly joke before answering any questions. If you don't know something, say 'Boop-beep! My circuits are still learning that one!'",
+    avatar: "/avatars/captain_playful.png", // You'll need to create this image
+    introVideo: "/intros/captain_playful.mp4", // You'll need to create this VEO/video
+    introPhrase: "Ahoy there, matey! Captain Playful reporting for duty! What adventure shall we embark on today?",
+    themeColors: {
+      '--ai-primary-color': '#FF6347',    // Tomato Red
+      '--ai-secondary-color': '#FFFF00', // Yellow
+      '--ai-text-color': '#4B0082',      // Indigo
+      '--ai-bubble-bg': '#FFDAB9',      // PeachPuff
+    }
+  },
+  professorPuzzle: {
+    displayName: "Professor Puzzle",
+    systemPrompt: "Hoo-hoo! You are Professor Puzzle, a wise old owl character from the enchanted board game 'Wisdom Woods.' You have a deep, calm voice. Your goal is to encourage thinking. Often, before giving a direct answer, pose a simple riddle or a fun fact related to the question. Speak in clear, slightly formal language suitable for children aged 6-9. If a question is too complex, say 'Hmm, that's a real head-scratcher! Let me ponder that a bit more... or perhaps we can try a simpler question?'",
+    avatar: "/avatars/professor_puzzle.png",
+    introVideo: null, // Maybe no video, just an intro phrase
+    introPhrase: "Hoo-hoo, a new challenger approaches! What puzzle can I help you unravel today?",
+    themeColors: {
+      '--ai-primary-color': '#228B22',    // ForestGreen
+      '--ai-secondary-color': '#F5DEB3', // Wheat
+      '--ai-text-color': '#5D4037',      // Brown
+      '--ai-bubble-bg': '#E8F5E9',      // Light Green
+    }
+  },
+  // Add more personalities as needed
 };
 
   
@@ -58,6 +92,60 @@ const speakWithWebSpeechAPI = useCallback((textToSay) => {
   utterance.onerror = (event) => { /* ... */ setIsSpeaking(false); /* ... */ };
   synthRef.current.speak(utterance);
 }, [synthRef, availableVoices, selectedVoiceURI, setIsSpeaking, setStatusMessage]);
+
+
+  
+useEffect(() => {
+  const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
+  setCurrentProfile(profile); // Update the current full profile
+
+  // Apply theme colors
+  if (profile.themeColors) {
+    for (const [key, value] of Object.entries(profile.themeColors)) {
+      document.documentElement.style.setProperty(key, value);
+    }
+  }
+
+  // Play intro video (conceptual - you'll need a video player component/logic)
+  if (profile.introVideo) {
+    console.log(`Should play intro video: ${profile.introVideo}`);
+    // Example: setVideoSource(profile.introVideo); setModalOpen(true);
+    // This part depends heavily on how you want to display the video.
+    // For now, we'll just log it.
+  }
+
+  // Speak the intro phrase using the preferred TTS engine
+  if (profile.introPhrase) {
+    // Ensure TTS engines are loaded before attempting to speak
+    // You might want to add a small delay for the user to see the theme change/video start
+    setTimeout(async () => {
+      if (preferredTtsEngine === 'webSpeechAPI') {
+        // Ensure speakWithWebAPI is ready and not already speaking from a previous action
+        if (synthRef.current && !synthRef.current.speaking) { // Check synthRef.current
+          speakWithWebAPI(profile.introPhrase);
+        } else if (!synthRef.current) {
+            console.warn("Web Speech API not ready for intro phrase.");
+        }
+      } else if (preferredTtsEngine === 'transformersJS') {
+        if (ttsPipelineInstance && speakerEmbeddings && !isSpeaking) { // Check TTS pipeline is ready
+          await synthesizeAndPlayText(profile.introPhrase);
+        } else if (!ttsPipelineInstance || !speakerEmbeddings){
+            console.warn("Transformers.js TTS not ready for intro phrase.");
+        }
+      }
+    }, profile.introVideo ? 1000 : 100); // Delay more if there's a video concept
+  }
+
+}, [
+    currentPersonalityKey,
+    preferredTtsEngine, // Assuming you have this state for TTS engine choice
+    speakWithWebAPI,      // Memoized function
+    synthesizeAndPlayText, // Memoized function
+    ttsPipelineInstance,   // State (to check if ready)
+    speakerEmbeddings,     // State (to check if ready)
+    synthRef,              // Ref (to check if ready)
+    isSpeaking             // State (to check if already speaking)
+]);
 
   
 useEffect(() => {
@@ -312,7 +400,8 @@ const handleGenerateText = useCallback(async () => {
   }
 
   let userActualPrompt = prompt.trim(); // The text entered by the user or from STT
-  let textToProcessForLLM;
+  const systemInstruction = currentProfile.systemPrompt || ""; // Use from currentProfile
+  let textToProcessForLLM = systemInstruction + userActualPrompt;
   let isRespeaking = false;
 
   if (!userActualPrompt && generatedOutput.trim()) {
@@ -666,6 +755,39 @@ max={2.0}
 
 <div style={{ marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd', backgroundColor: 'rgba(230, 240, 250, 0.9)' }}>
 
+  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', borderBottom: '1px solid #ddd', paddingBottom: '15px' }}>
+  {currentProfile.avatar && (
+    <img 
+      src={currentProfile.avatar} 
+      alt={`${currentProfile.displayName} Avatar`} 
+      style={{ width: '60px', height: '60px', borderRadius: '50%', border: `3px solid ${currentProfile.themeColors['--ai-primary-color'] || '#ccc'}` }} 
+    />
+  )}
+  <div>
+    <h2 style={{ margin: 0, color: currentProfile.themeColors['--ai-primary-color'] || '#333' }}>
+      {currentProfile.displayName}
+    </h2>
+    {/* You can also put the select for currentPersonalityKey here if preferred */}
+  </div>
+</div>
+
+{/* Selector for personality (if not already placed elsewhere) */}
+<div style={{ padding: '10px 0' }}>
+  <label htmlFor="personality-select" style={{ marginRight: '10px' }}>Change Personality:</label>
+  <select
+    id="personality-select"
+    value={currentPersonalityKey}
+    onChange={(e) => setCurrentPersonalityKey(e.target.value)}
+    style={{ padding: '8px', width: '100%', boxSizing: 'border-box' }}
+  >
+    {Object.keys(personalityProfiles).map(key => (
+      <option key={key} value={key}>
+        {personalityProfiles[key].displayName}
+      </option>
+    ))}
+  </select>
+</div>
+  
   <div style={{ padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
   <h4>Select AI Personality/Purpose:</h4>
   <select
