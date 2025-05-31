@@ -696,7 +696,7 @@ async function loadModel() {
       }
   try {
       setStatusMessage(prev => `${prev} Loading TTS model (Bark)...`);
-      const barkPipe = await pipeline('text-to-speech', 'Xenova/bark-small', {
+      const barkPipe = await pipeline('text-to-speech', 'suno/bark-small', {
         progress_callback: (progress) => {
           const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
           const message = `Loading Bark TTS: ${progress.file} (${percentage}%)`;
