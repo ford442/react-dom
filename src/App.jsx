@@ -144,6 +144,21 @@ const speakWithWebAPI = useCallback((textToSay) => {
 ]);
 
   
+const initializeAudioContext = useCallback(() => {
+  if (!audioContextRef.current) {
+    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    console.log("AudioContext created. Initial state:", audioContextRef.current.state);
+  }
+  // You can try a non-blocking resume here, but it's more robust to await it before playing
+  if (audioContextRef.current.state === 'suspended') {
+     audioContextRef.current.resume().catch(err => {
+        console.warn("Initial attempt to resume AudioContext in initializeAudioContext failed. Will try again before playing.", err);
+     });
+  }
+  return audioContextRef.current;
+}, []);
+
+  
 const synthesizeAndPlayText = useCallback(async (text) => {
   if (!ttsPipelineInstance || !speakerEmbeddings) {
     setStatusMessage("TTS model or speaker embeddings not loaded yet.");
@@ -307,20 +322,6 @@ const handleWebSpeechSpeak = () => { // This function is now simpler
   speakWithWebSpeechAPI(webSpeechText);
 };
       
-const initializeAudioContext = useCallback(() => {
-  if (!audioContextRef.current) {
-    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    console.log("AudioContext created. Initial state:", audioContextRef.current.state);
-  }
-  // You can try a non-blocking resume here, but it's more robust to await it before playing
-  if (audioContextRef.current.state === 'suspended') {
-     audioContextRef.current.resume().catch(err => {
-        console.warn("Initial attempt to resume AudioContext in initializeAudioContext failed. Will try again before playing.", err);
-     });
-  }
-  return audioContextRef.current;
-}, []);
-
 const playAudio = useCallback((audioArray, samplingRate) => {
   const audioCtx = initializeAudioContext(); // Ensure this is robust
   if (!audioCtx) {
