@@ -310,7 +310,72 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   setStatusMessage,
   setIsSpeaking
 ]);
+
   
+const synthesizeWithBarkAndPlay = useCallback(async (text, personalityKey) => {
+  if (!barkPipelineInstance) {
+    setStatusMessage("Bark TTS model not loaded yet.");
+    return false;
+  }
+  if (!text || !text.trim()) {
+    setStatusMessage("No text provided for Bark to synthesize.");
+    return false;
+  }
+  const audioCtx = initializeAudioContext();
+  if (!audioCtx) { /* ... handle error ... */ setIsSpeaking(false); return false; }
+  if (audioCtx.state === 'suspended') {
+    try { await audioCtx.resume(); }
+    catch (resumeError) { /* ... handle error ... */ setIsSpeaking(false); return false; }
+  }
+  if (audioCtx.state !== 'running') { /* ... handle error ... */ setIsSpeaking(false); return false; }
+  setIsSpeaking(true);
+  setStatusMessage(`Synthesizing with Bark: "${text.substring(0, 30)}..."`);
+  try {
+    // Bark can sometimes use in-text speaker prompts like "[speaker: en_speaker_6]"
+    // or you might pass a `voice_preset` in the options if your transformers.js version supports it.
+    // For now, let's assume a simple call. Check Bark's specific options in transformers.js.
+    // Example: text = "Hello [speaker_prompt:v2/en_speaker_2] world"
+    // Or, if your `personalityProfiles` store a `barkVoicePreset` for the current personality:
+    const profile = personalityProfiles[personalityKey || currentPersonalityKey] || personalityProfiles.default;
+    const barkOptions = {};
+    if (profile && profile.barkVoicePreset) {
+        // This is hypothetical; check how transformers.js handles Bark voice presets.
+        // It might be part of the text itself, e.g. prepending "[speaker: en_speaker_1]"
+        // For now, we'll assume the text itself might contain it if needed, or we pass it via options.
+        // A common way is to prepend, e.g., text = `${profile.barkVoicePreset || ""} ${text.trim()}`;
+        // Or in options if the pipeline supports it:
+        // barkOptions.voice_preset = profile.barkVoicePreset;
+        console.log(`Using Bark with options:`, barkOptions, "for text:", text.trim());
+    }
+
+    const output = await barkPipelineInstance(text.trim(), barkOptions);
+
+    console.log("Bark TTS Raw Output:", output);
+
+    if (output.audio && typeof output.sampling_rate === 'number' && output.sampling_rate > 0) {
+      // Bark audio might already be what you want, or you can apply further effects
+      playAudio(output.audio, output.sampling_rate, personalityKey || currentPersonalityKey); // Pass personality for effects
+      setStatusMessage("Speech synthesized and playing (Bark).");
+    } else {
+      throw new Error("Bark TTS pipeline did not return valid audio data or sampling rate.");
+    }
+  } catch (error) {
+    console.error("Error during Bark speech synthesis:", error);
+    setStatusMessage(`Bark TTS Error: ${error.message}`);
+    setIsSpeaking(false);
+    return false;
+  }
+  setTimeout(() => setIsSpeaking(false), 500);
+  return true;
+}, [
+  barkPipelineInstance,
+  initializeAudioContext,
+  playAudio, // Your existing playAudio function can apply Web Audio API effects
+  setStatusMessage,
+  setIsSpeaking,
+  currentPersonalityKey, // If using personality-specific bark presets
+  // personalityProfiles // If accessing it directly here
+]);
 
 useEffect(() => {
   const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
@@ -472,70 +537,6 @@ const toggleListen = () => {
   }
 };
 
-const synthesizeWithBarkAndPlay = useCallback(async (text, personalityKey) => {
-  if (!barkPipelineInstance) {
-    setStatusMessage("Bark TTS model not loaded yet.");
-    return false;
-  }
-  if (!text || !text.trim()) {
-    setStatusMessage("No text provided for Bark to synthesize.");
-    return false;
-  }
-  const audioCtx = initializeAudioContext();
-  if (!audioCtx) { /* ... handle error ... */ setIsSpeaking(false); return false; }
-  if (audioCtx.state === 'suspended') {
-    try { await audioCtx.resume(); }
-    catch (resumeError) { /* ... handle error ... */ setIsSpeaking(false); return false; }
-  }
-  if (audioCtx.state !== 'running') { /* ... handle error ... */ setIsSpeaking(false); return false; }
-  setIsSpeaking(true);
-  setStatusMessage(`Synthesizing with Bark: "${text.substring(0, 30)}..."`);
-  try {
-    // Bark can sometimes use in-text speaker prompts like "[speaker: en_speaker_6]"
-    // or you might pass a `voice_preset` in the options if your transformers.js version supports it.
-    // For now, let's assume a simple call. Check Bark's specific options in transformers.js.
-    // Example: text = "Hello [speaker_prompt:v2/en_speaker_2] world"
-    // Or, if your `personalityProfiles` store a `barkVoicePreset` for the current personality:
-    const profile = personalityProfiles[personalityKey || currentPersonalityKey] || personalityProfiles.default;
-    const barkOptions = {};
-    if (profile && profile.barkVoicePreset) {
-        // This is hypothetical; check how transformers.js handles Bark voice presets.
-        // It might be part of the text itself, e.g. prepending "[speaker: en_speaker_1]"
-        // For now, we'll assume the text itself might contain it if needed, or we pass it via options.
-        // A common way is to prepend, e.g., text = `${profile.barkVoicePreset || ""} ${text.trim()}`;
-        // Or in options if the pipeline supports it:
-        // barkOptions.voice_preset = profile.barkVoicePreset;
-        console.log(`Using Bark with options:`, barkOptions, "for text:", text.trim());
-    }
-
-    const output = await barkPipelineInstance(text.trim(), barkOptions);
-
-    console.log("Bark TTS Raw Output:", output);
-
-    if (output.audio && typeof output.sampling_rate === 'number' && output.sampling_rate > 0) {
-      // Bark audio might already be what you want, or you can apply further effects
-      playAudio(output.audio, output.sampling_rate, personalityKey || currentPersonalityKey); // Pass personality for effects
-      setStatusMessage("Speech synthesized and playing (Bark).");
-    } else {
-      throw new Error("Bark TTS pipeline did not return valid audio data or sampling rate.");
-    }
-  } catch (error) {
-    console.error("Error during Bark speech synthesis:", error);
-    setStatusMessage(`Bark TTS Error: ${error.message}`);
-    setIsSpeaking(false);
-    return false;
-  }
-  setTimeout(() => setIsSpeaking(false), 500);
-  return true;
-}, [
-  barkPipelineInstance,
-  initializeAudioContext,
-  playAudio, // Your existing playAudio function can apply Web Audio API effects
-  setStatusMessage,
-  setIsSpeaking,
-  currentPersonalityKey, // If using personality-specific bark presets
-  // personalityProfiles // If accessing it directly here
-]);
   
   
   
