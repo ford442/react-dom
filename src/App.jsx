@@ -76,6 +76,7 @@ const audioContextRef = useRef(null); // For playing audio
 const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
 const synthRef = useRef(null);
 const sttJustFinishedRef = useRef(false);
+const playedIntroForPersonalityRef = useRef(null);
   
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
   if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
@@ -544,10 +545,12 @@ const handleSynthesizeSpeech = async () => {
   await synthesizeAndPlayText(textToSpeakInput);
 };
 
-  
-useEffect(() => {
+  useEffect(() => {
+  // This line correctly gets the current profile based on the key
   const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
-  // setCurrentProfile(profile); // Not needed if currentProfile is derived directly as shown above
+  
+  // If you have a separate setCurrentProfile state, update it here:
+  // setCurrentProfile(profile); // (You might already have this or derive currentProfile directly)
 
   // Apply theme colors
   if (profile.themeColors) {
@@ -556,52 +559,79 @@ useEffect(() => {
     }
   }
 
-  // Play intro video (conceptual)
+  // Conceptual: Play intro video
   if (profile.introVideo) {
-    console.log(`Should play intro video: ${profile.introVideo}`);
-    // setIntroVideoToShow(profile.introVideo); // If you have state for this
+    console.log(`Personality changed to ${profile.displayName}. Should play intro video: ${profile.introVideo}`);
+    // Add your video playing logic here (e.g., set state for a video player)
   }
 
-  // Speak the intro phrase
-  if (profile.introPhrase) {
-    setTimeout(async () => {
+  // Speak the intro phrase ONLY IF:
+  // 1. The personality has actually changed (or intro hasn't been played for this one yet)
+  // 2. No other TTS is currently active (isSpeaking is false)
+  if (profile.introPhrase && playedIntroForPersonalityRef.current !== currentPersonalityKey && !isSpeaking) {
+    
+    // Set the ref immediately to prevent re-plays if this effect re-runs quickly
+    // before TTS starts and sets isSpeaking to true.
+    playedIntroForPersonalityRef.current = currentPersonalityKey;
+
+    const playIntroPhrase = async () => {
+      console.log(`Playing intro phrase for ${profile.displayName} using ${preferredTtsEngine}`);
       if (preferredTtsEngine === 'webSpeechAPI') {
-        if (synthRef.current && !synthRef.current.speaking) {
+        if (synthRef.current) { // Check if Web Speech API is initialized
           speakWithWebAPI(profile.introPhrase);
-        }
-      } else if (preferredTtsEngine === 'transformersJS' || preferredTtsEngine === 'speechT5' || preferredTtsEngine === 'bark') {
-        // Consolidate Transformers.js engines for intro phrase
-        let activeTtsPipeline;
-        if (preferredTtsEngine === 'speechT5' && ttsPipelineInstance && speakerEmbeddings) {
-            activeTtsPipeline = async (text) => synthesizeAndPlayText(text);
-        } else if (preferredTtsEngine === 'bark' && barkPipelineInstance) {
-            activeTtsPipeline = async (text) => synthesizeWithBarkAndPlay(text, currentPersonalityKey);
-        }
-        
-        if (activeTtsPipeline && !isSpeaking) {
-          await activeTtsPipeline(profile.introPhrase);
         } else {
-            console.warn(`${preferredTtsEngine} TTS not ready for intro phrase or already speaking.`);
+          console.warn("Web Speech API (synthRef) not ready for intro phrase.");
+          playedIntroForPersonalityRef.current = null; // Allow retry if initialization was pending
+        }
+      } else { // For 'speechT5' or 'bark' (consolidated as 'transformersJS' type in your selector)
+        let ttsFunctionToCall = null;
+        let ttsReady = false;
+
+        if (preferredTtsEngine === 'speechT5') {
+          if (ttsPipelineInstance && speakerEmbeddings) {
+            ttsFunctionToCall = () => synthesizeAndPlayText(profile.introPhrase);
+            ttsReady = true;
+          }
+        } else if (preferredTtsEngine === 'bark') {
+          if (barkPipelineInstance) {
+            ttsFunctionToCall = () => synthesizeWithBarkAndPlay(profile.introPhrase, currentPersonalityKey);
+            ttsReady = true;
+          }
+        }
+        // If you add more 'transformersJS' types, add conditions here
+
+        if (ttsReady && ttsFunctionToCall) {
+          await ttsFunctionToCall();
+        } else {
+          console.warn(`Transformers.js TTS engine '${preferredTtsEngine}' not ready for intro phrase.`);
+          playedIntroForPersonalityRef.current = null; // Allow retry if models were loading
         }
       }
-    }, profile.introVideo ? 1000 : 100);
+    };
+
+    // Use a short timeout to allow theme/video changes to render and ensure TTS engines are ready.
+    const timerId = setTimeout(playIntroPhrase, profile.introVideo ? 1000 : 200); // Adjust delay
+
+    return () => clearTimeout(timerId); // Cleanup timeout if effect re-runs
   }
 
 }, [
-  currentPersonalityKey, // Key dependency
+  currentPersonalityKey,
   preferredTtsEngine,
-  speakWithWebAPI,          // Memoized
-  synthesizeAndPlayText,    // Memoized
-  synthesizeWithBarkAndPlay,// Memoized
-  ttsPipelineInstance,      // To check readiness
-  speakerEmbeddings,        // To check readiness
-  barkPipelineInstance,     // To check readiness
+  // Callbacks (ensure they are stable via useCallback and their own deps are correct)
+  speakWithWebAPI,
+  synthesizeAndPlayText,
+  synthesizeWithBarkAndPlay,
+  // States/Refs to check readiness or prevent overlap
+  ttsPipelineInstance,
+  speakerEmbeddings,
+  barkPipelineInstance,
   isSpeaking,
   synthRef
-  // personalityProfiles object is stable if defined outside component, otherwise add if defined inside.
+  // personalityProfiles is defined outside, so it's stable.
+  // currentProfile is derived from currentPersonalityKey, so not needed here if profile is derived inside.
 ]);
 
-  
 useEffect(() => {
   synthRef.current = window.speechSynthesis;
   const populateVoices = () => {
