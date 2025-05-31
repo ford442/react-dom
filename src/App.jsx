@@ -311,54 +311,137 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   setIsSpeaking
 ]);
   
+Custom Coding partner
+Custom Gem
+You're absolutely right to flag this! The error ReferenceError: Cannot access 'currentPersonality' before initialization means you're trying to use the variable currentPersonality in your JSX (for the personality selector dropdown) before it has been properly declared with useState at the top of your App component.
+
+I see in your latest code snippet for App.jsx you have this line:
+
+JavaScript
+
+const [currentPersonality, currentPersonalityKey, setCurrentPersonalityKey] = useState('default');
+This line has a slight error in how useState returns values. useState returns an array with two elements: [currentStateValue, stateSetterFunction]. You're trying to destructure three values.
+
+It should be:
+
+JavaScript
+
+const [currentPersonalityKey, setCurrentPersonalityKey] = useState('default');
+// And then, if you want currentProfile as a separate state (updated by an effect):
+// const [currentProfile, setCurrentProfile] = useState(personalityProfiles[currentPersonalityKey]);
+Or, you can derive currentProfile directly within your component body without making it a separate state, which simplifies things:
+
+Here's how to fix it and correctly set up your personality selection:
+
+1. Correct the useState for Personality Selection:
+
+At the top of your App function, where you declare your states, make sure you have:
+
+JavaScript
+
+// Inside function App()
+
+// ... other existing state declarations ...
+const [isSpeaking, setIsSpeaking] = useState(false); // You have this
+const [webSpeechApiDedicatedInput, setWebSpeechApiDedicatedInput] = useState("Hello from browser TTS!"); // You have this
+
+// CORRECTED/ADDED State for current personality KEY
+const [currentPersonalityKey, setCurrentPersonalityKey] = useState('default'); // Stores the key like 'default', 'captainPlayful'
+
+// ... other state declarations like activeTtsEngine, barkPipelineInstance etc.
+2. Derive currentProfile Directly (Simpler Approach):
+
+Instead of having a separate useState for currentProfile, you can derive it directly from currentPersonalityKey and your personalityProfiles object. This avoids needing a useEffect just to keep them in sync.
+
+JavaScript
+
+// Inside function App(), after all useState and useRef declarations:
+const currentProfile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
+Now, currentProfile will always reflect the currently selected personality's full profile.
+
+3. Update Your Personality Selector JSX:
+
+Your selector for changing the AI personality (the one you had in a div with "Select AI Personality/Purpose:") should use currentPersonalityKey for its value and setCurrentPersonalityKey for its onChange.
+
+JavaScript
+
+{/* Inside your AI Panel's JSX */}
+<div style={{ padding: '10px 0', /* ... other styles ... */ }}>
+  <h4>Select AI Personality:</h4> {/* Changed label slightly for clarity */}
+  <select
+    id="personality-select"
+    value={currentPersonalityKey} // Use the KEY state here
+    onChange={(e) => setCurrentPersonalityKey(e.target.value)} // Use the KEY setter
+    style={{ padding: '8px', width: '100%', boxSizing: 'border-box', /* your zIndex if needed */ }}
+  >
+    {Object.keys(personalityProfiles).map(key => (
+      <option key={key} value={key}>
+        {personalityProfiles[key].displayName}
+      </option>
+    ))}
+  </select>
+</div>
+Remove the duplicate selector: I noticed in your full JSX paste, you had two <select> elements that seemed to be for currentPersonality / currentPersonalityKey. Ensure you only have one that's correctly bound to currentPersonalityKey and setCurrentPersonalityKey. The one that was trying to use currentPersonality directly in value={currentPersonality} was causing the error because currentPersonality (as a state variable holding the key) was not what you intended for that specific useState destructuring.
+4. Update useEffect for Intro Phrase & Theme Changes:
+
+This useEffect will now depend on currentProfile (which is derived, so its dependencies are effectively currentPersonalityKey and personalityProfiles). Or, more directly, make it depend on currentPersonalityKey and re-derive profile inside.
+
+JavaScript
+
 useEffect(() => {
   const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
-  setCurrentProfile(profile); // Update the current full profile
+  // setCurrentProfile(profile); // Not needed if currentProfile is derived directly as shown above
+
   // Apply theme colors
   if (profile.themeColors) {
     for (const [key, value] of Object.entries(profile.themeColors)) {
       document.documentElement.style.setProperty(key, value);
     }
   }
-  // Play intro video (conceptual - you'll need a video player component/logic)
+
+  // Play intro video (conceptual)
   if (profile.introVideo) {
     console.log(`Should play intro video: ${profile.introVideo}`);
-    // Example: setVideoSource(profile.introVideo); setModalOpen(true);
-    // This part depends heavily on how you want to display the video.
-    // For now, we'll just log it.
+    // setIntroVideoToShow(profile.introVideo); // If you have state for this
   }
 
-  // Speak the intro phrase using the preferred TTS engine
+  // Speak the intro phrase
   if (profile.introPhrase) {
-    // Ensure TTS engines are loaded before attempting to speak
-    // You might want to add a small delay for the user to see the theme change/video start
     setTimeout(async () => {
       if (preferredTtsEngine === 'webSpeechAPI') {
-        // Ensure speakWithWebAPI is ready and not already speaking from a previous action
-        if (synthRef.current && !synthRef.current.speaking) { // Check synthRef.current
+        if (synthRef.current && !synthRef.current.speaking) {
           speakWithWebAPI(profile.introPhrase);
-        } else if (!synthRef.current) {
-            console.warn("Web Speech API not ready for intro phrase.");
         }
-      } else if (preferredTtsEngine === 'transformersJS') {
-        if (ttsPipelineInstance && speakerEmbeddings && !isSpeaking) { // Check TTS pipeline is ready
-          await synthesizeAndPlayText(profile.introPhrase);
-        } else if (!ttsPipelineInstance || !speakerEmbeddings){
-            console.warn("Transformers.js TTS not ready for intro phrase.");
+      } else if (preferredTtsEngine === 'transformersJS' || preferredTtsEngine === 'speechT5' || preferredTtsEngine === 'bark') {
+        // Consolidate Transformers.js engines for intro phrase
+        let activeTtsPipeline;
+        if (preferredTtsEngine === 'speechT5' && ttsPipelineInstance && speakerEmbeddings) {
+            activeTtsPipeline = async (text) => synthesizeAndPlayText(text);
+        } else if (preferredTtsEngine === 'bark' && barkPipelineInstance) {
+            activeTtsPipeline = async (text) => synthesizeWithBarkAndPlay(text, currentPersonalityKey);
+        }
+        
+        if (activeTtsPipeline && !isSpeaking) {
+          await activeTtsPipeline(profile.introPhrase);
+        } else {
+            console.warn(`${preferredTtsEngine} TTS not ready for intro phrase or already speaking.`);
         }
       }
-    }, profile.introVideo ? 1000 : 100); // Delay more if there's a video concept
+    }, profile.introVideo ? 1000 : 100);
   }
 
 }, [
-    currentPersonalityKey,
-    preferredTtsEngine, // Assuming you have this state for TTS engine choice
-    speakWithWebAPI,      // Memoized function
-    synthesizeAndPlayText, // Memoized function
-    ttsPipelineInstance,   // State (to check if ready)
-    speakerEmbeddings,     // State (to check if ready)
-    synthRef,              // Ref (to check if ready)
-    isSpeaking             // State (to check if already speaking)
+  currentPersonalityKey, // Key dependency
+  preferredTtsEngine,
+  speakWithWebAPI,          // Memoized
+  synthesizeAndPlayText,    // Memoized
+  synthesizeWithBarkAndPlay,// Memoized
+  ttsPipelineInstance,      // To check readiness
+  speakerEmbeddings,        // To check readiness
+  barkPipelineInstance,     // To check readiness
+  isSpeaking,
+  synthRef
+  // personalityProfiles object is stable if defined outside component, otherwise add if defined inside.
 ]);
 
   
@@ -901,12 +984,12 @@ max={2.0}
 
 {/* Selector for personality (if not already placed elsewhere) */}
 <div style={{ position:'absolute',zIndex:4000,padding: '10px 0' }}>
-  <label htmlFor="personality-select" style={{ position:'absolute',zIndex:4000,marginRight: '10px' }}>Change Personality:</label>
+ <h4>Select AI Personality:</h4> {/* Changed label slightly for clarity */}
   <select
     id="personality-select"
-    value={currentPersonalityKey}
-    onChange={(e) => setCurrentPersonalityKey(e.target.value)}
-    style={{ position:'absolute',zIndex:4000,padding: '8px', width: '100%', boxSizing: 'border-box' }}
+    value={currentPersonalityKey} // Use the KEY state here
+    onChange={(e) => setCurrentPersonalityKey(e.target.value)} // Use the KEY setter
+    style={{ padding: '8px', width: '100%', boxSizing: 'border-box', /* your zIndex if needed */ }}
   >
     {Object.keys(personalityProfiles).map(key => (
       <option key={key} value={key}>
@@ -916,21 +999,6 @@ max={2.0}
   </select>
 </div>
   
-  <div style={{ position:'absolute',zIndex:4000,padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
-  <h4>Select AI Personality/Purpose:</h4>
-  <select
-    value={currentPersonalityKey}
-    onChange={(e) => setCurrentPersonality(e.target.value)}
-    style={{ position:'absolute',zIndex:4000,padding: '8px', width: '100%', boxSizing: 'border-box' }}
-  >
-    {Object.keys(personalities).map(key => (
-      <option key={key} value={key}>
-        {/* Simple way to format the key for display */}
-        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-      </option>
-    ))}
-  </select>
-</div>
   
   <div style={{ position:'absolute',zIndex:4000,padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
   <h4>Auto-Speak Engine after LLM Generation:</h4>
