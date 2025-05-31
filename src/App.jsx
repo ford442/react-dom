@@ -76,8 +76,9 @@ const audioContextRef = useRef(null); // For playing audio
 const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
 const synthRef = useRef(null);
 const sttJustFinishedRef = useRef(false);
+  
+currentProfile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
 
-  const currentProfile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
 
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
   if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
