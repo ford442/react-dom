@@ -77,7 +77,8 @@ const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
 const synthRef = useRef(null);
 const sttJustFinishedRef = useRef(false);
 
-  
+  const currentProfile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
+
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
   if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
   if (synthRef.current.speaking) { synthRef.current.cancel(); }
@@ -920,7 +921,7 @@ max={2.0}
   <div style={{ position:'absolute',zIndex:4000,padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
   <h4>Select AI Personality/Purpose:</h4>
   <select
-    value={currentPersonality}
+    value={currentPersonalityKey}
     onChange={(e) => setCurrentPersonality(e.target.value)}
     style={{ position:'absolute',zIndex:4000,padding: '8px', width: '100%', boxSizing: 'border-box' }}
   >
