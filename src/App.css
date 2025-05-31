@@ -1,6 +1,57 @@
 ::-webkit-scrollbar {
   display: none;
 }
+.ai-panel-section {
+  padding: 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background-color: #ffffff; /* White background for sections */
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* Space between elements within a section */
+}
+.ai-panel-section h2,
+.ai-panel-section h3,
+.ai-panel-section h4 {
+  margin-top: 0;
+  color: var(--ai-text-color, #333); /* Use theme color */
+}
+.ai-panel-section textarea {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+}
+.ai-panel-section button {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 4px;
+  background-color: var(--ai-primary-color, #007bff); /* Use theme color */
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+.ai-panel-section button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+.ai-panel-section button:hover:not(:disabled) {
+  background-color: #0056b3; /* Darker shade for hover, adjust with theme */
+}
+.ai-panel-section select {
+  padding: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+.ai-panel-section label {
+  display: block; /* Make labels block for better spacing with inputs */
+  margin-bottom: 5px;
+  font-weight: bold;
+}
 :root {
   --ai-primary-color: #4A90E2;    /* Default Blue */
   --ai-secondary-color: #F5F5F5; /* Default Light grey */
