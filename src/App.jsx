@@ -888,7 +888,27 @@ max={2.0}
 <div id={'wrap'}>
 <div id={'contain1'}>
 <canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
-<div style={{ marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd', backgroundColor: 'rgba(230, 240, 250, 0.9)' }}>
+<div style={{
+  position: 'fixed', // Or 'absolute' if you prefer for your layout context
+  bottom: '20px',
+  left: '20px',
+  right: '20px',    // This makes it stretch; consider a fixed width + centering instead
+  // width: '600px', // Example: For a fixed width panel
+  // maxWidth: '90vw', // Prevent it from being too wide on large screens
+  // margin: '0 auto', // If using width and not left/right, this can help center (with left:0, right:0)
+  padding: '20px',
+  backgroundColor: 'rgba(245, 245, 245, 0.97)', // Light background for the panel
+  border: '1px solid #ccc',
+  borderRadius: '10px',
+  boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+  zIndex: 6000,
+  display: 'flex',
+  flexDirection: 'column', // Stack sections vertically
+  gap: '20px',             // Space between sections
+  pointerEvents: 'auto',
+  maxHeight: 'calc(100vh - 40px - 40px)', // Max height considering top/bottom viewport margins
+  overflowY: 'auto' // Add scroll if content exceeds maxHeight
+}}>
 <div style={{ position:'absolute',zIndex:4000,padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
   <h4>Active Text-to-Speech Engine:</h4>
   <select
