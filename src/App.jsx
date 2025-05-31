@@ -159,6 +159,91 @@ const initializeAudioContext = useCallback(() => {
 }, []);
 
   
+const playAudio = useCallback((audioArray, samplingRate) => {
+  const audioCtx = initializeAudioContext(); // Ensure this is robust
+  if (!audioCtx) {
+    alert("Audio player not initialized.");
+    return;
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(e => console.error("Resume in playAudio failed during effect setup", e));
+  }
+
+  const buffer = audioCtx.createBuffer(1, audioArray.length, samplingRate);
+  buffer.copyToChannel(audioArray, 0);
+
+  const sourceNode = audioCtx.createBufferSource();
+  sourceNode.buffer = buffer;
+
+  let currentNode = sourceNode; // This will be the last node in our audio chain
+
+  // Get effects for the current personality
+  const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
+  const effects = profile.transformersAudioEffects;
+
+  if (effects) {
+    // Apply Playback Rate
+    if (typeof effects.playbackRate === 'number') {
+      sourceNode.playbackRate.value = effects.playbackRate;
+    }
+
+    // Apply Biquad Filter
+    if (effects.filter && effects.filter.type) {
+      const filterNode = audioCtx.createBiquadFilter();
+      filterNode.type = effects.filter.type;
+      if (typeof effects.filter.frequency === 'number') {
+        filterNode.frequency.setValueAtTime(effects.filter.frequency, audioCtx.currentTime);
+      }
+      if (typeof effects.filter.Q === 'number') {
+        filterNode.Q.setValueAtTime(effects.filter.Q, audioCtx.currentTime);
+      }
+      if (typeof effects.filter.gain === 'number') { // For peaking, lowshelf, highshelf
+        filterNode.gain.setValueAtTime(effects.filter.gain, audioCtx.currentTime);
+      }
+      currentNode.connect(filterNode);
+      currentNode = filterNode;
+    }
+
+    // Apply Gain (Volume)
+    if (typeof effects.gain === 'number') {
+      const gainNode = audioCtx.createGain();
+      gainNode.gain.setValueAtTime(effects.gain, audioCtx.currentTime);
+      currentNode.connect(gainNode);
+      currentNode = gainNode;
+    }
+    
+    // Apply Reverb (ConvolverNode) - More Advanced
+    if (effects.reverbImpulseResponse) {
+      // This part needs to be async if fetching impulse, or preload impulses
+      // For simplicity, let's assume impulse is preloaded or this becomes async
+      // For now, we'll just show connection if impulseBuffer is ready
+      const convolverNode = audioCtx.createConvolver();
+      // You would fetch and decode effects.reverbImpulseResponse into an AudioBuffer
+      // and set convolverNode.buffer = thatAudioBuffer;
+      // Example:
+      // fetch(effects.reverbImpulseResponse)
+      //   .then(response => response.arrayBuffer())
+      //   .then(arrayBuffer => audioCtx.decodeAudioData(arrayBuffer))
+      //   .then(decodedAudio => {
+      //     convolverNode.buffer = decodedAudio;
+      //     // Re-connect might be needed if this is fully async after source.start()
+      //   }).catch(e => console.error("Error loading reverb impulse:", e));
+      // For a synchronous setup, you'd need the impulse buffer pre-loaded.
+      // If you have a preloaded impulseBuffer for this personality:
+      // if (preloadedImpulseBuffers[currentPersonalityKey]) {
+      //   convolverNode.buffer = preloadedImpulseBuffers[currentPersonalityKey];
+      //   currentNode.connect(convolverNode);
+      //   currentNode = convolverNode;
+      // }
+      console.warn("Reverb effect with ConvolverNode requires preloading or async handling of impulse responses. Not fully implemented in this example.");
+    }
+  }
+
+  currentNode.connect(audioCtx.destination);
+  sourceNode.start();
+}, [initializeAudioContext, currentPersonalityKey /*, preloadedImpulseBuffers (if you implement that) */]);
+
+  
 const synthesizeAndPlayText = useCallback(async (text) => {
   if (!ttsPipelineInstance || !speakerEmbeddings) {
     setStatusMessage("TTS model or speaker embeddings not loaded yet.");
@@ -322,90 +407,6 @@ const handleWebSpeechSpeak = () => { // This function is now simpler
   speakWithWebSpeechAPI(webSpeechText);
 };
       
-const playAudio = useCallback((audioArray, samplingRate) => {
-  const audioCtx = initializeAudioContext(); // Ensure this is robust
-  if (!audioCtx) {
-    alert("Audio player not initialized.");
-    return;
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume().catch(e => console.error("Resume in playAudio failed during effect setup", e));
-  }
-
-  const buffer = audioCtx.createBuffer(1, audioArray.length, samplingRate);
-  buffer.copyToChannel(audioArray, 0);
-
-  const sourceNode = audioCtx.createBufferSource();
-  sourceNode.buffer = buffer;
-
-  let currentNode = sourceNode; // This will be the last node in our audio chain
-
-  // Get effects for the current personality
-  const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
-  const effects = profile.transformersAudioEffects;
-
-  if (effects) {
-    // Apply Playback Rate
-    if (typeof effects.playbackRate === 'number') {
-      sourceNode.playbackRate.value = effects.playbackRate;
-    }
-
-    // Apply Biquad Filter
-    if (effects.filter && effects.filter.type) {
-      const filterNode = audioCtx.createBiquadFilter();
-      filterNode.type = effects.filter.type;
-      if (typeof effects.filter.frequency === 'number') {
-        filterNode.frequency.setValueAtTime(effects.filter.frequency, audioCtx.currentTime);
-      }
-      if (typeof effects.filter.Q === 'number') {
-        filterNode.Q.setValueAtTime(effects.filter.Q, audioCtx.currentTime);
-      }
-      if (typeof effects.filter.gain === 'number') { // For peaking, lowshelf, highshelf
-        filterNode.gain.setValueAtTime(effects.filter.gain, audioCtx.currentTime);
-      }
-      currentNode.connect(filterNode);
-      currentNode = filterNode;
-    }
-
-    // Apply Gain (Volume)
-    if (typeof effects.gain === 'number') {
-      const gainNode = audioCtx.createGain();
-      gainNode.gain.setValueAtTime(effects.gain, audioCtx.currentTime);
-      currentNode.connect(gainNode);
-      currentNode = gainNode;
-    }
-    
-    // Apply Reverb (ConvolverNode) - More Advanced
-    if (effects.reverbImpulseResponse) {
-      // This part needs to be async if fetching impulse, or preload impulses
-      // For simplicity, let's assume impulse is preloaded or this becomes async
-      // For now, we'll just show connection if impulseBuffer is ready
-      const convolverNode = audioCtx.createConvolver();
-      // You would fetch and decode effects.reverbImpulseResponse into an AudioBuffer
-      // and set convolverNode.buffer = thatAudioBuffer;
-      // Example:
-      // fetch(effects.reverbImpulseResponse)
-      //   .then(response => response.arrayBuffer())
-      //   .then(arrayBuffer => audioCtx.decodeAudioData(arrayBuffer))
-      //   .then(decodedAudio => {
-      //     convolverNode.buffer = decodedAudio;
-      //     // Re-connect might be needed if this is fully async after source.start()
-      //   }).catch(e => console.error("Error loading reverb impulse:", e));
-      // For a synchronous setup, you'd need the impulse buffer pre-loaded.
-      // If you have a preloaded impulseBuffer for this personality:
-      // if (preloadedImpulseBuffers[currentPersonalityKey]) {
-      //   convolverNode.buffer = preloadedImpulseBuffers[currentPersonalityKey];
-      //   currentNode.connect(convolverNode);
-      //   currentNode = convolverNode;
-      // }
-      console.warn("Reverb effect with ConvolverNode requires preloading or async handling of impulse responses. Not fully implemented in this example.");
-    }
-  }
-
-  currentNode.connect(audioCtx.destination);
-  sourceNode.start();
-}, [initializeAudioContext, currentPersonalityKey /*, preloadedImpulseBuffers (if you implement that) */]);
-
 const setupSpeechRecognition = useCallback(() => {
   const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognitionAPI) {
