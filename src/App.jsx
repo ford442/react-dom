@@ -37,19 +37,12 @@ function App() {
         const utf32Data = xhr.response;
         const jsCode = decodeUTF32(new Uint8Array(utf32Data), true);
 
-        // >>>>>>>>>>> ADD THIS LOG LINE <<<<<<<<<<<
-        console.log("--- START OF EMSCRIPTEN JS CODE ---");
-        console.log(jsCode); // Print the full content
-        console.log("--- END OF EMSCRIPTEN JS CODE ---");
-        // >>>>>>>>>>> END OF ADDED LOG LINE <<<<<<<<<<<
-
-
         const blob = new Blob([jsCode], { type: 'application/javascript' });
         const blobUrl = URL.createObjectURL(blob);
 
         try {
           // Keep this as is for now, we'll modify after inspecting jsCode
-const { default: createEmscriptenModule } = await import(blobUrl);
+    const  createEmscriptenModule  = await import(blobUrl);
 
           console.log("Dynamic import of Emscripten module factory finished.");
           console.log("createEmscriptenModule (the factory function):", createEmscriptenModule); // This will still be undefined
