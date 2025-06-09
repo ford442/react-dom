@@ -37,82 +37,97 @@ function App() {
         const utf32Data = xhr.response;
         const jsCode = decodeUTF32(new Uint8Array(utf32Data), true);
 
-        // --- Emscripten Configuration ---
-        // Initialize window.Module and set crucial callbacks BEFORE importing the Emscripten JS
-        window.Module = window.Module || {};
-
-        // 1. Hook into Emscripten's status updates (important for progress and early errors)
-        window.Module.setStatus = (text) => {
-          const statusElement = document.querySelector('#status');
-          if (statusElement) statusElement.innerHTML = text;
-          console.log('[Emscripten Status] ' + text); // <<< CRITICAL LOG
-          // You can also use this to update your splash screen / spinner
-          // e.g., if (text.includes('Running')) { hide splash }
-        };
-
-        // 2. Standard output and error streams
-        window.Module.print = (text) => console.log('[Emscripten stdout] ' + text);
-        window.Module.printErr = (text) => console.error('[Emscripten stderr] ' + text);
-
-        // 3. Monitor run dependencies (useful for seeing if WASM or data files are pending)
-        let runDependencies = 0; // Keep track of pending async ops
-        window.Module.monitorRunDependencies = (left) => {
-          runDependencies = left;
-          console.log(`[Emscripten Deps] Remaining dependencies: ${left}`); // <<< CRITICAL LOG
-          if (left === 0) {
-            console.log('[Emscripten Deps] All dependencies resolved.');
-          }
-        };
-
-        // 4. Pre-run and Post-run hooks (for very early/late stages)
-        window.Module.preRun = [() => {
-          console.log("[Emscripten Hook] preRun executed."); // <<< CRITICAL LOG
-          // If your Emscripten build expects a canvas, set it here *before* module start.
-          // Note: If you don't use 'scanvas' or if it's not critical for init, remove this.
-          // window.Module.canvas = document.querySelector('#scanvas');
-          // if (!window.Module.canvas) {
-          //   console.error("Emscripten: Canvas element #scanvas not found!");
-          // }
-        }];
-        window.Module.postRun = [() => {
-          console.log("[Emscripten Hook] postRun executed."); // <<< CRITICAL LOG
-        }];
-
-        // 5. onAbort callback (for critical errors)
-        window.Module.onAbort = (what) => {
-            console.error('[Emscripten Abort] ' + what); // <<< CRITICAL LOG
-        };
-
-
-        // 6. onRuntimeInitialized callback (your existing one)
-        window.Module.onRuntimeInitialized = () => {
-          console.log("###################################################");
-          console.log("### Emscripten runtime initialized callback FIRED! ###"); // <--- THIS IS THE CRITICAL LOG
-          console.log("###################################################");
-
-          if (typeof window.Module.callMain === 'function') {
-            console.log("Module.callMain is available and being called.");
-            window.Module.callMain();
-            document.querySelector('#splash1').style.display = 'none';
-            document.querySelector('#splash2').style.display = 'none';
-          } else {
-            console.error("Module.callMain is still not a function even after onRuntimeInitialized!");
-            // This case is unlikely if onRuntimeInitialized actually fires
-          }
-        };
-
-        // --- Dynamic Import ---
         const blob = new Blob([jsCode], { type: 'application/javascript' });
         const blobUrl = URL.createObjectURL(blob);
 
         try {
-          // Await the dynamic import. This will execute the Emscripten JS.
-          // The Emscripten JS will then internally try to call the various Module hooks.
-          await import(blobUrl);
-          console.log("Dynamic import of Emscripten module finished.");
-          console.log("Current state of window.Module immediately after import:", window.Module);
+          // Dynamic import: Expects a default export (the Emscripten Module factory)
+          // `EXPORT_ES6=1` typically exports the Module factory as the default export.
+          const { default: createEmscriptenModule } = await import(blobUrl);
+
+          console.log("Dynamic import of Emscripten module factory finished.");
+          console.log("createEmscriptenModule (the factory function):", createEmscriptenModule);
+
+          // Define the Module configuration object.
+          // This object is passed to the factory function (createEmscriptenModule).
+          const ModuleConfig = {
+            // If your Emscripten app renders to a canvas, link it here:
+            // This needs to point to an actual canvas element in your JSX
+            canvas: document.querySelector('#scanvas'), // Assuming this is your target canvas
+            locateFile: (path, prefix) => {
+                // Emscripten by default looks for wasm/data files relative to the JS.
+                // If your wasm file is in a different location, adjust this.
+                // Example: if wasm is in './wasm/', return `./wasm/${path}`;
+                console.log(`[Emscripten locateFile] path: ${path}, prefix: ${prefix}`);
+                return prefix + path;
+            },
+
+            // --- Emscripten Callbacks and Configurations ---
+            setStatus: (text) => {
+              const statusElement = document.querySelector('#status');
+              if (statusElement) statusElement.innerHTML = text;
+              console.log('[Emscripten Status] ' + text);
+            },
+            print: (text) => console.log('[Emscripten stdout] ' + text),
+            printErr: (text) => console.error('[Emscripten stderr] ' + text),
+            monitorRunDependencies: (left) => {
+              console.log(`[Emscripten Deps] Remaining dependencies: ${left}`);
+            },
+            preRun: [() => {
+              console.log("[Emscripten Hook] preRun executed.");
+              // Additional preRun logic, like initializing FS for WASMFS=1
+              if (Module.FS && typeof Module.FS.mkdir === 'function') { // Check if FS is available
+                 Module.FS.mkdir('/data'); // Create a directory for WASMFS
+                 Module.FS.mount(Module.IDBFS, {}, '/data'); // Mount IDBFS
+                 Module.FS.syncfs(true, (err) => { // Sync filesystem from IDBFS
+                     if (err) console.error("FS.syncfs error:", err);
+                     else console.log("FS synced from IDBFS.");
+                 });
+              } else {
+                console.warn("Emscripten FS not available in preRun or mkdir is not a function.");
+              }
+            }],
+            postRun: [() => {
+              console.log("[Emscripten Hook] postRun executed.");
+            }],
+            onAbort: (what) => {
+                console.error('[Emscripten Abort] ' + what);
+            },
+
+            // The onRuntimeInitialized callback
+            onRuntimeInitialized: function() { // Use 'function' to ensure 'this' refers to the Module instance
+              console.log("###################################################");
+              console.log("### Emscripten runtime initialized callback FIRED! ###");
+              console.log("###################################################");
+
+              const currentModule = this; // Capture the Module instance
+
+              // Since 'callMain' is not exported by your Makefile, we directly call '_main'.
+              // '_main' is explicitly exported in your EXPORTED_FUNCTIONS.
+              if (typeof currentModule._main === 'function') {
+                console.log("Module._main is available and being called.");
+                currentModule._main(); // Call the main C/C++ function
+                // Hide splash screens now that the app should be running
+                document.querySelector('#splash1').style.display = 'none';
+                document.querySelector('#splash2').style.display = 'none';
+              } else {
+                console.error("Module._main is NOT a function after runtime initialization!");
+                // You might need to inspect 'currentModule' to see what's actually available
+                console.log("Initialized Module (missing _main):", currentModule);
+              }
+            }
+          };
+
+          // Call the factory function with your configuration.
+          // This returns a Promise that resolves to the fully initialized Module instance.
+          const initializedModule = await createEmscriptenModule(ModuleConfig);
+          window.Module = initializedModule; // Optionally assign it to window.Module for global access/debugging
+
+          console.log("Actual Emscripten Module instance resolved:", initializedModule);
+
         } catch (error) {
-          console.error("Failed to load Emscripten module from string via dynamic import:", error);
+          console.error("Failed to load or initialize Emscripten module:", error);
+          // If the .wasm fails to load, this catch block should trigger.
         } finally {
           URL.revokeObjectURL(blobUrl);
         }
@@ -128,8 +143,8 @@ function App() {
     <>
       <link charset={"utf-8"} crossOrigin='anonymous' rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Audiowide"/>
-      <img id={'splash1'} src={'./image/shroud.jpg'} style={{backgroundColor:'rgba(233,233,233,0.0)',display:'block',position:'absolute',height:'100vh',width:'100vw',zIndex:3590}}></img>
-      <img id={'splash2'} src={'./image/spinner.gif'} style={{backgroundColor:'rgba(47,47,47,1.0)',display:'block',top:'50%',left:'50%',transform:'translate(-50%,-50%)',position:'absolute',height:'20vh',width:'20vh',zIndex:3591}}></img>
+      <img id={'splash1'} src={'./image/shroud.jpg'} style={{backgroundColor:'rgba(233,233,233,0.0)',display:'block',position:'absolute',height:'100vh',width:'100vw',zIndex:3590}></img>
+      <img id={'splash2'} src={'./image/spinner.gif'} style={{backgroundColor:'rgba(47,47,47,1.0)',display:'block',top:'50%',left:'50%',transform:'translate(-50%,-50%)',position:'absolute',height:'20vh',width:'20vh',zIndex:3591}></img>
       <nav id={'menu'}>
         <section className='menu-section' id={'menu-sections'}>
           <div style={{textAlign:'center'}}>
@@ -137,7 +152,7 @@ function App() {
           </div>
           <ul className='menu-section-list'>
             <div id={'mnu'}>
-              <select id={'resMode'} hidden style={{position:'absolute',zIndex:1,pointerPointers:'auto'}}>
+              <select id={'resMode'} hidden style={{position:'absolute',zIndex:1,pointerEvents:'auto'}}>
                 <option value="false">False</option>
                 <option value="true">True</option>
               </select>
@@ -245,9 +260,9 @@ function App() {
         <video hidden muted src={'./video-1456459792.mp4'} loop crossOrigin='anonymous' playsInline id={'ivi'} preload={'auto'} style={{pointerEvents:'none',transform:'scaleY(-1.0)'}}></video>
       </div>
       <div style={{pointerEvents:'none',height:'100vh'}}>
-        <video hidden muted crossOrigin='anonymous' playsInline id={'ldv'} preload={'auto'} style={{pointerPointers:'none'}}></video>
+        <video hidden muted crossOrigin='anonymous' playsInline id={'ldv'} preload={'auto'} style={{pointerEvents:'none'}}></video>
       </div>
-      <audio crossOrigin='anonymous' id={'track'} preload={'auto'} hidden style={{pointerPointers:'none'}}></audio>
+      <audio crossOrigin='anonymous' id={'track'} preload={'auto'} hidden style={{pointerEvents:'none'}}></audio>
     </>
   );
 }
