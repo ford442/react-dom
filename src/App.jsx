@@ -40,7 +40,6 @@ function App() {
         const blob = new Blob([jsCode], { type: 'application/javascript' });
         const blobUrl = URL.createObjectURL(blob);
 
-        try {
           // Keep this as is for now, we'll modify after inspecting jsCode
     const  createEmscriptenModule  = await import(blobUrl);
 
@@ -107,11 +106,7 @@ function App() {
           window.Module = initializedModule;
           console.log("Actual Emscripten Module instance resolved:", initializedModule);
 
-        } catch {
-          console.error("Failed to load or initialize Emscripten module:");
-        } finally {
-          URL.revokeObjectURL(blobUrl);
-        }
+   
       } else {
         console.error(`Failed to load Emscripten module: Status ${xhr.status}`);
       }
