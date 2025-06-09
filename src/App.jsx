@@ -33,14 +33,19 @@ const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-
 const scr = document.createElement('script');
 scr.type = 'module';
 scr.text = jsCode;
-document.body.appendChild(scr);
+// document.body.appendChild(scr);
 var Module = {}; // Initialize an empty Module object
 setTimeout(function(){
-Module = libload();
-Module.onRuntimeInitialized = function(){
-console.log('call main loader');
-Module.callMain();
-};
+  
+const blob = new Blob([jsCode], { type: 'application/javascript' });
+const blobUrl = URL.createObjectURL(blob);
+const module = await import(blobUrl);
+    // Now 'module' contains your exports!
+console.log("Module loaded successfully!");
+console.log("Version:", module.version);
+const instance = module.createModule("MyDynamicModule");
+console.log("Instance:", instance);
+    
 },2500);
 }
 };
