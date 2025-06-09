@@ -41,7 +41,7 @@ function App() {
         const blobUrl = URL.createObjectURL(blob);
 
           // Keep this as is for now, we'll modify after inspecting jsCode
-    const  createEmscriptenModule  = await import(blobUrl);
+    const  createEmscriptenModule  = import(blobUrl);
 
           console.log("Dynamic import of Emscripten module factory finished.");
           console.log("createEmscriptenModule (the factory function):", createEmscriptenModule); // This will still be undefined
