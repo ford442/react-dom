@@ -42,8 +42,7 @@ const module = import(blobUrl);
 setTimeout(function(){
 console.log("Module loaded successfully!");
 console.log("Version:", module.version);
-const instance = module.createModule("MyDynamicModule");
-console.log("Instance:", instance);
+module.callMain();
 },2500);
 },2500);
 }
