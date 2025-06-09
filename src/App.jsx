@@ -37,31 +37,30 @@ function App() {
         const utf32Data = xhr.response;
         const jsCode = decodeUTF32(new Uint8Array(utf32Data), true);
 
+        // >>>>>>>>>>> ADD THIS LOG LINE <<<<<<<<<<<
+        console.log("--- START OF EMSCRIPTEN JS CODE ---");
+        console.log(jsCode); // Print the full content
+        console.log("--- END OF EMSCRIPTEN JS CODE ---");
+        // >>>>>>>>>>> END OF ADDED LOG LINE <<<<<<<<<<<
+
+
         const blob = new Blob([jsCode], { type: 'application/javascript' });
         const blobUrl = URL.createObjectURL(blob);
 
         try {
-          // Dynamic import: Expects a default export (the Emscripten Module factory)
+          // Keep this as is for now, we'll modify after inspecting jsCode
           const { default: createEmscriptenModule } = await import(blobUrl);
 
           console.log("Dynamic import of Emscripten module factory finished.");
-          console.log("createEmscriptenModule (the factory function):", createEmscriptenModule);
+          console.log("createEmscriptenModule (the factory function):", createEmscriptenModule); // This will still be undefined
 
-          // Define the Module configuration object.
-          // This object is passed to the factory function (createEmscriptenModule).
+          // ... rest of your code ...
           const ModuleConfig = {
-            // Link your canvas if needed.
-            // Ensure '#scanvas' is present in your JSX before this code runs.
             canvas: document.querySelector('#scanvas'),
             locateFile: (path, prefix) => {
-                // This callback helps Emscripten find its associated .wasm and .data files.
-                // By default, it expects them alongside the .js file. Adjust if yours are elsewhere.
                 console.log(`[Emscripten locateFile] path: ${path}, prefix: ${prefix}`);
-                // Assuming your .wasm is in the same directory as the loaded .js
                 return prefix + path;
             },
-
-            // --- Emscripten Callbacks and Configurations ---
             setStatus: (text) => {
               const statusElement = document.querySelector('#status');
               if (statusElement) statusElement.innerHTML = text;
@@ -74,11 +73,6 @@ function App() {
             },
             preRun: [() => {
               console.log("[Emscripten Hook] preRun executed.");
-              // For WASMFS=1, you often need to set up the file system in preRun
-              // Ensure 'Module' refers to the actual instance here, usually available via 'this'
-              // but for Module.FS to be available, the runtime might need to progress further.
-              // This is a common point of complexity for WASMFS.
-              // Consider if you really need WASMFS, or if your files can be preloaded more simply.
               if (window.Module && typeof window.Module.FS === 'object' && typeof window.Module.FS.mkdir === 'function') {
                  console.log("Setting up WASMFS in preRun...");
                  window.Module.FS.mkdir('/data');
@@ -97,43 +91,31 @@ function App() {
             onAbort: (what) => {
                 console.error('[Emscripten Abort] ' + what);
             },
-
-            // The onRuntimeInitialized callback
-            onRuntimeInitialized: function() { // Use 'function' to ensure 'this' refers to the Module instance
+            onRuntimeInitialized: function() {
               console.log("###################################################");
               console.log("### Emscripten runtime initialized callback FIRED! ###");
               console.log("###################################################");
 
-              const currentModule = this; // Capture the Module instance
-
-              // Now, we can safely call 'callMain' which is now exported and wraps _main
+              const currentModule = this;
               if (typeof currentModule.callMain === 'function') {
                 console.log("Module.callMain is available and being called.");
-                currentModule.callMain(); // Call the main C/C++ function via the wrapper
-                // Hide splash screens now that the app should be running
+                currentModule.callMain();
                 document.querySelector('#splash1').style.display = 'none';
                 document.querySelector('#splash2').style.display = 'none';
               } else {
                 console.error("Module.callMain is NOT a function after runtime initialization!");
-                // Inspect 'currentModule' to see what's actually available
                 console.log("Initialized Module:", currentModule);
               }
             }
           };
 
-          // Call the factory function with your configuration.
-          // This returns a Promise that resolves to the fully initialized Module instance.
+          // This line will still fail if createEmscriptenModule is undefined
           const initializedModule = await createEmscriptenModule(ModuleConfig);
-
-          // Assign it to window.Module for global access if your C++ code relies on it,
-          // or for easier debugging in the console.
           window.Module = initializedModule;
-
           console.log("Actual Emscripten Module instance resolved:", initializedModule);
 
         } catch (error) {
           console.error("Failed to load or initialize Emscripten module:", error);
-          // If the .wasm fails to load, this catch block should trigger.
         } finally {
           URL.revokeObjectURL(blobUrl);
         }
@@ -149,8 +131,8 @@ function App() {
       {/* Your existing JSX */}
       <link charset={"utf-8"} crossOrigin='anonymous' rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Audiowide"/>
-      <img id={'splash1'} src={'./image/shroud.jpg'} style={{backgroundColor:'rgba(233,233,233,0.0)',display:'block',position:'absolute',height:'100vh',width:'100vw',zIndex:3590}}></img>
-      <img id={'splash2'} src={'./image/spinner.gif'} style={{backgroundColor:'rgba(47,47,47,1.0)',display:'block',top:'50%',left:'50%',transform:'translate(-50%,-50%)',position:'absolute',height:'20vh',width:'20vh',zIndex:3591}}></img>
+      <img id={'splash1'} src={'./image/shroud.jpg'} style={{backgroundColor:'rgba(233,233,233,0.0)',display:'block',position:'absolute',height:'100vh',width:'100vw',zIndex:3590}></img>
+      <img id={'splash2'} src={'./image/spinner.gif'} style={{backgroundColor:'rgba(47,47,47,1.0)',display:'block',top:'50%',left:'50%',transform:'translate(-50%,-50%)',position:'absolute',height:'20vh',width:'20vh',zIndex:3591}></img>
       <nav id={'menu'}>
         <section className='menu-section' id={'menu-sections'}>
           <div style={{textAlign:'center'}}>
