@@ -13,7 +13,7 @@ if (file) {
 const reader = new FileReader();
 reader.onload = (e) => {
 const imageDataURL = e.target.result;
-window.open('./depth.1ink');
+// The window.open('./depth.1ink') line has been removed as requested.
 setTimeout(function(){
 imageChannel.postMessage({ imageDataURL });
 },4500);      };
