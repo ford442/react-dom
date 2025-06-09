@@ -7,80 +7,99 @@ function App() {
   useLayoutEffect(() => {
     const xhrPath = document.querySelector('#loadPath').innerHTML;
     const xhr = new XMLHttpRequest();
-    xhr.open('GET', xhrPath, true); // Replace with your filename
-    xhr.responseType = 'arraybuffer'; // Get raw binary data
+    xhr.open('GET', xhrPath, true);
+    xhr.responseType = 'arraybuffer';
     console.log('got react run');
 
-    // Function to decode UTF-32
     function decodeUTF32(uint8Array, isLittleEndian = true) {
       const dataView = new DataView(uint8Array.buffer);
       let result = "";
       for (let i = 0; i < uint8Array.length; i += 4) {
         let codePoint;
         if (isLittleEndian) {
-          codePoint = dataView.getUint32(i, true); // Little-endian
+          codePoint = dataView.getUint32(i, true);
         } else {
-          codePoint = dataView.getUint32(i, false); // Big-endian
+          codePoint = dataView.getUint32(i, false);
         }
-        // Handle potential invalid code points (e.g., surrogate pairs if data isn't pure UTF-32)
-        // This is a basic check; robust decoding might need more
         if (codePoint >= 0 && codePoint <= 0x10FFFF) {
           result += String.fromCodePoint(codePoint);
         } else {
-          // You might want to handle errors or replace with a placeholder
           console.warn(`Invalid UTF-32 code point encountered: ${codePoint.toString(16)}`);
-          result += '�'; // Replacement character
+          result += '�';
         }
       }
       return result;
     }
 
-    xhr.onload = function() {
+    xhr.onload = async function() { // IMPORTANT: Make this function async
       console.log('got load loader');
       if (xhr.status === 200) {
         const utf32Data = xhr.response;
         const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
 
-        // IMPORTANT: Execute the Emscripten code directly.
-        // Emscripten typically relies on a global 'Module' object.
-        // 'eval' is used here because Emscripten's output isn't always a standard ES Module that exports 'Module'.
-        // It often modifies the global scope.
+        // Define the global Module object before the Emscripten script runs
+        // This is crucial for Emscripten to find its configuration and hooks.
+        // It's also where Emscripten might attach its internal Module object.
+        window.Module = window.Module || {};
+
+        // Example configurations you might need for Emscripten:
+        // window.Module.canvas = document.querySelector('#scanvas');
+        // window.Module.print = (text) => console.log('[Emscripten] ' + text);
+        // window.Module.printErr = (text) => console.error('[Emscripten] ' + text);
+        // window.Module.setStatus = (text) => {
+        //   const statusElement = document.querySelector('#status');
+        //   if (statusElement) statusElement.innerHTML = text;
+        // };
+        // window.Module.onRuntimeInitialized = () => {
+        //   console.log("Emscripten runtime initialized via onRuntimeInitialized!");
+        //   if (typeof window.Module.callMain === 'function') {
+        //     window.Module.callMain();
+        //   }
+        // };
+
+        const blob = new Blob([jsCode], { type: 'application/javascript' });
+        const blobUrl = URL.createObjectURL(blob);
+
         try {
-          // Define a global Module object if Emscripten expects it to be pre-defined
-          // before its script runs. If Emscripten creates it, this might not be strictly necessary,
-          // but it's good for configuring it.
-          // Note: If you have an existing 'Module' object from another Emscripten build,
-          // this might overwrite it or interact in unexpected ways.
-          window.Module = window.Module || {};
+          // Dynamic import: Await the resolution of the module
+          const moduleExports = await import(blobUrl);
 
-          // Execute the Emscripten-generated JavaScript code
-          eval(jsCode);
+          // Now, 'moduleExports' will contain any explicit exports from the Emscripten module.
+          // However, for typical Emscripten output, it often still relies on the global `Module` object
+          // after it has finished setting up.
+          console.log("Module loaded successfully via dynamic import!");
+          // console.log("Module Exports:", moduleExports); // You can inspect this to see if anything is exported
 
-          // Now, the global 'Module' object should be populated by the Emscripten code.
-          // You might need a slight delay for Emscripten's initialization to complete,
-          // especially if it has a main loop or async setup.
-          // However, try without a setTimeout first, as `eval` is synchronous.
+          // Give a short moment for Emscripten's internal setup if it uses microtasks
+          // This `setTimeout` might still be useful here, but a smaller value or
+          // relying on `Module.onRuntimeInitialized` is better.
+          // Let's try without the setTimeout first, relying on onRuntimeInitialized or direct access.
 
+          // Check if Emscripten initialized the global Module object
           if (window.Module && typeof window.Module.callMain === 'function') {
-            console.log("Emscripten Module and callMain found!");
-            // Call Emscripten's main function
+            console.log("Global Emscripten Module and callMain found!");
             window.Module.callMain();
           } else {
-            console.warn("Emscripten Module.callMain not found after script execution.");
-            // If Emscripten has a post-run hook or similar, you might need to wait for that.
-            // For example, if it's based on a `_main` function and not `callMain`,
-            // or if it needs to initialize a canvas first.
+            console.warn("Global Emscripten Module.callMain not found immediately after dynamic import. " +
+                         "Consider using Module.onRuntimeInitialized if your Emscripten build is asynchronous.");
+            // If callMain isn't available immediately, it often means the Emscripten
+            // runtime (e.g., WebAssembly loading) is still initializing.
+            // The `onRuntimeInitialized` callback on the global `Module` object is the most robust way to handle this.
           }
 
-        } catch (e) {
-          console.error("Error executing Emscripten JavaScript code:", e);
+        } catch (error) {
+          console.error("Failed to load module from string via dynamic import:", error);
+        } finally {
+          // Revoke the object URL immediately if you only need to load it once.
+          // If you need to access it multiple times, you might keep it.
+          URL.revokeObjectURL(blobUrl);
         }
       } else {
         console.error(`Failed to load Emscripten module: Status ${xhr.status}`);
       }
     };
     xhr.send();
-  }, []); // Empty dependency array means this runs once after initial render
+  }, []);
 
   return (
     <>
