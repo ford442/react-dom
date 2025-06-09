@@ -107,8 +107,8 @@ function App() {
           window.Module = initializedModule;
           console.log("Actual Emscripten Module instance resolved:", initializedModule);
 
-        } catch (error) {
-          console.error("Failed to load or initialize Emscripten module:", error);
+        } catch () {
+          console.error("Failed to load or initialize Emscripten module:");
         } finally {
           URL.revokeObjectURL(blobUrl);
         }
