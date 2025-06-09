@@ -19,7 +19,7 @@ function App() {
         if (isLittleEndian) {
           codePoint = dataView.getUint32(i, true);
         } else {
-          codePoint = dataView.getUint32(i, false);
+          codePoint = dataDataView.getUint32(i, false);
         }
         if (codePoint >= 0 && codePoint <= 0x10FFFF) {
           result += String.fromCodePoint(codePoint);
@@ -31,33 +31,33 @@ function App() {
       return result;
     }
 
-    xhr.onload = async function() { // Keep this async
+    xhr.onload = async function() {
       console.log('got load loader');
       if (xhr.status === 200) {
         const utf32Data = xhr.response;
         const jsCode = decodeUTF32(new Uint8Array(utf32Data), true);
 
-        // 1. Initialize the global Module object (if it doesn't exist)
-        //    AND crucially, define the onRuntimeInitialized callback here.
         window.Module = window.Module || {};
 
-        // 2. Define the onRuntimeInitialized callback
+        // >>>>>>>>>>> ADDED LOG HERE <<<<<<<<<<<
         window.Module.onRuntimeInitialized = () => {
-          console.log("Emscripten runtime initialized via onRuntimeInitialized!");
-          // Now that the runtime is fully ready, it's safe to call Module.callMain().
+          console.log("###################################################");
+          console.log("### Emscripten runtime initialized callback FIRED! ###"); // <--- THIS IS THE CRITICAL LOG
+          console.log("###################################################");
+
           if (typeof window.Module.callMain === 'function') {
+            console.log("Module.callMain is available and being called.");
             window.Module.callMain();
             // You might also want to hide the splash screen here
             document.querySelector('#splash1').style.display = 'none';
             document.querySelector('#splash2').style.display = 'none';
           } else {
             console.error("Module.callMain is still not a function even after onRuntimeInitialized!");
-            // This would indicate a more fundamental issue with the Emscripten build.
           }
         };
 
-        // Optional: Add other Emscripten configuration properties here,
-        // such as canvas, print, printErr, setStatus.
+        // Also useful to set up your canvas and other print functions here
+        // if Emscripten uses them.
         // For example:
         // window.Module.canvas = document.querySelector('#scanvas');
         // window.Module.print = (text) => console.log('[Emscripten stdout] ' + text);
@@ -67,27 +67,16 @@ function App() {
         //   if (statusElement) statusElement.innerHTML = text;
         // };
 
-
-        // 3. Create Blob URL and dynamically import
         const blob = new Blob([jsCode], { type: 'application/javascript' });
         const blobUrl = URL.createObjectURL(blob);
 
         try {
-          // Await the dynamic import. This will execute the Emscripten JS.
-          // The Emscripten JS will then (eventually) call window.Module.onRuntimeInitialized
-          // when its internal setup is complete.
           await import(blobUrl);
-  console.log("Dynamic import of Emscripten module finished.");
-  console.log("Current state of window.Module:", window.Module); // Add this line
-
-          // No need to call Module.callMain() here directly anymore,
-          // it will be called by onRuntimeInitialized.
           console.log("Dynamic import of Emscripten module finished.");
-
+          console.log("Current state of window.Module immediately after import:", window.Module); // Re-inspect here
         } catch (error) {
           console.error("Failed to load Emscripten module from string via dynamic import:", error);
         } finally {
-          // Revoke the object URL
           URL.revokeObjectURL(blobUrl);
         }
       } else {
@@ -98,8 +87,8 @@ function App() {
   }, []);
 
   return (
+    // ... (rest of your JSX remains unchanged)
     <>
-      {/* Your existing JSX */}
       <link charset={"utf-8"} crossOrigin='anonymous' rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Audiowide"/>
       <img id={'splash1'} src={'./image/shroud.jpg'} style={{backgroundColor:'rgba(233,233,233,0.0)',display:'block',position:'absolute',height:'100vh',width:'100vw',zIndex:3590}}></img>
