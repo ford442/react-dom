@@ -31,22 +31,16 @@ function App() {
       return result;
     }
 
-    xhr.onload = async function() {
+xhr.onload = async function() {
       console.log('got load loader');
       if (xhr.status === 200) {
         const utf32Data = xhr.response;
         const jsCode = decodeUTF32(new Uint8Array(utf32Data), true);
-
         const blob = new Blob([jsCode], { type: 'application/javascript' });
         const blobUrl = URL.createObjectURL(blob);
-
-          // Keep this as is for now, we'll modify after inspecting jsCode
-    const  createEmscriptenModule  = import(blobUrl);
-
+    const  createEmscriptenModule  = await import(blobUrl);
           console.log("Dynamic import of Emscripten module factory finished.");
           console.log("createEmscriptenModule (the factory function):", createEmscriptenModule); // This will still be undefined
-
-          // ... rest of your code ...
           const ModuleConfig = {
             canvas: document.querySelector('#scanvas'),
             locateFile: (path, prefix) => {
@@ -87,7 +81,6 @@ function App() {
               console.log("###################################################");
               console.log("### Emscripten runtime initialized callback FIRED! ###");
               console.log("###################################################");
-
               const currentModule = this;
               if (typeof currentModule.callMain === 'function') {
                 console.log("Module.callMain is available and being called.");
@@ -100,18 +93,15 @@ function App() {
               }
             }
           };
-
           // This line will still fail if createEmscriptenModule is undefined
         setTimeout(function(){
-          const initializedModule = createEmscriptenModule(ModuleConfig);
+          const initializedModule = await createEmscriptenModule(ModuleConfig);
                   setTimeout(function(){
-
           window.Module = initializedModule;
           console.log("Actual Emscripten Module instance resolved:", initializedModule);
         },200);
         },200);
-   
-      } else {
+         } else {
         console.error(`Failed to load Emscripten module: Status ${xhr.status}`);
       }
     };
