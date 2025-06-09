@@ -94,12 +94,10 @@ xhr.onload = async function() {
             }
           };
           // This line will still fail if createEmscriptenModule is undefined
-        setTimeout(function(){
           const initializedModule = await createEmscriptenModule(ModuleConfig);
                   setTimeout(function(){
           window.Module = initializedModule;
           console.log("Actual Emscripten Module instance resolved:", initializedModule);
-        },200);
         },200);
          } else {
         console.error(`Failed to load Emscripten module: Status ${xhr.status}`);
