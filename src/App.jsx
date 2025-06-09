@@ -49,7 +49,7 @@ function App() {
 
         try {
           // Keep this as is for now, we'll modify after inspecting jsCode
-          const { default: createEmscriptenModule } = await import(blobUrl);
+const { Module$$module$w0_036_load_32: createEmscriptenModule } = await import(blobUrl);
 
           console.log("Dynamic import of Emscripten module factory finished.");
           console.log("createEmscriptenModule (the factory function):", createEmscriptenModule); // This will still be undefined
