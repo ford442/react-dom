@@ -36,16 +36,15 @@ scr.text = jsCode;
 // document.body.appendChild(scr);
 var Module = {}; // Initialize an empty Module object
 setTimeout(function(){
-  
 const blob = new Blob([jsCode], { type: 'application/javascript' });
 const blobUrl = URL.createObjectURL(blob);
-const module = await import(blobUrl);
-    // Now 'module' contains your exports!
+const module = import(blobUrl);
+setTimeout(function(){
 console.log("Module loaded successfully!");
 console.log("Version:", module.version);
 const instance = module.createModule("MyDynamicModule");
 console.log("Instance:", instance);
-    
+},2500);
 },2500);
 }
 };
