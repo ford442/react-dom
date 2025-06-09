@@ -103,9 +103,12 @@ function App() {
 
           // This line will still fail if createEmscriptenModule is undefined
         setTimeout(function(){
-          const initializedModule = await createEmscriptenModule(ModuleConfig);
+          const initializedModule = createEmscriptenModule(ModuleConfig);
+                  setTimeout(function(){
+
           window.Module = initializedModule;
           console.log("Actual Emscripten Module instance resolved:", initializedModule);
+        },200);
         },200);
    
       } else {
