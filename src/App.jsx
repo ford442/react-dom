@@ -42,7 +42,6 @@ function App() {
 
         try {
           // Dynamic import: Expects a default export (the Emscripten Module factory)
-          // `EXPORT_ES6=1` typically exports the Module factory as the default export.
           const { default: createEmscriptenModule } = await import(blobUrl);
 
           console.log("Dynamic import of Emscripten module factory finished.");
@@ -51,14 +50,14 @@ function App() {
           // Define the Module configuration object.
           // This object is passed to the factory function (createEmscriptenModule).
           const ModuleConfig = {
-            // If your Emscripten app renders to a canvas, link it here:
-            // This needs to point to an actual canvas element in your JSX
-            canvas: document.querySelector('#scanvas'), // Assuming this is your target canvas
+            // Link your canvas if needed.
+            // Ensure '#scanvas' is present in your JSX before this code runs.
+            canvas: document.querySelector('#scanvas'),
             locateFile: (path, prefix) => {
-                // Emscripten by default looks for wasm/data files relative to the JS.
-                // If your wasm file is in a different location, adjust this.
-                // Example: if wasm is in './wasm/', return `./wasm/${path}`;
+                // This callback helps Emscripten find its associated .wasm and .data files.
+                // By default, it expects them alongside the .js file. Adjust if yours are elsewhere.
                 console.log(`[Emscripten locateFile] path: ${path}, prefix: ${prefix}`);
+                // Assuming your .wasm is in the same directory as the loaded .js
                 return prefix + path;
             },
 
@@ -75,16 +74,21 @@ function App() {
             },
             preRun: [() => {
               console.log("[Emscripten Hook] preRun executed.");
-              // Additional preRun logic, like initializing FS for WASMFS=1
-              if (Module.FS && typeof Module.FS.mkdir === 'function') { // Check if FS is available
-                 Module.FS.mkdir('/data'); // Create a directory for WASMFS
-                 Module.FS.mount(Module.IDBFS, {}, '/data'); // Mount IDBFS
-                 Module.FS.syncfs(true, (err) => { // Sync filesystem from IDBFS
+              // For WASMFS=1, you often need to set up the file system in preRun
+              // Ensure 'Module' refers to the actual instance here, usually available via 'this'
+              // but for Module.FS to be available, the runtime might need to progress further.
+              // This is a common point of complexity for WASMFS.
+              // Consider if you really need WASMFS, or if your files can be preloaded more simply.
+              if (window.Module && typeof window.Module.FS === 'object' && typeof window.Module.FS.mkdir === 'function') {
+                 console.log("Setting up WASMFS in preRun...");
+                 window.Module.FS.mkdir('/data');
+                 window.Module.FS.mount(window.Module.IDBFS, {}, '/data');
+                 window.Module.FS.syncfs(true, (err) => {
                      if (err) console.error("FS.syncfs error:", err);
                      else console.log("FS synced from IDBFS.");
                  });
               } else {
-                console.warn("Emscripten FS not available in preRun or mkdir is not a function.");
+                console.warn("Emscripten FS or relevant methods not available in preRun for WASMFS setup.");
               }
             }],
             postRun: [() => {
@@ -102,18 +106,17 @@ function App() {
 
               const currentModule = this; // Capture the Module instance
 
-              // Since 'callMain' is not exported by your Makefile, we directly call '_main'.
-              // '_main' is explicitly exported in your EXPORTED_FUNCTIONS.
-              if (typeof currentModule._main === 'function') {
-                console.log("Module._main is available and being called.");
-                currentModule._main(); // Call the main C/C++ function
+              // Now, we can safely call 'callMain' which is now exported and wraps _main
+              if (typeof currentModule.callMain === 'function') {
+                console.log("Module.callMain is available and being called.");
+                currentModule.callMain(); // Call the main C/C++ function via the wrapper
                 // Hide splash screens now that the app should be running
                 document.querySelector('#splash1').style.display = 'none';
                 document.querySelector('#splash2').style.display = 'none';
               } else {
-                console.error("Module._main is NOT a function after runtime initialization!");
-                // You might need to inspect 'currentModule' to see what's actually available
-                console.log("Initialized Module (missing _main):", currentModule);
+                console.error("Module.callMain is NOT a function after runtime initialization!");
+                // Inspect 'currentModule' to see what's actually available
+                console.log("Initialized Module:", currentModule);
               }
             }
           };
@@ -121,7 +124,10 @@ function App() {
           // Call the factory function with your configuration.
           // This returns a Promise that resolves to the fully initialized Module instance.
           const initializedModule = await createEmscriptenModule(ModuleConfig);
-          window.Module = initializedModule; // Optionally assign it to window.Module for global access/debugging
+
+          // Assign it to window.Module for global access if your C++ code relies on it,
+          // or for easier debugging in the console.
+          window.Module = initializedModule;
 
           console.log("Actual Emscripten Module instance resolved:", initializedModule);
 
@@ -139,8 +145,8 @@ function App() {
   }, []);
 
   return (
-    // ... (rest of your JSX remains unchanged)
     <>
+      {/* Your existing JSX */}
       <link charset={"utf-8"} crossOrigin='anonymous' rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Audiowide"/>
       <img id={'splash1'} src={'./image/shroud.jpg'} style={{backgroundColor:'rgba(233,233,233,0.0)',display:'block',position:'absolute',height:'100vh',width:'100vw',zIndex:3590}></img>
