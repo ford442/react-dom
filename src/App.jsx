@@ -31,67 +31,61 @@ function App() {
       return result;
     }
 
-    xhr.onload = async function() { // IMPORTANT: Make this function async
+    xhr.onload = async function() { // Keep this async
       console.log('got load loader');
       if (xhr.status === 200) {
         const utf32Data = xhr.response;
-        const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
+        const jsCode = decodeUTF32(new Uint8Array(utf32Data), true);
 
-        // Define the global Module object before the Emscripten script runs
-        // This is crucial for Emscripten to find its configuration and hooks.
-        // It's also where Emscripten might attach its internal Module object.
+        // 1. Initialize the global Module object (if it doesn't exist)
+        //    AND crucially, define the onRuntimeInitialized callback here.
         window.Module = window.Module || {};
 
-        // Example configurations you might need for Emscripten:
+        // 2. Define the onRuntimeInitialized callback
+        window.Module.onRuntimeInitialized = () => {
+          console.log("Emscripten runtime initialized via onRuntimeInitialized!");
+          // Now that the runtime is fully ready, it's safe to call Module.callMain().
+          if (typeof window.Module.callMain === 'function') {
+            window.Module.callMain();
+            // You might also want to hide the splash screen here
+            document.querySelector('#splash1').style.display = 'none';
+            document.querySelector('#splash2').style.display = 'none';
+          } else {
+            console.error("Module.callMain is still not a function even after onRuntimeInitialized!");
+            // This would indicate a more fundamental issue with the Emscripten build.
+          }
+        };
+
+        // Optional: Add other Emscripten configuration properties here,
+        // such as canvas, print, printErr, setStatus.
+        // For example:
         // window.Module.canvas = document.querySelector('#scanvas');
-        // window.Module.print = (text) => console.log('[Emscripten] ' + text);
-        // window.Module.printErr = (text) => console.error('[Emscripten] ' + text);
+        // window.Module.print = (text) => console.log('[Emscripten stdout] ' + text);
+        // window.Module.printErr = (text) => console.error('[Emscripten stderr] ' + text);
         // window.Module.setStatus = (text) => {
         //   const statusElement = document.querySelector('#status');
         //   if (statusElement) statusElement.innerHTML = text;
         // };
-        // window.Module.onRuntimeInitialized = () => {
-        //   console.log("Emscripten runtime initialized via onRuntimeInitialized!");
-        //   if (typeof window.Module.callMain === 'function') {
-        //     window.Module.callMain();
-        //   }
-        // };
 
+
+        // 3. Create Blob URL and dynamically import
         const blob = new Blob([jsCode], { type: 'application/javascript' });
         const blobUrl = URL.createObjectURL(blob);
 
         try {
-          // Dynamic import: Await the resolution of the module
-          const moduleExports = await import(blobUrl);
+          // Await the dynamic import. This will execute the Emscripten JS.
+          // The Emscripten JS will then (eventually) call window.Module.onRuntimeInitialized
+          // when its internal setup is complete.
+          await import(blobUrl);
 
-          // Now, 'moduleExports' will contain any explicit exports from the Emscripten module.
-          // However, for typical Emscripten output, it often still relies on the global `Module` object
-          // after it has finished setting up.
-          console.log("Module loaded successfully via dynamic import!");
-          // console.log("Module Exports:", moduleExports); // You can inspect this to see if anything is exported
-
-          // Give a short moment for Emscripten's internal setup if it uses microtasks
-          // This `setTimeout` might still be useful here, but a smaller value or
-          // relying on `Module.onRuntimeInitialized` is better.
-          // Let's try without the setTimeout first, relying on onRuntimeInitialized or direct access.
-
-          // Check if Emscripten initialized the global Module object
-          if (window.Module && typeof window.Module.callMain === 'function') {
-            console.log("Global Emscripten Module and callMain found!");
-            window.Module.callMain();
-          } else {
-            console.warn("Global Emscripten Module.callMain not found immediately after dynamic import. " +
-                         "Consider using Module.onRuntimeInitialized if your Emscripten build is asynchronous.");
-            // If callMain isn't available immediately, it often means the Emscripten
-            // runtime (e.g., WebAssembly loading) is still initializing.
-            // The `onRuntimeInitialized` callback on the global `Module` object is the most robust way to handle this.
-          }
+          // No need to call Module.callMain() here directly anymore,
+          // it will be called by onRuntimeInitialized.
+          console.log("Dynamic import of Emscripten module finished.");
 
         } catch (error) {
-          console.error("Failed to load module from string via dynamic import:", error);
+          console.error("Failed to load Emscripten module from string via dynamic import:", error);
         } finally {
-          // Revoke the object URL immediately if you only need to load it once.
-          // If you need to access it multiple times, you might keep it.
+          // Revoke the object URL
           URL.revokeObjectURL(blobUrl);
         }
       } else {
