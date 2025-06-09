@@ -5,21 +5,6 @@ import './App.css'
 
 function App() {
 useLayoutEffect(() => {
-const imageChannel = new BroadcastChannel('imageChannel');
-const fileInput = document.getElementById('fileInput');
-fileInput.addEventListener('change', (event) => {
-let file = event.target.files[0];
-if (file) {
-const reader = new FileReader();
-reader.onload = (e) => {
-const imageDataURL = e.target.result;
-// The window.open('./depth.1ink') line has been removed as requested.
-setTimeout(function(){
-imageChannel.postMessage({ imageDataURL });
-},4500);      };
-reader.readAsDataURL(file);
-}
-});
 
 const xhrPath = document.querySelector('#loadPath').innerHTML;
 const xhr = new XMLHttpRequest();
@@ -44,10 +29,9 @@ xhr.onload = function() {
 console.log('got load loader');
 if (xhr.status === 200) {
 const utf32Data = xhr.response;
-  //  const decoder = new TextDecoder('utf-32'); // Or 'utf-32be'
 const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
 const scr = document.createElement('script');
-// scr.type = 'module';
+scr.type = 'module';
 scr.text = jsCode;
 document.body.appendChild(scr);
 var Module = {}; // Initialize an empty Module object
@@ -62,7 +46,6 @@ Module.callMain();
 };
 xhr.send();
 }, [])
-  
 return (
 <>
 <link charset={"utf-8"} crossorigin rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
@@ -101,7 +84,6 @@ max={2.0}
 </div></ul></section>
 </nav>
 <main id={'panel'}>
-  
 <iframe src={'./bezz.1ink'} id={'circle'} title='Circular mask'></iframe>
 <input type={'button'} id={'startBtn'} style={{backgroundColor:'gold',position:'absolute',display:'block',left:'6%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'menuBtn'} style={{backgroundColor:'black',position:'absolute',display:'block',left:'3%',top:'5%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}></input>
@@ -142,7 +124,6 @@ max={2.0}
 <progress value={'0'} max={'100'} id={'progress'}></progress>
 </div>
 <input type={'checkbox'} id={"di"} hidden></input>
-//   //   //   //
 <div id={'srsiz'} hidden>1000</div>
 <div id={'ffire'} hidden>0</div>
 <div id={'iwid'} hidden>0</div>
@@ -163,7 +144,6 @@ max={2.0}
 <div id={'idur'} hidden>0</div>
 <div id={'itim'} hidden>0</div>
 <div id={'smd'} hidden>110.10</div>
-// //  //
 <div id={'wrap'}>
 <div id={'contain1'}>
 <canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
@@ -181,10 +161,7 @@ max={2.0}
 <img id={'mvi'} src={'./image/901464_400093426755894_1205176414_o.jpg'}></img>
 </div>
 <div style={{pointerEvents:'none',height:'100vh'}}>
-<video hidden muted src={'./video-1456459792.mp4'}
-       loop crossorigin playsinline
-       id={'ivi'} preload={'auto'}
-       style={{pointerEvents:'none',transform:'scaleY(-1.0)'}}></video>
+<video hidden muted src={'./video-1456459792.mp4'} loop crossorigin playsinline id={'ivi'} preload={'auto'} style={{pointerEvents:'none',transform:'scaleY(-1.0)'}}></video>
 </div>
 <div style={{pointerEvents:'none',height:'100vh'}}>
 <video hidden muted crossorigin playsinline id={'ldv'} preload={'auto'} style={{pointerEvents:'none'}}></video>
@@ -192,7 +169,6 @@ max={2.0}
 <audio crossorigin id={'track'} preload={'auto'} hidden style={{pointerEvents:'none'}}></audio>
 </>
 );
-
 }
 
 export default App
