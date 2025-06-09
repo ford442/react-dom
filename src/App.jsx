@@ -77,6 +77,8 @@ function App() {
           // The Emscripten JS will then (eventually) call window.Module.onRuntimeInitialized
           // when its internal setup is complete.
           await import(blobUrl);
+  console.log("Dynamic import of Emscripten module finished.");
+  console.log("Current state of window.Module:", window.Module); // Add this line
 
           // No need to call Module.callMain() here directly anymore,
           // it will be called by onRuntimeInitialized.
