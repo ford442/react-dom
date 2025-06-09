@@ -19,7 +19,7 @@ function App() {
         if (isLittleEndian) {
           codePoint = dataView.getUint32(i, true);
         } else {
-          codePoint = dataDataView.getUint32(i, false);
+          codePoint = dataView.getUint32(i, false);
         }
         if (codePoint >= 0 && codePoint <= 0x10FFFF) {
           result += String.fromCodePoint(codePoint);
@@ -37,9 +37,54 @@ function App() {
         const utf32Data = xhr.response;
         const jsCode = decodeUTF32(new Uint8Array(utf32Data), true);
 
+        // --- Emscripten Configuration ---
+        // Initialize window.Module and set crucial callbacks BEFORE importing the Emscripten JS
         window.Module = window.Module || {};
 
-        // >>>>>>>>>>> ADDED LOG HERE <<<<<<<<<<<
+        // 1. Hook into Emscripten's status updates (important for progress and early errors)
+        window.Module.setStatus = (text) => {
+          const statusElement = document.querySelector('#status');
+          if (statusElement) statusElement.innerHTML = text;
+          console.log('[Emscripten Status] ' + text); // <<< CRITICAL LOG
+          // You can also use this to update your splash screen / spinner
+          // e.g., if (text.includes('Running')) { hide splash }
+        };
+
+        // 2. Standard output and error streams
+        window.Module.print = (text) => console.log('[Emscripten stdout] ' + text);
+        window.Module.printErr = (text) => console.error('[Emscripten stderr] ' + text);
+
+        // 3. Monitor run dependencies (useful for seeing if WASM or data files are pending)
+        let runDependencies = 0; // Keep track of pending async ops
+        window.Module.monitorRunDependencies = (left) => {
+          runDependencies = left;
+          console.log(`[Emscripten Deps] Remaining dependencies: ${left}`); // <<< CRITICAL LOG
+          if (left === 0) {
+            console.log('[Emscripten Deps] All dependencies resolved.');
+          }
+        };
+
+        // 4. Pre-run and Post-run hooks (for very early/late stages)
+        window.Module.preRun = [() => {
+          console.log("[Emscripten Hook] preRun executed."); // <<< CRITICAL LOG
+          // If your Emscripten build expects a canvas, set it here *before* module start.
+          // Note: If you don't use 'scanvas' or if it's not critical for init, remove this.
+          // window.Module.canvas = document.querySelector('#scanvas');
+          // if (!window.Module.canvas) {
+          //   console.error("Emscripten: Canvas element #scanvas not found!");
+          // }
+        }];
+        window.Module.postRun = [() => {
+          console.log("[Emscripten Hook] postRun executed."); // <<< CRITICAL LOG
+        }];
+
+        // 5. onAbort callback (for critical errors)
+        window.Module.onAbort = (what) => {
+            console.error('[Emscripten Abort] ' + what); // <<< CRITICAL LOG
+        };
+
+
+        // 6. onRuntimeInitialized callback (your existing one)
         window.Module.onRuntimeInitialized = () => {
           console.log("###################################################");
           console.log("### Emscripten runtime initialized callback FIRED! ###"); // <--- THIS IS THE CRITICAL LOG
@@ -48,32 +93,24 @@ function App() {
           if (typeof window.Module.callMain === 'function') {
             console.log("Module.callMain is available and being called.");
             window.Module.callMain();
-            // You might also want to hide the splash screen here
             document.querySelector('#splash1').style.display = 'none';
             document.querySelector('#splash2').style.display = 'none';
           } else {
             console.error("Module.callMain is still not a function even after onRuntimeInitialized!");
+            // This case is unlikely if onRuntimeInitialized actually fires
           }
         };
 
-        // Also useful to set up your canvas and other print functions here
-        // if Emscripten uses them.
-        // For example:
-        // window.Module.canvas = document.querySelector('#scanvas');
-        // window.Module.print = (text) => console.log('[Emscripten stdout] ' + text);
-        // window.Module.printErr = (text) => console.error('[Emscripten stderr] ' + text);
-        // window.Module.setStatus = (text) => {
-        //   const statusElement = document.querySelector('#status');
-        //   if (statusElement) statusElement.innerHTML = text;
-        // };
-
+        // --- Dynamic Import ---
         const blob = new Blob([jsCode], { type: 'application/javascript' });
         const blobUrl = URL.createObjectURL(blob);
 
         try {
+          // Await the dynamic import. This will execute the Emscripten JS.
+          // The Emscripten JS will then internally try to call the various Module hooks.
           await import(blobUrl);
           console.log("Dynamic import of Emscripten module finished.");
-          console.log("Current state of window.Module immediately after import:", window.Module); // Re-inspect here
+          console.log("Current state of window.Module immediately after import:", window.Module);
         } catch (error) {
           console.error("Failed to load Emscripten module from string via dynamic import:", error);
         } finally {
@@ -91,8 +128,8 @@ function App() {
     <>
       <link charset={"utf-8"} crossOrigin='anonymous' rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Audiowide"/>
-      <img id={'splash1'} src={'./image/shroud.jpg'} style={{backgroundColor:'rgba(233,233,233,0.0)',display:'block',position:'absolute',height:'100vh',width:'100vw',zIndex:3590}}></img>
-      <img id={'splash2'} src={'./image/spinner.gif'} style={{backgroundColor:'rgba(47,47,47,1.0)',display:'block',top:'50%',left:'50%',transform:'translate(-50%,-50%)',position:'absolute',height:'20vh',width:'20vh',zIndex:3591}}></img>
+      <img id={'splash1'} src={'./image/shroud.jpg'} style={{backgroundColor:'rgba(233,233,233,0.0)',display:'block',position:'absolute',height:'100vh',width:'100vw',zIndex:3590}></img>
+      <img id={'splash2'} src={'./image/spinner.gif'} style={{backgroundColor:'rgba(47,47,47,1.0)',display:'block',top:'50%',left:'50%',transform:'translate(-50%,-50%)',position:'absolute',height:'20vh',width:'20vh',zIndex:3591}></img>
       <nav id={'menu'}>
         <section className='menu-section' id={'menu-sections'}>
           <div style={{textAlign:'center'}}>
@@ -100,7 +137,7 @@ function App() {
           </div>
           <ul className='menu-section-list'>
             <div id={'mnu'}>
-              <select id={'resMode'} hidden style={{position:'absolute',zIndex:1,pointerEvents:'auto'}}>
+              <select id={'resMode'} hidden style={{position:'absolute',zIndex:1,pointerPointers:'auto'}}>
                 <option value="false">False</option>
                 <option value="true">True</option>
               </select>
@@ -208,9 +245,9 @@ function App() {
         <video hidden muted src={'./video-1456459792.mp4'} loop crossOrigin='anonymous' playsInline id={'ivi'} preload={'auto'} style={{pointerEvents:'none',transform:'scaleY(-1.0)'}}></video>
       </div>
       <div style={{pointerEvents:'none',height:'100vh'}}>
-        <video hidden muted crossOrigin='anonymous' playsInline id={'ldv'} preload={'auto'} style={{pointerEvents:'none'}}></video>
+        <video hidden muted crossOrigin='anonymous' playsInline id={'ldv'} preload={'auto'} style={{pointerPointers:'none'}}></video>
       </div>
-      <audio crossOrigin='anonymous' id={'track'} preload={'auto'} hidden style={{pointerEvents:'none'}}></audio>
+      <audio crossOrigin='anonymous' id={'track'} preload={'auto'} hidden style={{pointerPointers:'none'}}></audio>
     </>
   );
 }
