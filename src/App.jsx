@@ -36,8 +36,10 @@ function App() {
       document.querySelector('#splash2').style.display = 'none'; // Hide spinner
 
       // Now you can use the module, for example, by calling its main function.
-      if (module.callMain) {
+
+      setTimeout(function(){
         module.callMain();
+      },2500);
       }
 
     } catch (error) {
