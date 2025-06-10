@@ -38,6 +38,7 @@ function App() {
       // Now you can use the module, for example, by calling its main function.
 
       setTimeout(function(){
+        console.log('trying callMain');
         module.callMain();
       },2500);
       
