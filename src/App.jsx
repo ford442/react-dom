@@ -6,7 +6,7 @@ import './App.css';
 // Step 1: Import the factory function from the Emscripten-generated JS file.
 // Because we placed it in the /public directory, we can reference it with a root-relative path.
 // Replace 'your_module.js' with the actual name of your file (e.g., 'w0-036-load-32.js').
-import createModule from 'https://wasm.noahcohn.com/b3hd/w0-036-load-32.js';
+import createModule from './w0-036-load-32.js';
 
 function App() {
   // Step 2: Create a state to hold the Wasm module instance once it's loaded.
