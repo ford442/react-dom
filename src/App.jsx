@@ -1,140 +1,49 @@
-import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import { useState, useLayoutEffect, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import './App.css';
 
-function App() {
-  useLayoutEffect(() => {
-    const xhrPath = document.querySelector('#loadPath').innerHTML;
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', xhrPath, true);
-    xhr.responseType = 'arraybuffer';
-    console.log('got react run');
+// Step 1: Import the factory function from the Emscripten-generated JS file.
+// Because we placed it in the /public directory, we can reference it with a root-relative path.
+// Replace 'your_module.js' with the actual name of your file (e.g., 'w0-036-load-32.js').
+import createModule from 'https://wasm.noahcohn.com/b3hd/w0-036-load-32.js';
 
-    function decodeUTF32(uint8Array, isLittleEndian = true) {
-      const dataView = new DataView(uint8Array.buffer);
-      let result = "";
-      for (let i = 0; i < uint8Array.length; i += 4) {
-        let codePoint;
-        if (isLittleEndian) {
-          codePoint = dataView.getUint32(i, true);
-        } else {
-          codePoint = dataView.getUint32(i, false);
-        }
-        if (codePoint >= 0 && codePoint <= 0x10FFFF) {
-          result += String.fromCodePoint(codePoint);
-        } else {
-          console.warn(`Invalid UTF-32 code point encountered: ${codePoint.toString(16)}`);
-          result += '�';
-        }
-      }
-      return result;
+function App() {
+  // Step 2: Create a state to hold the Wasm module instance once it's loaded.
+  const [wasmModule, setWasmModule] = useState(null);
+
+  // Step 3: Create a function to handle loading the module.
+  const handleLoadWasm = useCallback(async () => {
+    // Prevent re-loading if it's already loaded
+    if (wasmModule) {
+      console.log("Wasm module is already loaded.");
+      return;
     }
 
-    xhr.onload = function() { // IMPORTANT: Make this function NOT async anymore
-      console.log('got load loader');
-      if (xhr.status === 200) {
-        const utf32Data = xhr.response;
-        const jsCode = decodeUTF32(new Uint8Array(utf32Data), true);
+    try {
+      console.log("Loading Wasm module...");
+      document.querySelector('#splash2').style.display = 'block'; // Show spinner
 
-        const blob = new Blob([jsCode], { type: 'application/javascript' });
-        const blobUrl = URL.createObjectURL(blob);
+      // The imported 'createModule' is an async function. Awaiting it
+      // returns the fully initialized module instance.
+      const module = await createModule();
 
-        // Define the Module configuration object.
-        // This object needs to be available globally (or on `window.Module`)
-        // before the dynamically loaded script executes, as Emscripten will look for it.
-        window.Module = window.Module || {};
+      console.log("Wasm module loaded successfully!");
+      
+      // Save the loaded module instance in our React state.
+      setWasmModule(module);
+      document.querySelector('#splash1').style.display = 'none'; // Hide shroud
+      document.querySelector('#splash2').style.display = 'none'; // Hide spinner
 
-        // Configure Emscripten Callbacks on `window.Module`
-        window.Module.canvas = document.querySelector('#scanvas'); // Link your canvas here
-        window.Module.locateFile = (path, prefix) => {
-            console.log(`[Emscripten locateFile] path: ${path}, prefix: ${prefix}`);
-            // Adjust this if your .wasm is not in the same directory as the loaded .js
-            return prefix + path;
-        };
-        window.Module.setStatus = (text) => {
-          const statusElement = document.querySelector('#status');
-          if (statusElement) statusElement.innerHTML = text;
-          console.log('[Emscripten Status] ' + text);
-        };
-        window.Module.print = (text) => console.log('[Emscripten stdout] ' + text);
-        window.Module.printErr = (text) => console.error('[Emscripten stderr] ' + text);
-        window.Module.monitorRunDependencies = (left) => {
-          console.log(`[Emscripten Deps] Remaining dependencies: ${left}`);
-        };
-        window.Module.preRun = [() => {
-          console.log("[Emscripten Hook] preRun executed.");
-          // WASMFS setup: This assumes window.Module.FS is available via global.
-          // This can be tricky timing-wise.
-          if (window.Module.FS && typeof window.Module.FS.mkdir === 'function') {
-             console.log("Setting up WASMFS in preRun...");
-             window.Module.FS.mkdir('/data');
-             window.Module.FS.mount(window.Module.IDBFS, {}, '/data');
-             window.Module.FS.syncfs(true, (err) => {
-                 if (err) console.error("FS.syncfs error:", err);
-                 else console.log("FS synced from IDBFS.");
-             });
-          } else {
-            console.warn("Emscripten FS or relevant methods not available in preRun for WASMFS setup.");
-          }
-        }];
-        window.Module.postRun = [() => {
-          console.log("[Emscripten Hook] postRun executed.");
-        }];
-        window.Module.onAbort = (what) => {
-            console.error('[Emscripten Abort] ' + what);
-        };
-
-        // The onRuntimeInitialized callback - this will be called by the loaded Emscripten script
-        window.Module.onRuntimeInitialized = function() {
-          console.log("###################################################");
-          console.log("### Emscripten runtime initialized callback FIRED! ###");
-          console.log("###################################################");
-
-          const currentModule = this; // 'this' should be the Module instance when called by Emscripten
-          if (typeof currentModule.callMain === 'function') {
-            console.log("Module.callMain is available and being called.");
-            currentModule.callMain();
-            document.querySelector('#splash1').style.display = 'none';
-            document.querySelector('#splash2').style.display = 'none';
-          } else {
-            console.error("Module.callMain is NOT a function after runtime initialization!");
-            console.log("Initialized Module:", currentModule);
-          }
-        };
-
-        // --- New: Dynamically create and append a script tag ---
-        const script = document.createElement('script');
-        script.type = 'module'; // Treat it as an ES module
-        script.src = blobUrl;
-
-        script.onload = () => {
-          console.log("Dynamic script tag loaded and executed.");
-          // After the script is loaded, the Emscripten module should have
-          // initialized itself and potentially populated window.Module
-          // or defined a global variable.
-          // In your case, the `Module$$module$w0_036_load_32` variable is likely global.
-
-          // However, the `onRuntimeInitialized` will still be the primary signal
-          // for when Emscripten is truly ready.
-        };
-
-        script.onerror = (e) => {
-          console.error("Error loading dynamic script:", e);
-          URL.revokeObjectURL(blobUrl); // Clean up on error
-        };
-
-        document.body.appendChild(script);
-
-        // No more `await createEmscriptenModule(ModuleConfig);` here.
-        // Emscripten will find `window.Module` and use it.
-
-      } else {
-        console.error(`Failed to load Emscripten module: Status ${xhr.status}`);
+      // Now you can use the module, for example, by calling its main function.
+      if (module.callMain) {
+        module.callMain();
       }
-    };
-    xhr.send();
-  }, []);
+
+    } catch (error) {
+      console.error("Failed to load Wasm module:", error);
+    }
+  }, [wasmModule]); // This function will only be recreated if wasmModule changes.
 
   return (
     <>
