@@ -40,7 +40,7 @@ function App() {
       setTimeout(function(){
         module.callMain();
       },2500);
-      }
+      
 
     } catch (error) {
       console.error("Failed to load Wasm module:", error);
