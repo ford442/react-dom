@@ -643,6 +643,7 @@ useLayoutEffect(() => {
     env.useBrowserCache = false;  // Disable browser cache for model files
     env.remoteHost = 'https://huggingface.co';
     env.remotePathTemplate = '{model}/resolve/main/';
+    env.wasm.numThreads = 16;
 setStatusMessage('Loading models, please wait...');
 
 async function loadModel() {
