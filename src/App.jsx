@@ -594,7 +594,7 @@ useLayoutEffect(() => {
     env.useBrowserCache = false; 
     env.remoteHost = 'https://huggingface.co';
     env.remotePathTemplate = '{model}/resolve/main/';
-    env.wasm.numThreads = 16;
+    // env.wasm.numThreads = 16;
 setStatusMessage('Loading models, please wait...');
 
 async function loadModel() {
