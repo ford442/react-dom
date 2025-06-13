@@ -667,22 +667,6 @@ async function loadModel() {
     }
 }
 
-const imageChannel = new BroadcastChannel('imageChannel');
-const fileInput = document.getElementById('fileInput');
-fileInput.addEventListener('change', (event) => {
-let file = event.target.files[0];
-if (file) {
-const reader = new FileReader();
-reader.onload = (e) => {
-const imageDataURL = e.target.result;
-window.open('./depth.1ink');
-setTimeout(function(){
-imageChannel.postMessage({ imageDataURL });
-},4500);     };
-reader.readAsDataURL(file);
-}
-});
-
 const xhrPath = document.querySelector('#loadPath').innerHTML;
 const xhr = new XMLHttpRequest();
 xhr.open('GET', xhrPath, true);
