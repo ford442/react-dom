@@ -297,11 +297,8 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
         // Generate audio using the Kokoro TTS instance
         const output = await kokoroTtsInstance.generate(text.trim());
         console.log("Kokoro TTS Raw Output:", output);
-
-        // The output object contains `data` (Float32Array) and `sample_rate` (number)
-        if (output.data && typeof output.sample_rate === 'number' && output.sample_rate > 0) {
-            // Use your existing playAudio function to play the sound and apply effects
-            playAudio(output.data, output.sample_rate, personalityKey || currentPersonalityKey);
+        if (output.xnaudio && typeof output.sample_rate === 'number' && output.sample_rate > 0) {
+            playAudio(output.xnaudio, output.sample_rate, personalityKey || currentPersonalityKey);
             setStatusMessage("Speech synthesized and playing (Kokoro).");
         } else {
             throw new Error("Kokoro TTS did not return valid audio data or sampling rate.");
@@ -312,19 +309,9 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
         setIsSpeaking(false);
         return false;
     }
-
-    // A simple timer to reset speaking state. For more accuracy, you could use
-    // the 'onended' event of the Web Audio API's AudioBufferSourceNode.
-    setTimeout(() => setIsSpeaking(false), 500);
     return true;
-}, [
-    kokoroTtsInstance,
-    initializeAudioContext,
-    playAudio,
-    setStatusMessage,
-    setIsSpeaking,
-    currentPersonalityKey,
-]);
+  }, [kokoroTtsInstance, initializeAudioContext, playAudio, currentPersonalityKey]);
+  
   
 const setupSpeechRecognition = useCallback(() => {
   const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
