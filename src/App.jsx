@@ -591,7 +591,7 @@ useLayoutEffect(() => {
     console.log('Forcing remote settings and disabling cache for loading.');
     env.localFilesOnly = false;
     env.allowLocalModels = false;
-    env.useBrowserCache = false; 
+    env.useBrowserCache = true; 
     env.remoteHost = 'https://huggingface.co';
     env.remotePathTemplate = '{model}/resolve/main/';
     // env.wasm.numThreads = 16;
