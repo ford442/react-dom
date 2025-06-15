@@ -268,40 +268,64 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   setIsSpeaking
 ]);
 
- const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => {
-    // UPDATED: More robust guard clause
-    const hasAlphanumeric = /[a-zA-Z0-9]/.test(text);
-
-    if (!text || text.trim().length < 2 || !hasAlphanumeric) {
-        console.warn(`Synthesis skipped for invalid text: "${text}"`);
-        setStatusMessage("Synthesis skipped: Not enough valid text to speak.");
-        setIsSpeaking(false);
-        return false;
-    }
-
+// NEW: Synthesis function for the Kokoro TTS model.
+const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => {
+    // Synthesizes text to speech using the Kokoro TTS model and plays it.
+    // Similar to SpeechT5, handles AudioContext and errors.
     if (!kokoroTtsInstance) {
         setStatusMessage("Kokoro TTS model not loaded yet.");
         return false;
     }
-
-    const audioCtx = initializeAudioContext();
-    if (!audioCtx || audioCtx.state !== 'running') {
-        setStatusMessage("Audio context not ready. Please click a button to interact.");
-        setIsSpeaking(false);
+    if (!text || !text.trim()) {
+        setStatusMessage("No text provided for Kokoro to synthesize.");
         return false;
     }
 
-    setIsSpeaking(true);
-    setStatusMessage(`Synthesizing with Kokoro...`);
+    const audioCtx = initializeAudioContext();
+    if (!audioCtx) { /* TODO: handle error with UI notification */ setIsSpeaking(false); return false; }
+    if (audioCtx.state === 'suspended') { // Ensure AudioContext is running
+        try { await audioCtx.resume(); }
+        catch (resumeError) { /* TODO: handle error */ setIsSpeaking(false); return false; }
+    }
+    if (audioCtx.state !== 'running') { /* TODO: handle error */ setIsSpeaking(false); return false; }
 
+    setIsSpeaking(true);
+    setStatusMessage(`Synthesizing with Kokoro: "${text.substring(0, 30)}..."`);
     try {
         const output = await kokoroTtsInstance.generate(text.trim());
         
-        if (output.xnaudio && typeof output.sample_rate === 'number' && output.sample_rate > 0) {
-            playAudio(output.xnaudio, output.sample_rate, personalityKey || currentPersonalityKey);
+        let audioData = output.xnaudio; // Or whatever the field is named
+        const sampleRate = output.sample_rate;
+
+        if (!(audioData instanceof Float32Array)) {
+          console.warn("Kokoro TTS output was not Float32Array, attempting conversion from Int16Array.");
+          // Assuming audioData is Int16Array. If it could be other types, more checks are needed.
+          // Also, ensure audioData is ArrayBuffer or TypedArray before this check if its type is unknown.
+          const rawData = audioData instanceof ArrayBuffer ? new Int16Array(audioData) : (Array.isArray(audioData) ? Int16Array.from(audioData) : audioData);
+          
+          // Check if it's actually an Int16Array after potential conversion from ArrayBuffer/Array
+          if (rawData instanceof Int16Array) {
+             const float32Data = new Float32Array(rawData.length);
+             for (let i = 0; i < rawData.length; i++) {
+                 float32Data[i] = rawData[i] / 32768.0; // Normalize Int16 to Float32 range (-1.0 to 1.0)
+             }
+             audioData = float32Data;
+             console.log("Successfully converted Kokoro TTS output to Float32Array.");
+          } else {
+             // If it's neither Float32Array nor Int16Array (after attempting to treat as Int16Array)
+             console.error("Kokoro TTS output is not Float32Array and could not be converted from Int16Array. Type was:", Object.prototype.toString.call(rawData));
+             // Potentially throw an error or return early if audio is unusable
+             throw new Error("Unsupported audio data type from Kokoro TTS.");
+          }
+        }
+
+        // Ensure playAudio is called with the potentially converted audioData and correct sampleRate
+        if (audioData && typeof sampleRate === 'number' && sampleRate > 0) {
+            playAudio(audioData, sampleRate, personalityKey || currentPersonalityKey);
             setStatusMessage("Speech synthesized and playing (Kokoro).");
         } else {
-            throw new Error("Kokoro TTS did not return valid audio data.");
+            // This 'else' block was already there, just ensure it uses the new variables if needed.
+            throw new Error("Kokoro TTS did not return valid audio data or sample rate after potential conversion.");
         }
     } catch (error) {
         console.error("Error during Kokoro speech synthesis:", error);
@@ -312,7 +336,7 @@ const synthesizeAndPlayText = useCallback(async (text) => {
     return true;
   }, [kokoroTtsInstance, initializeAudioContext, playAudio, currentPersonalityKey]);
 
-  
+
   
   
 const setupSpeechRecognition = useCallback(() => {
