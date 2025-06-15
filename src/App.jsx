@@ -297,11 +297,50 @@ const synthesizeAndPlayText = useCallback(async (text) => {
     try {
         const output = await kokoroTtsInstance.generate(text.trim());
         
-        if (output.xnaudio && typeof output.sample_rate === 'number' && output.sample_rate > 0) {
-            playAudio(output.xnaudio, output.sample_rate, personalityKey || currentPersonalityKey);
+        // Store the result of generate()
+        const kokoroAudioOutput = output; // Assuming 'output' is the variable holding the result of generate()
+
+        // Log the entire object to help with debugging if property names are wrong
+        console.log("Kokoro TTS output object:", kokoroAudioOutput);
+
+        // Attempt to access audio data and sample rate using common property names
+        let audioData = kokoroAudioOutput.audio;
+        let sampleRate = kokoroAudioOutput.sampling_rate;
+
+        // Check if data and sample_rate were found
+        if (audioData === undefined) {
+            console.error("Audio data not found on Kokoro output object using key 'audio'. Available keys:", Object.keys(kokoroAudioOutput));
+            throw new Error("Audio data property 'audio' not found on Kokoro output.");
+        }
+        if (sampleRate === undefined) {
+            console.error("Sample rate not found on Kokoro output object using key 'sampling_rate'. Available keys:", Object.keys(kokoroAudioOutput));
+            throw new Error("Sample rate property 'sampling_rate' not found on Kokoro output.");
+        }
+
+        // Proceed with conversion if necessary (similar to before)
+        if (!(audioData instanceof Float32Array)) {
+          console.warn("Kokoro TTS audio data was not Float32Array, attempting conversion from Int16Array.");
+          const rawData = audioData instanceof ArrayBuffer ? new Int16Array(audioData) : (Array.isArray(audioData) ? Int16Array.from(audioData) : audioData);
+
+          if (rawData instanceof Int16Array) {
+             const float32Data = new Float32Array(rawData.length);
+             for (let i = 0; i < rawData.length; i++) {
+                 float32Data[i] = rawData[i] / 32768.0;
+             }
+             audioData = float32Data;
+             console.log("Successfully converted Kokoro TTS audio data to Float32Array.");
+          } else {
+             console.error("Kokoro TTS audio data is not Float32Array and could not be converted from Int16Array. Type was:", Object.prototype.toString.call(rawData));
+             throw new Error("Unsupported audio data type from Kokoro TTS after attempting extraction.");
+          }
+        }
+
+        // Call playAudio with the (potentially converted) audioData and sampleRate
+        if (audioData && typeof sampleRate === 'number' && sampleRate > 0) {
+            playAudio(audioData, sampleRate, personalityKey || currentPersonalityKey);
             setStatusMessage("Speech synthesized and playing (Kokoro).");
         } else {
-            throw new Error("Kokoro TTS did not return valid audio data.");
+            throw new Error("Kokoro TTS did not return valid audio data or sample rate after property extraction and potential conversion.");
         }
     } catch (error) {
         console.error("Error during Kokoro speech synthesis:", error);
