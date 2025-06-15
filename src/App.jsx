@@ -506,7 +506,7 @@ const handleWebSpeechSpeakButton = () => {
 speakWithWebAPI(webSpeechApiInput);
 };
 
-const handleSynthesizeSpeech = async () => {
+const handleSynthesizeSpeechWeb = async () => {
   // Triggers speech synthesis for the dedicated browser TTS input field.
   // Note: This seems to use `webSpeechApiInput` which might be different from `webSpeechApiDedicatedInput`.
   // This might be a bug or legacy code. `handleWebSpeechSpeakButton` uses `webSpeechApiInput`.
