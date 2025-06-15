@@ -270,40 +270,38 @@ const synthesizeAndPlayText = useCallback(async (text) => {
 
 
 
-  
-// NEW: Synthesis function for the Kokoro TTS model.
-const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => {
+  const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => {
+    // NEW: Add a guard clause to prevent synthesizing very short or invalid strings.
+    if (!text || text.trim().length < 3) {
+        console.warn(`Synthesis skipped for short or empty text: "${text}"`);
+        setStatusMessage("Synthesis skipped: Not enough text to speak.");
+        setIsSpeaking(false); // Ensure speaking state is reset
+        return false;
+    }
+
     if (!kokoroTtsInstance) {
         setStatusMessage("Kokoro TTS model not loaded yet.");
         return false;
     }
-    if (!text || !text.trim()) {
-        setStatusMessage("No text provided for Kokoro to synthesize.");
+
+    const audioCtx = initializeAudioContext();
+    if (!audioCtx || audioCtx.state !== 'running') {
+        setStatusMessage("Audio context not ready. Please click a button to interact.");
+        setIsSpeaking(false);
         return false;
     }
-    const audioCtx = initializeAudioContext();
-    if (!audioCtx) { /* ... handle error ... */ setIsSpeaking(false); return false; }
-    if (audioCtx.state === 'suspended') {
-        try { await audioCtx.resume(); }
-        catch (resumeError) { /* ... handle error ... */ setIsSpeaking(false); return false; }
-    }
-    if (audioCtx.state !== 'running') { /* ... handle error ... */ setIsSpeaking(false); return false; }
+
     setIsSpeaking(true);
-    setStatusMessage(`Synthesizing with Kokoro: "${text.substring(0, 30)}..."`);
+    setStatusMessage(`Synthesizing with Kokoro...`);
+
     try {
-        // Generate audio using the Kokoro TTS instance
         const output = await kokoroTtsInstance.generate(text.trim());
-        console.log("Kokoro TTS Raw Output:", output);
-      if (output.xnaudio && typeof output.sample_rate === 'number' && output.sample_rate > 0) {
-            // NEW: Added a debug log to confirm we are entering this block
-            console.log("SUCCESS: Audio data and sample rate are valid. Calling playAudio.");
+        
+        if (output.xnaudio && typeof output.sample_rate === 'number' && output.sample_rate > 0) {
             playAudio(output.xnaudio, output.sample_rate, personalityKey || currentPersonalityKey);
             setStatusMessage("Speech synthesized and playing (Kokoro).");
         } else {
-            // This 'else' block is being incorrectly triggered.
-            // We are logging the properties here to see why the check fails.
-            console.error("DEBUG: Check failed. Values are -- output.xnaudio exists:", !!output.xnaudio, "typeof output.sample_rate:", typeof output.sample_rate);
-            throw new Error("Kokoro TTS did not return valid audio data or sampling rate.");
+            throw new Error("Kokoro TTS did not return valid audio data.");
         }
     } catch (error) {
         console.error("Error during Kokoro speech synthesis:", error);
@@ -313,7 +311,7 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
     }
     return true;
   }, [kokoroTtsInstance, initializeAudioContext, playAudio, currentPersonalityKey]);
-
+  
   
   
 const setupSpeechRecognition = useCallback(() => {
