@@ -295,9 +295,9 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   setIsSpeaking
 ]);
 
-// REMOVED: The synthesis function for Bark is no longer needed.
-// const synthesizeWithBarkAndPlay = useCallback(async (text, personalityKey) => { ... });
 
+
+  
 // NEW: Synthesis function for the Kokoro TTS model.
 const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => {
     // Synthesizes text to speech using the Kokoro TTS model and plays it.
@@ -321,17 +321,41 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
 
     setIsSpeaking(true);
     setStatusMessage(`Synthesizing with Kokoro: "${text.substring(0, 30)}..."`);
-
     try {
-        // Generate audio using the Kokoro TTS instance
         const output = await kokoroTtsInstance.generate(text.trim());
-        console.log("Kokoro TTS Raw Output:", output);
+        
+        let audioData = output.xnaudio; // Or whatever the field is named
+        const sampleRate = output.sample_rate;
 
-        if (output.data && typeof output.sample_rate === 'number' && output.sample_rate > 0) {
-            playAudio(output.data, output.sample_rate, personalityKey || currentPersonalityKey); // Play audio with effects
+        if (!(audioData instanceof Float32Array)) {
+          console.warn("Kokoro TTS output was not Float32Array, attempting conversion from Int16Array.");
+          // Assuming audioData is Int16Array. If it could be other types, more checks are needed.
+          // Also, ensure audioData is ArrayBuffer or TypedArray before this check if its type is unknown.
+          const rawData = audioData instanceof ArrayBuffer ? new Int16Array(audioData) : (Array.isArray(audioData) ? Int16Array.from(audioData) : audioData);
+          
+          // Check if it's actually an Int16Array after potential conversion from ArrayBuffer/Array
+          if (rawData instanceof Int16Array) {
+             const float32Data = new Float32Array(rawData.length);
+             for (let i = 0; i < rawData.length; i++) {
+                 float32Data[i] = rawData[i] / 32768.0; // Normalize Int16 to Float32 range (-1.0 to 1.0)
+             }
+             audioData = float32Data;
+             console.log("Successfully converted Kokoro TTS output to Float32Array.");
+          } else {
+             // If it's neither Float32Array nor Int16Array (after attempting to treat as Int16Array)
+             console.error("Kokoro TTS output is not Float32Array and could not be converted from Int16Array. Type was:", Object.prototype.toString.call(rawData));
+             // Potentially throw an error or return early if audio is unusable
+             throw new Error("Unsupported audio data type from Kokoro TTS.");
+          }
+        }
+
+        // Ensure playAudio is called with the potentially converted audioData and correct sampleRate
+        if (audioData && typeof sampleRate === 'number' && sampleRate > 0) {
+            playAudio(audioData, sampleRate, personalityKey || currentPersonalityKey);
             setStatusMessage("Speech synthesized and playing (Kokoro).");
         } else {
-            throw new Error("Kokoro TTS did not return valid audio data or sampling rate.");
+            // This 'else' block was already there, just ensure it uses the new variables if needed.
+            throw new Error("Kokoro TTS did not return valid audio data or sample rate after potential conversion.");
         }
     } catch (error) {
         console.error("Error during Kokoro speech synthesis:", error);
@@ -339,17 +363,12 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
         setIsSpeaking(false);
         return false;
     }
-
-    setTimeout(() => setIsSpeaking(false), 500); // Consider a more robust way to track audio end
     return true;
-}, [
-    kokoroTtsInstance,
-    initializeAudioContext,
-    playAudio,
-    setStatusMessage,
-    setIsSpeaking,
-    currentPersonalityKey,
-]);
+  }, [kokoroTtsInstance, initializeAudioContext, playAudio, currentPersonalityKey]);
+
+
+
+  
   
 const setupSpeechRecognition = useCallback(() => {
   // Sets up the browser's SpeechRecognition API.
