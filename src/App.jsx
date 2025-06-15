@@ -268,14 +268,14 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   setIsSpeaking
 ]);
 
+ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => {
+    // UPDATED: More robust guard clause
+    const hasAlphanumeric = /[a-zA-Z0-9]/.test(text);
 
-
-  const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => {
-    // NEW: Add a guard clause to prevent synthesizing very short or invalid strings.
-    if (!text || text.trim().length < 3) {
-        console.warn(`Synthesis skipped for short or empty text: "${text}"`);
-        setStatusMessage("Synthesis skipped: Not enough text to speak.");
-        setIsSpeaking(false); // Ensure speaking state is reset
+    if (!text || text.trim().length < 2 || !hasAlphanumeric) {
+        console.warn(`Synthesis skipped for invalid text: "${text}"`);
+        setStatusMessage("Synthesis skipped: Not enough valid text to speak.");
+        setIsSpeaking(false);
         return false;
     }
 
@@ -311,6 +311,7 @@ const synthesizeAndPlayText = useCallback(async (text) => {
     }
     return true;
   }, [kokoroTtsInstance, initializeAudioContext, playAudio, currentPersonalityKey]);
+
   
   
   
