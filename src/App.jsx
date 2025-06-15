@@ -268,6 +268,9 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   setIsSpeaking
 ]);
 
+
+
+  
 // NEW: Synthesis function for the Kokoro TTS model.
 const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => {
     // Synthesizes text to speech using the Kokoro TTS model and plays it.
@@ -291,7 +294,8 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
 
     setIsSpeaking(true);
     setStatusMessage(`Synthesizing with Kokoro: "${text.substring(0, 30)}..."`);
- try {
+
+    try {
         const output = await kokoroTtsInstance.generate(text.trim());
         
         // Store the result of generate()
@@ -301,23 +305,17 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
         console.log("Kokoro TTS output object:", kokoroAudioOutput);
 
         // Attempt to access audio data and sample rate using common property names
-        let audioData = kokoroAudioOutput.data; 
-        let sampleRate = kokoroAudioOutput.sample_rate || kokoroAudioOutput.sampling_rate;
+        let audioData = kokoroAudioOutput.audio; 
+        let sampleRate = kokoroAudioOutput.sampling_rate;
 
         // Check if data and sample_rate were found
         if (audioData === undefined) {
-            console.error("Could not find .data property on Kokoro TTS output object. Available keys:", Object.keys(kokoroAudioOutput));
-            // Attempt to use .values as a fallback for audio data
-            if (kokoroAudioOutput.values) {
-                audioData = kokoroAudioOutput.values;
-                console.log("Using .values property for audio data.");
-            } else {
-                throw new Error("Audio data property (.data or .values) not found on Kokoro output.");
-            }
+            console.error("Audio data not found on Kokoro output object using key 'audio'. Available keys:", Object.keys(kokoroAudioOutput));
+            throw new Error("Audio data property 'audio' not found on Kokoro output.");
         }
         if (sampleRate === undefined) {
-            console.error("Could not find .sample_rate or .sampling_rate property on Kokoro TTS output object. Available keys:", Object.keys(kokoroAudioOutput));
-            throw new Error("Sample rate property not found on Kokoro output.");
+            console.error("Sample rate not found on Kokoro output object using key 'sampling_rate'. Available keys:", Object.keys(kokoroAudioOutput));
+            throw new Error("Sample rate property 'sampling_rate' not found on Kokoro output.");
         }
 
         // Proceed with conversion if necessary (similar to before)
@@ -353,8 +351,6 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
     }
     return true;
   }, [kokoroTtsInstance, initializeAudioContext, playAudio, currentPersonalityKey]);
-
-  
 
   
   
