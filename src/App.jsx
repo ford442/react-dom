@@ -74,7 +74,7 @@ const [currentPersonalityKey, setCurrentPersonalityKey] = useState('default');
 const [currentProfile, setCurrentProfile] = useState(personalityProfiles.default); // Store the whole profile
 
 // MODIFIED: Replaced 'bark' with 'kokoro'
-const [activeTtsEngine, setActiveTtsEngine] = useState('webSpeechAPI'); // Default: 'webSpeechAPI', 'speechT5', 'kokoro'
+const [activeTtsEngine, setActiveTtsEngine] = useState('kokoro'); // Default: 'webSpeechAPI', 'speechT5', 'kokoro'
 
 // REMOVED: State for the Bark pipeline instance is no longer needed.
 // const [barkPipelineInstance, setBarkPipelineInstance] = useState(null);
