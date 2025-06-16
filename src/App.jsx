@@ -1,6 +1,8 @@
 import { LiveShaderEditor } from './LiveShaderEditor';
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
+import {ShaderCanvas} from "shader-canvas";
+
 import './App.css';
 
 function App() {
