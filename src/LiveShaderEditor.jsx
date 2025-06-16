@@ -62,7 +62,7 @@ export function LiveShaderEditor() {
   // Effect to update the shader when the code changes
   useEffect(() => {
     if (shaderInstanceRef.current) {
-      shaderInstanceRef.current.setShader(fragmentShader);
+      shaderInstanceRef.current.setShader(fragmentShader, vertexShader);
     }
   }, [fragmentShader]);
 
