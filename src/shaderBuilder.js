@@ -1,21 +1,24 @@
 // src/shaderBuilder.js
 
-// UPDATED to GLSL 3.00 ES
-const GLSL_PRELUDE = `
-  #version 300 es
-  precision highp float;
-  in vec2 v_texCoord;
+// CORRECTED: The #version directive is now on the first line of the string.
+const GLSL_PRELUDE = `#version 300 es
+precision highp float;
 
-  uniform float u_time;
-  uniform vec2 u_resolution;
-  uniform vec2 u_mouse;
+// 'in' is the new keyword for varyings in the fragment shader
+in vec2 v_texCoord;
 
-  uniform sampler2D u_texture;
+// Uniforms automatically provided by shader-canvas
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform vec2 u_mouse;
 
-  out vec4 outColor;
+// Our main texture uniform
+uniform sampler2D u_texture;
+
+// We must now declare our own output color variable
+out vec4 outColor;
 `;
 
-// UPDATED to GLSL 3.00 ES
 const FSHader_Template = `
 // __UNIFORMS__
 
@@ -28,6 +31,7 @@ void main() {
 
   // __COLOR__
   
+  // Assign to our custom output variable, not gl_FragColor
   outColor = inColor;
 }
 `;
@@ -44,7 +48,6 @@ export function buildShaderFromSnippets(code) {
   const transformSnippets = extractSnippet(code, '@transform');
   const colorSnippets = extractSnippet(code, '@color');
 
-  // The replacement logic remains the same
   const mainCode = FSHader_Template
     .replace('// __UNIFORMS__', uniformSnippets)
     .replace('// __TRANSFORM__', transformSnippets)
