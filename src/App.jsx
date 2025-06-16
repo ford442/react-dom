@@ -635,7 +635,7 @@ async function loadModel() {
             setStatusMessage(message);
           },dtype: "q8"
   }
-        });
+        );
         console.log("Pipeline loaded successfully.");
         setStatusMessage("Model loaded! Ready to generate.");
         setGenerator(() => pipelineInstance);
