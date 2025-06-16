@@ -1,69 +1,120 @@
-import { useState, useRef, useEffect, useCallback,useLayoutEffect } from 'react'
+import { useState, useRef, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
-import './App.css'
-import { Shader } from 'react-shaders'
+import './App.css';
 import ShaderCanvas from "@signal-noise/react-shader-canvas";
 
-function App() {
-useLayoutEffect(() => {
-const imageChannel = new BroadcastChannel('imageChannel');
-const fileInput = document.getElementById('fileInput');
-fileInput.addEventListener('change', (event) => {
-let file = event.target.files[0];
-if (file) {
-const reader = new FileReader();
-reader.onload = (e) => {
-const imageDataURL = e.target.result;
-window.open('./depth.1ink');
-setTimeout(function(){
-imageChannel.postMessage({ imageDataURL });
-},4500);      };
-reader.readAsDataURL(file);
-}
-});
+// Keep shaders outside the component so they aren't redefined on every render
+const vertexShader = `
+  attribute vec2 a_position;
+  attribute vec2 a_texCoord;
+  varying vec2 v_texCoord;
+  void main() {
+    v_texCoord = a_texCoord;
+    gl_Position = vec4(a_position, 0.0, 1.0);
+  }
+`.trim();
 
-const xhrPath = document.querySelector('#loadPath').innerHTML;
-const xhr = new XMLHttpRequest();
-xhr.open('GET', xhrPath, true); // Replace with your filename
-xhr.responseType = 'arraybuffer'; // Get raw binary data
-console.log('got react run');
-function decodeUTF32(uint8Array, isLittleEndian = true) {
-const dataView = new DataView(uint8Array.buffer);
-let result = "";
-for (let i = 0; i < uint8Array.length; i += 4) {
-let codePoint;
-if (isLittleEndian) {
-codePoint = dataView.getUint32(i, true); // Little-endian
-} else {
-codePoint = dataView.getUint32(i, false); // Big-endian
-}
-result += String.fromCodePoint(codePoint);
-}
-return result;
-}
-xhr.onload = function() {
-console.log('got load loader');
-if (xhr.status === 200) {
-const utf32Data = xhr.response;
-  //  const decoder = new TextDecoder('utf-32'); // Or 'utf-32be'
-const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
-const scr = document.createElement('script');
-// scr.type = 'module';
-scr.text = jsCode;
-document.body.appendChild(scr);
-var Module = {}; // Initialize an empty Module object
-setTimeout(function(){
-Module = libload();
-Module.onRuntimeInitialized = function(){
-console.log('call main loader');
-Module.callMain();
-};
-},2500);
-}
-};
-xhr.send();
-}, [])
+const fragmentShader = `
+  precision mediump float;
+  varying vec2 v_texCoord;
+  uniform sampler2D u_texture;
+  // We'll add more uniforms here
+  void main() {
+    gl_FragColor = texture2D(u_texture, v_texCoord);
+  }
+`.trim();
+
+function App() {
+  // State to manage the texture for the shader
+  const [textureUrl, setTextureUrl] = useState('./image/901464_400093426755894_1205176414_o.jpg');
+
+  // Define uniforms for the shader
+  const uniforms = {
+    u_texture: textureUrl,
+    // We can add more dynamic uniforms here later
+  };
+  
+  // This useEffect hook replaces the logic from your useLayoutEffect.
+  // It runs once after the component mounts.
+  useEffect(() => {
+    // --- 1. Function to load and run the Emscripten/WASM module ---
+    const loadWasmModule = () => {
+      const loadPath = document.querySelector('#loadPath')?.innerHTML;
+      if (!loadPath) return;
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', loadPath, true);
+      xhr.responseType = 'arraybuffer';
+
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          // This logic to decode and run your custom JS seems specific.
+          // It's preserved here, but consider making it a separate utility function.
+          const decodeUTF32 = (uint8Array, isLittleEndian = true) => {
+            const dataView = new DataView(uint8Array.buffer);
+            let result = "";
+            for (let i = 0; i < uint8Array.length; i += 4) {
+              const codePoint = dataView.getUint32(i, isLittleEndian);
+              result += String.fromCodePoint(codePoint);
+            }
+            return result;
+          };
+          
+          const jsCode = decodeUTF32(new Uint8Array(xhr.response), true);
+          const scr = document.createElement('script');
+          scr.text = jsCode;
+          document.body.appendChild(scr);
+
+          // Assuming `libload` is a function made available by the script above
+          if (typeof window.libload === 'function') {
+            const Module = window.libload();
+            Module.onRuntimeInitialized = () => {
+              console.log('Emscripten runtime initialized, calling main.');
+              Module.callMain();
+            };
+          }
+        }
+      };
+      xhr.send();
+    };
+
+    // --- 2. Function to handle file input ---
+    const handleFileChange = (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const imageDataURL = e.target.result;
+          // You can now set this to the state to update the shader texture
+          setTextureUrl(imageDataURL);
+          
+          // Your broadcast logic
+          // const imageChannel = new BroadcastChannel('imageChannel');
+          // window.open('./depth.1ink');
+          // setTimeout(() => {
+          //   imageChannel.postMessage({ imageDataURL });
+          // }, 4500);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    
+    // --- 3. Attach event listeners ---
+    const fileInputElement = document.getElementById('fileInput');
+    fileInputElement.addEventListener('change', handleFileChange);
+    
+    // Load the wasm module
+    loadWasmModule();
+
+    // --- 4. Cleanup function ---
+    // This runs when the component unmounts to prevent memory leaks.
+    return () => {
+      fileInputElement.removeEventListener('change', handleFileChange);
+    };
+
+  }, []); // The empty array [] means this effect runs only once.
+
   
 return (
 <>
@@ -178,6 +229,13 @@ max={2.0}
 // //  //
 <div id={'wrap'}>
 <div id={'contain1'}>
+
+<ShaderCanvas
+vertexShader={vertexShader}
+fragmentShader={fragmentShader}
+uniforms={uniforms}
+/>
+
 <canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
 <div id={'contain1a'} style={{height:'75%',width:'75%'}}>
 </div>
