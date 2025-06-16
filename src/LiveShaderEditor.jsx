@@ -4,10 +4,15 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { ShaderCanvas } from 'shader-canvas';
 import { buildShaderFromSnippets } from './shaderBuilder';
 import { useTexture } from './useTexture';
-
 const vertexShader = `
-  attribute vec2 a_position;
-  varying vec2 v_texCoord;
+  #version 300 es
+
+  // `in` is the new keyword for attributes
+  in vec2 a_position;
+
+  // `out` is the new keyword for varyings
+  out vec2 v_texCoord;
+
   void main() {
     gl_Position = vec4((a_position * 2.0 - 1.0) * vec2(1, -1), 0.0, 1.0);
     v_texCoord = a_position;
@@ -29,7 +34,8 @@ float dist = distance(st, center);
 st.x += sin(dist * 20.0 + u_time * 2.0) * 0.02 * u_strength;
 
 // @color
-color.rgb *= 1.2;
+// The input 'color' variable is now named 'inColor'
+inColor.rgb *= 1.2;
 `.trim();
 
 
