@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useCallback,useLayoutEffect } from 'react'
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import './App.css'
+import { Shader } from 'react-shaders'
+import ShaderCanvas from "@signal-noise/react-shader-canvas";
 
 function App() {
 useLayoutEffect(() => {
@@ -99,16 +101,18 @@ max={2.0}
 />
 </Box></div>
 </div></ul></section>
-</nav>
-<main id={'panel'}>
-  
+</nav><main id={'panel'}>
 <iframe src={'./bezz.1ink'} id={'circle'} title='Circular mask'></iframe>
+<input type={'button'} id={'generateButton'} style={{backgroundColor:'gold',position:'absolute',display:'block',left:'3%',top:'3%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'27%'}}></input>
 <input type={'button'} id={'startBtn'} style={{backgroundColor:'gold',position:'absolute',display:'block',left:'6%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
+<input type={'button'} id={'startBtnB'} style={{backgroundColor:'gold',position:'absolute',display:'block',left:'6%',top:'19%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
+<input type={'button'} id={'startBtnPM'} style={{backgroundColor:'gold',position:'absolute',display:'block',left:'16%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'menuBtn'} style={{backgroundColor:'black',position:'absolute',display:'block',left:'3%',top:'5%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}></input>
 <input type={'button'} id={'musicBtn'} style={{backgroundColor:'cyan',position:'absolute',display:'block',left:'3%',bottom:'5%',zIndex:3200,border:'6px solid green',borderRadius:'20%'}}></input>
 <input type={'button'} id={'startBtn5'} style={{backgroundColor:'yellow',position:'absolute',display:'block',left:'2%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'startBtn2'} style={{backgroundColor:'gold',position:'absolute',display:'block',left:'9%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'startBtnC'} style={{backgroundColor:'green',position:'absolute',display:'block',left:'5%',top:'12%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
+<input type={'button'} id={'startBtnH'} style={{backgroundColor:'green',position:'absolute',display:'block',left:'15%',top:'12%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'downloadButton'} style={{backgroundColor:'grey',position:'absolute',display:'block',left:'15%',top:'22%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'startBtnI'} style={{backgroundColor:'white',position:'absolute',display:'block',left:'15%',top:'12%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'pyBtn'} style={{backgroundColor:'green',position:'absolute',display:'block',left:'15%',top:'6%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
@@ -136,6 +140,14 @@ max={2.0}
 <div id={'outText'} style={{opacity:0.0,backgroundColor:'green',position:'absolute',top:'50vh',left:'47vw',zIndex:4200}}></div>
 <div id={'outText1'} style={{opacity:0.0,backgroundColor:'green',position:'absolute',top:'52vh',left:'47vw',zIndex:4200}}></div>
 <div id={'outText2'} style={{opacity:0.0,backgroundColor:'green',position:'absolute',top:'54vh',left:'47vw',zIndex:4200}}></div>
+<div id={'modulePath'} hidden>https://wasm.noahcohn.com/b3hd/w0-035-mod.3ijs</div>
+<div id={'loadPath'} hidden>https://wasm.noahcohn.com/b3hd/w0-035-load-32.3ijs</div>
+<div id={'computePath'} hidden>https://glsl.1ink.us/wgsl/compute_070.wgsl'</div>
+<div id={'computePathNovid'} hidden>https://glsl.1ink.us/wgsl/compute_070v.wgsl'</div>
+<div id={'fragPath'} hidden>https://glsl.1ink.us/wgsl/fragment_007.wgsl'</div>
+<div id={'vertPath'} hidden>https://glsl.1ink.us/wgsl/vertex_003.wgsl'</div>
+<div id={'path'} hidden>https://glsl.1ink.us/wgsl/synapse.wgsl'</div>
+<div id={'imagePath'} hidden>https://www.noahcohn.com/image/901464_400093426755894_1205176414_o.jpg'</div>
 <div className='emscripten' id={'stat'}></div>
 <div className='emscripten' id={'status'}></div>
 <div className='emscripten'>
