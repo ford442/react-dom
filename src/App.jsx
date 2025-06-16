@@ -1,4 +1,5 @@
 import { LiveShaderEditor } from './LiveShaderEditor';
+import Box from '@mui/material/Box';
 import './App.css';
 
 function App() {
