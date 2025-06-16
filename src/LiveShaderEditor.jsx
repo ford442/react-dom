@@ -29,6 +29,16 @@ st.x += sin(dist * 20.0 + u_time * 2.0) * 0.02 * u_strength;
 color.rgb *= 1.2;
 `.trim();
 
+const vertexShader = `
+  attribute vec2 a_position;
+  varying vec2 v_texCoord;
+  void main() {
+    // shader-canvas maps the attribute a_position to v_texCoord automatically
+    v_texCoord = a_position; 
+    gl_Position = vec4((a_position * 2.0 - 1.0) * vec2(1, -1), 0.0, 1.0);
+  }
+`.trim();
+
 export function LiveShaderEditor() {
   // The rest of the component code remains exactly the same...
   const [shaderCode, setShaderCode] = useState(initialShaderCode);
