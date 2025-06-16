@@ -15,8 +15,6 @@ void main() {
 `.trim();
 
 const initialShaderCode = `
-#version 300 es
-
 // @uniforms
 uniform float u_strength;
 
