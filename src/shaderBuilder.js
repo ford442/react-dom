@@ -4,19 +4,14 @@
 const GLSL_PRELUDE = `
   #version 300 es
   precision highp float;
-
-  // `in` is the new keyword for varyings in the fragment shader
   in vec2 v_texCoord;
 
-  // Uniforms automatically provided by shader-canvas
   uniform float u_time;
   uniform vec2 u_resolution;
   uniform vec2 u_mouse;
 
-  // Our main texture uniform
   uniform sampler2D u_texture;
 
-  // We must now declare our own output color variable
   out vec4 outColor;
 `;
 
@@ -29,11 +24,10 @@ void main() {
 
   // __TRANSFORM__
 
-  vec4 inColor = texture(u_texture, st); // Use `texture()` instead of `texture2D()`
+  vec4 inColor = texture(u_texture, st);
 
   // __COLOR__
   
-  // Assign to our custom output variable, not gl_FragColor
   outColor = inColor;
 }
 `;
