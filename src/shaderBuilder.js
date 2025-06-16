@@ -1,23 +1,26 @@
 // src/shaderBuilder.js
 
-// This "prelude" contains all the uniforms and varyings that shader-canvas provides automatically.
-// We will always add this to the start of the user's shader.
+// UPDATED to GLSL 3.00 ES
 const GLSL_PRELUDE = `
-precision highp float;
+  #version 300 es
+  precision highp float;
 
-// Varying from the vertex shader
-varying vec2 v_texCoord;
+  // `in` is the new keyword for varyings in the fragment shader
+  in vec2 v_texCoord;
 
-// Uniforms automatically provided by shader-canvas
-uniform float u_time;
-uniform vec2 u_resolution;
-uniform vec2 u_mouse;
+  // Uniforms automatically provided by shader-canvas
+  uniform float u_time;
+  uniform vec2 u_resolution;
+  uniform vec2 u_mouse;
 
-// Our main texture uniform
-uniform sampler2D u_texture;
+  // Our main texture uniform
+  uniform sampler2D u_texture;
+
+  // We must now declare our own output color variable
+  out vec4 outColor;
 `;
 
-// The template is now much cleaner.
+// UPDATED to GLSL 3.00 ES
 const FSHader_Template = `
 // __UNIFORMS__
 
@@ -26,11 +29,12 @@ void main() {
 
   // __TRANSFORM__
 
-  vec4 color = texture2D(u_texture, st);
+  vec4 inColor = texture(u_texture, st); // Use `texture()` instead of `texture2D()`
 
   // __COLOR__
   
-  gl_FragColor = color;
+  // Assign to our custom output variable, not gl_FragColor
+  outColor = inColor;
 }
 `;
 
@@ -46,15 +50,12 @@ export function buildShaderFromSnippets(code) {
   const transformSnippets = extractSnippet(code, '@transform');
   const colorSnippets = extractSnippet(code, '@color');
 
-  // Build the shader by replacing the placeholders in the template
+  // The replacement logic remains the same
   const mainCode = FSHader_Template
     .replace('// __UNIFORMS__', uniformSnippets)
     .replace('// __TRANSFORM__', transformSnippets)
     .replace('// __COLOR__', colorSnippets);
 
-  // Finally, combine the boilerplate prelude with the main code.
-  // This guarantees the built-in uniforms are declared exactly once.
   const finalFShader = GLSL_PRELUDE + mainCode;
-
   return finalFShader;
 }
