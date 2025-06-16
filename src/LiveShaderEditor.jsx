@@ -41,16 +41,29 @@ export function LiveShaderEditor() {
     return buildShaderFromSnippets(shaderCode);
   }, [shaderCode]);
 
+  // Effect to initialize the ShaderCanvas instance (runs once)
   useEffect(() => {
-    // ... initialization effect is the same
+    if (canvasRef.current) {
+      shaderInstanceRef.current = new ShaderCanvas(canvasRef.current);
+      console.log("ShaderCanvas initialized.");
+    }
   }, []);
 
+  // --- NEW: This effect waits for the texture to be loaded ---
   useEffect(() => {
-    // ... texture loading effect is the same
-  }, [texture]);
+    const shader = shaderInstanceRef.current;
+    // Only set the texture if both the shader instance and the texture exist
+    if (shader && texture) {
+      shader.setTexture('u_texture', texture);
+      console.log("Texture set successfully.");
+    }
+  }, [texture]); // This effect depends on the loaded texture
 
+  // Effect to update the shader when the code changes
   useEffect(() => {
-    // ... shader update effect is the same
+    if (shaderInstanceRef.current) {
+      shaderInstanceRef.current.setShader(fragmentShader);
+    }
   }, [fragmentShader]);
 
   // The render loop now also sets our custom uniform
@@ -71,8 +84,17 @@ export function LiveShaderEditor() {
     return () => cancelAnimationFrame(animationFrameId);
   }, [strength]); // Re-start loop if strength changes
 
-  // ... handleMouseMove and the returned JSX are the same
-  
+
+
+  const handleMouseMove = (event) => {
+    if (canvasRef.current) {
+      const canvas = canvasRef.current;
+      const rect = canvas.getBoundingClientRect();
+      const x = (event.clientX - rect.left) / canvas.width;
+      const y = 1.0 - (event.clientY - rect.top) / canvas.height;
+      shaderInstanceRef.current?.setUniforms({ u_mouse: [x, y] });
+    }
+  };
   // Example of how you might add a slider for your custom uniform
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
@@ -98,7 +120,7 @@ export function LiveShaderEditor() {
        />
        <canvas
          ref={canvasRef}
-         onMouseMove={/*...*/}
+        onMouseMove={handleMouseMove}
          style={{ width: '100%', height: '100%' }}
        />
     </div>
