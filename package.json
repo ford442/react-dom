@@ -8,6 +8,8 @@
     "serve": "vite preview"
   },
   "dependencies": {
+    "@signal-noise/react-shader-canvas": "latest",
+    "react-shaders": "latest",
     "@emotion/react": "latest",
     "@emotion/styled": "latest",
     "@mui/material": "next",
