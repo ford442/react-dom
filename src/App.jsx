@@ -680,7 +680,7 @@ async function loadModel() {
         setStatusMessage(prev => `${prev} Loading TTS model (Kokoro)...`);
         
         // This single line downloads and initializes the Kokoro TTS model.
-        const kokoroInstance = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {dtype: "q4f16", device: "webgpu", });
+        const kokoroInstance = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {dtype: "q4f16", device: "wasm", });
         
         setKokoroTtsInstance(() => kokoroInstance);
         console.log("Kokoro TTS pipeline loaded successfully.");
