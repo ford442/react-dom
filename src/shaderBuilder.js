@@ -1,14 +1,24 @@
 // src/shaderBuilder.js
 
-const FSHader_Template = `
+// This "prelude" contains all the uniforms and varyings that shader-canvas provides automatically.
+// We will always add this to the start of the user's shader.
+const GLSL_PRELUDE = `
 precision highp float;
-// shader-canvas provides v_texCoord, u_time, u_resolution
+
+// Varying from the vertex shader
 varying vec2 v_texCoord;
+
+// Uniforms automatically provided by shader-canvas
 uniform float u_time;
 uniform vec2 u_resolution;
 uniform vec2 u_mouse;
-uniform sampler2D u_texture;
 
+// Our main texture uniform
+uniform sampler2D u_texture;
+`;
+
+// The template is now much cleaner.
+const FSHader_Template = `
 // __UNIFORMS__
 
 void main() {
@@ -36,10 +46,15 @@ export function buildShaderFromSnippets(code) {
   const transformSnippets = extractSnippet(code, '@transform');
   const colorSnippets = extractSnippet(code, '@color');
 
-  const finalFShader = FSHader_Template
+  // Build the shader by replacing the placeholders in the template
+  const mainCode = FSHader_Template
     .replace('// __UNIFORMS__', uniformSnippets)
     .replace('// __TRANSFORM__', transformSnippets)
     .replace('// __COLOR__', colorSnippets);
+
+  // Finally, combine the boilerplate prelude with the main code.
+  // This guarantees the built-in uniforms are declared exactly once.
+  const finalFShader = GLSL_PRELUDE + mainCode;
 
   return finalFShader;
 }
