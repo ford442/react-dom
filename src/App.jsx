@@ -633,7 +633,8 @@ async function loadModel() {
             const message = `Loading: ${progress.file} - ${progress.status} (${percentage}%)`;
             console.log(message);
             setStatusMessage(message);
-          }
+          },dtype: "q8"
+  }
         });
         console.log("Pipeline loaded successfully.");
         setStatusMessage("Model loaded! Ready to generate.");
