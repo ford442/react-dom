@@ -33,7 +33,6 @@ st.x += sin(dist * 20.0 + u_time * 2.0) * 0.02 * u_strength;
 inColor.rgb *= 1.2;
 `.trim();
 
-
 export function LiveShaderEditor() {
   const [shaderCode, setShaderCode] = useState(initialShaderCode);
   const [strength, setStrength] = useState(1.0);
