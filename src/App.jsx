@@ -296,7 +296,7 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
     setStatusMessage(`Synthesizing with Kokoro: "${text.substring(0, 30)}..."`);
 
     try {
-        const output = await kokoroTtsInstance.generate(text.trim());
+        const output = await kokoroTtsInstance.generate(text.trim(),{voice: "af_heart"});
         
         // Store the result of generate()
         const kokoroAudioOutput = output; // Assuming 'output' is the variable holding the result of generate()
@@ -680,7 +680,7 @@ async function loadModel() {
         setStatusMessage(prev => `${prev} Loading TTS model (Kokoro)...`);
         
         // This single line downloads and initializes the Kokoro TTS model.
-        const kokoroInstance = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {dtype: "q4f16"});
+        const kokoroInstance = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {dtype: "q4f16", device: "webgpu", });
         
         setKokoroTtsInstance(() => kokoroInstance);
         console.log("Kokoro TTS pipeline loaded successfully.");
