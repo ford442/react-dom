@@ -433,7 +433,8 @@ const handleGenerateText = useCallback(async () => {
       const fullPromptForLLM = systemInstruction + textToProcess;
       console.log("Sending to LLM:", fullPromptForLLM);
       const outputs = await generator(fullPromptForLLM, {
-        max_new_tokens: 150,
+        max_new_tokens: 128,
+        min_new_tokens: 32,
       });
       if (outputs && outputs.length > 0 && outputs[0].generated_text) {
         newLLMText = outputs[0].generated_text;
