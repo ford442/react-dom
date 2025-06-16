@@ -234,6 +234,7 @@ max={2.0}
 vertexShader={vertexShader}
 fragmentShader={fragmentShader}
 uniforms={uniforms}
+style={{pointerEvents:'auto', display:'block', position:'absolute', zIndex:3000, top:'0', height:'100vh', width:'100vh'}}
 />
 
 <canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
