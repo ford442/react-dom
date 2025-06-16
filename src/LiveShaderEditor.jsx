@@ -1,8 +1,7 @@
-// src/LiveShaderEditor.jsx
-
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { ShaderCanvas } from 'shader-canvas'; // The library you chose
+import { ShaderCanvas } from 'shader-canvas';
 import { buildShaderFromSnippets } from './shaderBuilder';
+import { useTexture } from './useTexture'; // Import our new hook
 
 const initialShaderCode = `
 // @uniforms
