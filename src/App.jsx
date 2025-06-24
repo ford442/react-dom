@@ -628,7 +628,10 @@ setStatusMessage('Loading models, please wait...');
 
 async function loadModel() {
       try {
-        const pipelineInstance = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-783M', {
+        const pipelineInstance = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-248M', {
+          // Xenova/LaMini-Flan-T5-783M
+          // Xenova/LaMini-Flan-T5-248M
+          // Xenova/LaMini-Flan-T5-77M
           progress_callback: (progress) => {
             const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
             const message = `Loading: ${progress.file} - ${progress.status} (${percentage}%)`;
