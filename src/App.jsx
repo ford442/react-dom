@@ -19,12 +19,9 @@ const appConfig = {
 };
   
 const selectedModel = "wasm-TinyLlama-1.1B-Chat-q4f342_1";
-  
-const engine = CreateMLCEngine(
-selectedModel,
-{appConfig: appConfig},
-);
-  
+    console.log('Loading model 'wasm-TinyLlama-1.1B-Chat-q4f342_1');
+const engine = CreateMLCEngine(selectedModel,{appConfig: appConfig},);
+    console.log('Loaded model 'wasm-TinyLlama-1.1B-Chat-q4f342_1');
 const imageChannel = new BroadcastChannel('imageChannel');
 const fileInput = document.getElementById('fileInput');
 fileInput.addEventListener('change', (event) => {
