@@ -645,7 +645,7 @@ setStatusMessage('Loading models, please wait...');
 async function loadModel() {
       try {
         const selectedModel = "wasm-TinyLlama-1.1B-Chat-q4f342_1";
-    const engine = CreateMLCEngine(selectedModel, { appConfig: appConfig });
+    const engine = await CreateMLCEngine(selectedModel, { appConfig: appConfig });
     const mlcGenerate = async (prompt, options) => {
       const result = await engine.generate({
         prompt,
