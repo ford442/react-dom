@@ -66,11 +66,6 @@ const appConfig = {
   ],
 };
   
-console.log('Loading model wasm-TinyLlama-1.1B-Chat-q4f342_1');
-const selectedModel = "wasm-TinyLlama-1.1B-Chat-q4f342_1";
-const engine = CreateMLCEngine(selectedModel,{appConfig: appConfig},);
-console.log('Loaded model wasm-TinyLlama-1.1B-Chat-q4f342_1');
-
   
 const [generator, setGenerator] = useState(null);
 const [statusMessage, setStatusMessage] = useState('Initializing...');
@@ -649,18 +644,17 @@ setStatusMessage('Loading models, please wait...');
 
 async function loadModel() {
       try {
-        const pipelineInstance = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-783M', {
-          progress_callback: (progress) => {
-            const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
-            const message = `Loading: ${progress.file} - ${progress.status} (${percentage}%)`;
-            console.log(message);
-            setStatusMessage(message);
-          },dtype: "q8"
-  }
-        );
-        console.log("Pipeline loaded successfully.");
-        setStatusMessage("Model loaded! Ready to generate.");
-        setGenerator(() => pipelineInstance);
+        const selectedModel = "wasm-TinyLlama-1.1B-Chat-q4f342_1";
+    const engine = CreateMLCEngine(selectedModel, { appConfig: appConfig });
+    const mlcGenerate = async (prompt, options) => {
+      const result = await engine.generate({
+        prompt,
+        max_new_tokens: options?.max_new_tokens || 128,
+        min_new_tokens: options?.min_new_tokens || 32
+      });
+      return [{ generated_text: result.output }];
+    };
+    setGenerator(() => mlcGenerate);
       } catch (error) {
         console.error("Failed to load pipeline:", error);
         setStatusMessage(`Error loading model: ${error.message}`);
