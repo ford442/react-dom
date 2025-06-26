@@ -10,21 +10,6 @@ import './App.css';
 import { KokoroTTS } from 'kokoro-js';
 
 
-const appConfig = {
-  model_list: [
-    {
-      model: "https://1ink.us/files/",
-      model_id: "wasm-TinyLlama-1.1B-Chat-q4f342_1",
-      model_lib: "https://1ink.us/files/TinyLlama-1.1B-Chat-v1.0-q4f32_1-webgpu.wasm",
-    },
-  ],
-};
-  
-const selectedModel = "wasm-TinyLlama-1.1B-Chat-q4f342_1";
-    console.log('Loading model wasm-TinyLlama-1.1B-Chat-q4f342_1');
-const engine = CreateMLCEngine(selectedModel,{appConfig: appConfig},);
-    console.log('Loaded model wasm-TinyLlama-1.1B-Chat-q4f342_1');
-
 const personalityProfiles = {
   default: {
     displayName: "Default Assistant",
@@ -69,6 +54,24 @@ const personalityProfiles = {
 };
 
 function App() {
+
+  
+const appConfig = {
+  model_list: [
+    {
+      model: "https://1ink.us/files/",
+      model_id: "wasm-TinyLlama-1.1B-Chat-q4f342_1",
+      model_lib: "https://1ink.us/files/TinyLlama-1.1B-Chat-v1.0-q4f32_1-webgpu.wasm",
+    },
+  ],
+};
+  
+console.log('Loading model wasm-TinyLlama-1.1B-Chat-q4f342_1');
+const selectedModel = "wasm-TinyLlama-1.1B-Chat-q4f342_1";
+const engine = CreateMLCEngine(selectedModel,{appConfig: appConfig},);
+console.log('Loaded model wasm-TinyLlama-1.1B-Chat-q4f342_1');
+
+  
 const [generator, setGenerator] = useState(null);
 const [statusMessage, setStatusMessage] = useState('Initializing...');
 const [prompt, setPrompt] = useState('');
