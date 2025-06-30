@@ -8,7 +8,7 @@
     "serve": "vite preview"
   },
   "dependencies": {
-    "@xenova/transformers": "3.0.0",
+    "@xenova/transformers": "latest",
     "onnxruntime-web": "latest",
     "kokoro-js": "latest",
     "@emotion/react": "latest",
