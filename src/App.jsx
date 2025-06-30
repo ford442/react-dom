@@ -82,6 +82,12 @@ const [activeTtsEngine, setActiveTtsEngine] = useState('kokoro'); // Default: 'w
 // NEW: State to hold the loaded Kokoro TTS model instance.
 const [kokoroTtsInstance, setKokoroTtsInstance] = useState(null);
 
+// NEW: State for Image Captioning
+const [imageCaptioner, setImageCaptioner] = useState(null);
+const [imageToCaption, setImageToCaption] = useState(null); // Will store URL or File object
+const [generatedCaption, setGeneratedCaption] = useState('');
+const [isCaptioning, setIsCaptioning] = useState(false);
+
 const promptTextareaRef = useRef(null); // Ref for the prompt textarea
 const audioContextRef = useRef(null); // For playing audio
 const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
@@ -563,6 +569,55 @@ const profile = personalityProfiles[currentPersonalityKey] || personalityProfile
   synthRef
 ]);
 
+const handleImageSelection = (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    // For immediate display, we can create an object URL
+    // Or, if the pipeline prefers a data URL, convert it here.
+    // For now, let's store the File object, as pipeline might handle it.
+    // And use object URL for preview.
+    setImageToCaption(file);
+    setGeneratedCaption(''); // Clear previous caption
+  } else {
+    setImageToCaption(null);
+  }
+};
+
+const handleImageCaptioning = useCallback(async () => {
+  if (!imageCaptioner || !imageToCaption) {
+    setStatusMessage("Image captioner not ready or no image selected.");
+    return;
+  }
+
+  setIsCaptioning(true);
+  setGeneratedCaption("Generating caption...");
+  setStatusMessage("Captioning image...");
+
+  try {
+    // The imageToCaption could be a File object or a data URL string
+    // Transformers.js pipeline should handle both, but data URL is common for web
+    const imageSrc = typeof imageToCaption === 'string' ? imageToCaption : URL.createObjectURL(imageToCaption);
+
+    const captions = await imageCaptioner(imageSrc, {
+      max_new_tokens: 128, // Adjust as needed
+    });
+
+    if (captions && captions.length > 0 && captions[0].generated_text) {
+      setGeneratedCaption(captions[0].generated_text);
+      setStatusMessage("Image caption generated successfully.");
+    } else {
+      setGeneratedCaption("No caption generated or unexpected output format.");
+      setStatusMessage("Caption generation failed to produce output.");
+    }
+  } catch (error) {
+    console.error("Error during image captioning:", error);
+    setGeneratedCaption(`Error: ${error.message}`);
+    setStatusMessage(`Image Captioning Error: ${error.message}`);
+  } finally {
+    setIsCaptioning(false);
+  }
+}, [imageCaptioner, imageToCaption, setStatusMessage, setGeneratedCaption, setIsCaptioning]);
+
 useEffect(() => {
 synthRef.current = window.speechSynthesis;
 const populateVoices = () => {
@@ -697,6 +752,28 @@ async function loadModel() {
     } catch (error) {
         console.error("Failed to load Kokoro TTS pipeline:", error);
         setStatusMessage(prev => `${prev} Kokoro TTS Error: ${error.message}.`);
+    }
+
+    try {
+      setStatusMessage(prev => `${prev} Loading Image Captioning model...`);
+      const captionerInstance = await pipeline('image-to-text', 'Xenova/vit-gpt2-image-captioning', {
+        progress_callback: (progress) => {
+          const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
+          const message = `Loading Captioner: ${progress.file} (${percentage}%)`;
+          setStatusMessage(message);
+        },
+      });
+      setImageCaptioner(() => captionerInstance);
+      console.log("Image Captioning model loaded successfully.");
+      // Update the overall status message
+      if (generator && ttsPipelineInstance && speakerEmbeddings && kokoroInstance && captionerInstance) {
+        setStatusMessage("All models loaded! Ready.");
+      } else {
+        setStatusMessage(prev => `${prev} Image Captioner loaded.`);
+      }
+    } catch (error) {
+      console.error("Failed to load Image Captioning model:", error);
+      setStatusMessage(prev => `${prev} Image Captioning Error: ${error.message}.`);
     }
 }
 
@@ -1031,6 +1108,52 @@ max={2.0}
           {generatedOutput}
 </div>
 </div>
+
+{/* Image Captioning Section */}
+<div style={{
+  position: 'absolute', // Or 'absolute'
+  zIndex: 4000, // Ensure it's on top
+  marginTop: '20px',
+  padding: '15px',
+  borderTop: '1px solid #ddd',
+  backgroundColor: 'rgba(230, 230, 250, 0.9)', // Light blue-ish green
+  // Adjust positioning and dimensions as needed. Example:
+  // bottom: 'calc(20px + 300px + 20px)', // Example: Stack above TTS sections if they are fixed height
+  // left: '20px',
+  // right: '20px',
+  // width: 'auto', // Or specify a width
+}}>
+  <h2>Image Captioning (ViT-GPT2)</h2>
+  <input
+    type="file"
+    accept="image/*"
+    onChange={handleImageSelection} // This function will be created in a later step
+    disabled={isCaptioning || !imageCaptioner}
+    style={{ marginBottom: '10px', display: 'block' }}
+  />
+  {imageToCaption && (
+    <img
+      src={typeof imageToCaption === 'string' ? imageToCaption : URL.createObjectURL(imageToCaption)}
+      alt="Selected for captioning"
+      style={{ maxWidth: '100%', maxHeight: '200px', marginBottom: '10px', border: '1px solid #ccc' }}
+    />
+  )}
+  <button
+    onClick={handleImageCaptioning} // This function will be created in a later step
+    disabled={!imageCaptioner || !imageToCaption || isCaptioning}
+    style={{ padding: '10px 15px', width: '100%', marginBottom: '10px' }}
+  >
+    {isCaptioning ? 'Generating Caption...' : 'Generate Caption'}
+  </button>
+  <h3>Generated Caption:</h3>
+  <div style={{
+    minHeight: '40px', padding: '10px', border: '1px solid #eee',
+    backgroundColor: '#f9f9f9', whiteSpace: 'pre-wrap'
+  }}>
+    {generatedCaption}
+  </div>
+</div>
+
 <div style={{
         position: 'absolute', zIndex: 4000, marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd',
         backgroundColor: 'rgba(230, 250, 230, 0.9)', // Light green
