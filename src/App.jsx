@@ -694,7 +694,7 @@ async function loadModel() {
             setStatusMessage(message);
           },dtype: "q8"
   },
-  { device: "webgpu" }
+  { device: "webnn" }
         );
         console.log("Pipeline loaded successfully.");
         setStatusMessage("Model loaded! Ready to generate.");
@@ -712,7 +712,7 @@ async function loadModel() {
             setStatusMessage(message);
           },
         },
-  { device: "webgpu" });
+  { device: "webnn" });
         setTtsPipelineInstance(() => ttsPipe);
         setStatusMessage(prev => `${prev} TTS model loaded.`);
         console.log("TTS pipeline (SpeechT5 + Vocoder) loaded successfully.");
@@ -740,7 +740,7 @@ async function loadModel() {
         setStatusMessage(prev => `${prev} Loading TTS model (Kokoro)...`);
         
         // This single line downloads and initializes the Kokoro TTS model.
-        const kokoroInstance = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {dtype: "fp32", device: "webgpu", });
+        const kokoroInstance = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {dtype: "fp32", device: "webnn", });
         
         setKokoroTtsInstance(() => kokoroInstance);
         console.log("Kokoro TTS pipeline loaded successfully.");
@@ -765,7 +765,7 @@ async function loadModel() {
           setStatusMessage(message);
         },
       },
-  { device: "webgpu" });
+  { device: "webnn" });
       setImageCaptioner(() => captionerInstance);
       console.log("Image Captioning model loaded successfully.");
       // Update the overall status message
