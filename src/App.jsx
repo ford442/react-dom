@@ -825,7 +825,7 @@ Module.callMain();
 },2500);
 }
 };
-xhr.send();
+// xhr.send();
 loadModel();
 }, []);
 
