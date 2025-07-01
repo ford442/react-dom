@@ -1112,7 +1112,7 @@ max={2.0}
 {/* Image Captioning Section */}
 <div style={{
   position: 'absolute', // Or 'absolute'
-  zIndex: 4000, // Ensure it's on top
+  zIndex: 7000, // Ensure it's on top
   marginTop: '20px',
   padding: '15px',
   borderTop: '1px solid #ddd',
