@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
-import { pipeline, env, Tensor } from '@huggingface/transformers';
+// import { pipeline, env, Tensor } from '@huggingface/transformers';
+import { pipeline, env, Tensor } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.6.0";
+
+
 import Box from '@mui/material/Box'; // Assuming you still use these
 import Slider from '@mui/material/Slider'; // Assuming you still use these
 import './App.css';
