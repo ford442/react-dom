@@ -1129,7 +1129,7 @@ max={2.0}
     accept="image/*"
     onChange={handleImageSelection} // This function will be created in a later step
     disabled={isCaptioning || !imageCaptioner}
-    style={{ marginBottom: '10px', display: 'block' }}
+    style={{ marginBottom: '10px', display: 'block', pointerEvents: 'auto', zIndex:9000 }}
   />
   {imageToCaption && (
     <img
