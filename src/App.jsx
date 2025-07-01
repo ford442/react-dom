@@ -754,28 +754,38 @@ async function loadModel() {
         setStatusMessage(prev => `${prev} Kokoro TTS Error: ${error.message}.`);
     }
 
-    try {
-      setStatusMessage(prev => `${prev} Loading Image Captioning model...`);
-      const captionerInstance = await pipeline('image-to-text', 'Xenova/vit-gpt2-image-captioning', {
-        progress_callback: (progress) => {
-          const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
-          const message = `Loading Captioner: ${progress.file} (${percentage}%)`;
-          setStatusMessage(message);
-        },
-      });
-      setImageCaptioner(() => captionerInstance);
-      console.log("Image Captioning model loaded successfully.");
-      // Update the overall status message
-      if (generator && ttsPipelineInstance && speakerEmbeddings && kokoroInstance && captionerInstance) {
-        setStatusMessage("All models loaded! Ready.");
-      } else {
-        setStatusMessage(prev => `${prev} Image Captioner loaded.`);
-      }
-    } catch (error) {
-      console.error("Failed to load Image Captioning model:", error);
-      setStatusMessage(prev => `${prev} Image Captioning Error: ${error.message}.`);
+      try {
+            setStatusMessage(prev => `${prev} Loading Image Captioning model...`);
+
+            // Create a promise for the loading process
+            const loadPromise = pipeline('image-to-text', 'Xenova/vit-gpt2-image-captioning', {
+                progress_callback: (progress) => {
+                    const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
+                    const message = `Loading Captioner: ${progress.file} (${percentage}%)`;
+                    setStatusMessage(message);
+                },
+            });
+
+            // Create a timeout promise
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("Model loading timed out after 30 seconds.")), 30000)
+            );
+
+            // Race the two promises
+            const captionerInstance = await Promise.race([loadPromise, timeoutPromise]);
+
+            setImageCaptioner(() => captionerInstance);
+            console.log("Image Captioning model loaded successfully.");
+            if (generator && ttsPipelineInstance && speakerEmbeddings && kokoroInstance && captionerInstance) {
+                setStatusMessage("All models loaded! Ready.");
+            } else {
+                setStatusMessage(prev => `${prev} Image Captioner loaded.`);
+            }
+        } catch (error) {
+            console.error("Failed to load Image Captioning model:", error);
+            setStatusMessage(prev => `Image Captioning Error: ${error.message}.`);
+        }
     }
-}
 
 const xhrPath = document.querySelector('#loadPath').innerHTML;
 const xhr = new XMLHttpRequest();
