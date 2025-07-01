@@ -1139,25 +1139,25 @@ max={2.0}
     accept="image/*"
     onChange={handleImageSelection} // This function will be created in a later step
     disabled={isCaptioning || !imageCaptioner}
-    style={{ marginBottom: '10px', display: 'block' }}
+    style={{ position: 'absolute', zIndex: 4000, marginBottom: '10px', display: 'block' }}
   />
   {imageToCaption && (
     <img
       src={typeof imageToCaption === 'string' ? imageToCaption : URL.createObjectURL(imageToCaption)}
       alt="Selected for captioning"
-      style={{ maxWidth: '100%', maxHeight: '200px', marginBottom: '10px', border: '1px solid #ccc' }}
+      style={{ position: 'absolute', zIndex: 4000, maxWidth: '100%', maxHeight: '200px', marginBottom: '10px', border: '1px solid #ccc' }}
     />
   )}
   <button
     onClick={handleImageCaptioning} // This function will be created in a later step
     disabled={!imageCaptioner || !imageToCaption || isCaptioning}
-    style={{ padding: '10px 15px', width: '100%', marginBottom: '10px' }}
+    style={{ position: 'absolute', zIndex: 4000, padding: '10px 15px', width: '100%', marginBottom: '10px' }}
   >
     {isCaptioning ? 'Generating Caption...' : 'Generate Caption'}
   </button>
   <h3>Generated Caption:</h3>
   <div style={{
-    minHeight: '40px', padding: '10px', border: '1px solid #eee',
+    position: 'absolute', zIndex: 4000, minHeight: '40px', padding: '10px', border: '1px solid #eee',
     backgroundColor: '#f9f9f9', whiteSpace: 'pre-wrap'
   }}>
     {generatedCaption}
