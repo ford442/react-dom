@@ -675,7 +675,7 @@ useLayoutEffect(() => {
     console.log('Forcing remote settings and disabling cache for loading.');
     env.localFilesOnly = false;
     env.allowLocalModels = false;
-   // env.useBrowserCache = true; 
+    env.useBrowserCache = true; 
     env.remoteHost = 'https://huggingface.co';
     env.remotePathTemplate = '{model}/resolve/main/';
     // env.wasm.numThreads = 16;
@@ -754,38 +754,28 @@ async function loadModel() {
         setStatusMessage(prev => `${prev} Kokoro TTS Error: ${error.message}.`);
     }
 
-      try {
-            setStatusMessage(prev => `${prev} Loading Image Captioning model...`);
-
-            // Create a promise for the loading process
-            const loadPromise = pipeline('image-to-text', 'Xenova/vit-gpt2-image-captioning', {
-                progress_callback: (progress) => {
-                    const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
-                    const message = `Loading Captioner: ${progress.file} (${percentage}%)`;
-                    setStatusMessage(message);
-                },
-            });
-
-            // Create a timeout promise
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("Model loading timed out after 30 seconds.")), 30000)
-            );
-
-            // Race the two promises
-            const captionerInstance = await Promise.race([loadPromise, timeoutPromise]);
-
-            setImageCaptioner(() => captionerInstance);
-            console.log("Image Captioning model loaded successfully.");
-            if (generator && ttsPipelineInstance && speakerEmbeddings && kokoroInstance && captionerInstance) {
-                setStatusMessage("All models loaded! Ready.");
-            } else {
-                setStatusMessage(prev => `${prev} Image Captioner loaded.`);
-            }
-        } catch (error) {
-            console.error("Failed to load Image Captioning model:", error);
-            setStatusMessage(prev => `Image Captioning Error: ${error.message}.`);
-        }
+    try {
+      setStatusMessage(prev => `${prev} Loading Image Captioning model...`);
+      const captionerInstance = await pipeline('image-to-text', 'Xenova/vit-gpt2-image-captioning', {
+        progress_callback: (progress) => {
+          const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
+          const message = `Loading Captioner: ${progress.file} (${percentage}%)`;
+          setStatusMessage(message);
+        },
+      });
+      setImageCaptioner(() => captionerInstance);
+      console.log("Image Captioning model loaded successfully.");
+      // Update the overall status message
+      if (generator && ttsPipelineInstance && speakerEmbeddings && kokoroInstance && captionerInstance) {
+        setStatusMessage("All models loaded! Ready.");
+      } else {
+        setStatusMessage(prev => `${prev} Image Captioner loaded.`);
+      }
+    } catch (error) {
+      console.error("Failed to load Image Captioning model:", error);
+      setStatusMessage(prev => `${prev} Image Captioning Error: ${error.message}.`);
     }
+}
 
 const xhrPath = document.querySelector('#loadPath').innerHTML;
 const xhr = new XMLHttpRequest();
@@ -825,7 +815,7 @@ Module.callMain();
 },2500);
 }
 };
-// xhr.send();
+xhr.send();
 loadModel();
 }, []);
 
@@ -940,168 +930,251 @@ max={2.0}
 <div id={'wrap'}>
 <div id={'contain1'}>
 <canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
+<div style={{
+  position: 'fixed', // Or 'absolute' if you prefer for your layout context
+  bottom: '20px',
+  left: '20px',
+  right: '20px',    // This makes it stretch; consider a fixed width + centering instead
+  // width: '600px', // Example: For a fixed width panel
+  // maxWidth: '90vw', // Prevent it from being too wide on large screens
+  // margin: '0 auto', // If using width and not left/right, this can help center (with left:0, right:0)
+  padding: '20px',
+  backgroundColor: 'rgba(245, 245, 245, 0.97)', // Light background for the panel
+  border: '1px solid #ccc',
+  borderRadius: '10px',
+  boxShadow: '0 5px 15px rgba(0,0,0,0.2)',
+  zIndex: 6000,
+  display: 'flex',
+  flexDirection: 'column', // Stack sections vertically
+  gap: '20px',             // Space between sections
+  pointerEvents: 'auto',
+  maxHeight: 'calc(100vh - 40px - 40px)', // Max height considering top/bottom viewport margins
+  overflowY: 'auto' // Add scroll if content exceeds maxHeight
+}}>
+<div style={{ position:'absolute',zIndex:4000,padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
+  <h4>Active Text-to-Speech Engine:</h4>
+  <select
+    value={activeTtsEngine}
+    onChange={(e) => setActiveTtsEngine(e.target.value)}
+    style={{ position:'absolute',zIndex:4000,padding: '8px', width: '100%', boxSizing: 'border-box' }}
+  >
+    <option value="webSpeechAPI">Browser Built-in</option>
+    <option value="speechT5" disabled={!ttsPipelineInstance || !speakerEmbeddings}>
+      SpeechT5 (Transformers.js)
+    </option>
+        <option value="kokoro" disabled={!kokoroTtsInstance}>
+          Kokoro (ONNX Community)
+    </option>
+    {/* You can add more options here later */}
+  </select>
+</div>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', borderBottom: '1px solid #ddd', paddingBottom: '15px' }}>
+  {currentProfile.avatar && (
+    <img 
+      src={currentProfile.avatar} 
+      alt={`${currentProfile.displayName} Avatar`} 
+      style={{ position:'absolute',zIndex:4000,width: '60px', height: '60px', borderRadius: '50%', border: `3px solid ${currentProfile.themeColors['--ai-primary-color'] || '#ccc'}` }} 
+    />
+  )}
+  <div>
+    <h2 style={{position:'absolute',zIndex:4000, margin: 0, color: currentProfile.themeColors['--ai-primary-color'] || '#333' }}>
+      {currentProfile.displayName}
+    </h2>
+    {/* You can also put the select for currentPersonalityKey here if preferred */}
+  </div>
+</div>
+{/* Selector for personality (if not already placed elsewhere) */}
+<div style={{ position:'absolute',zIndex:4000,padding: '10px 0' }}>
+ <h4>Select AI Personality:</h4> {/* Changed label slightly for clarity */}
+  <select
+    id="personality-select"
+    value={currentPersonalityKey} // Use the KEY state here
+    onChange={(e) => setCurrentPersonalityKey(e.target.value)} // Use the KEY setter
+    style={{ padding: '8px', width: '100%', boxSizing: 'border-box', /* your zIndex if needed */ }}
+  >
+    {Object.keys(personalityProfiles).map(key => (
+      <option key={key} value={key}>
+        {personalityProfiles[key].displayName}
+      </option>
+    ))}
+  </select>
+</div>
+<div style={{ position:'absolute',zIndex:4000,padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
+  <h4>Auto-Speak Engine after LLM Generation:</h4>
+  <label style={{ marginRight: '15px', cursor: 'pointer' }}>
+    <input
+      type="radio"
+      name="ttsEnginePref"
+      value="webSpeechAPI"
+      checked={preferredTtsEngine === 'webSpeechAPI'}
+      onChange={() => setPreferredTtsEngine('webSpeechAPI')}
+    /> Browser Built-in
+  </label>
+  <label style={{ cursor: 'pointer' }}>
+    <input
+      type="radio"
+      name="ttsEnginePref"
+      value="transformersJS"
+      checked={preferredTtsEngine === 'transformersJS'}
+      onChange={() => setPreferredTtsEngine('transformersJS')}
+      disabled={!ttsPipelineInstance || !speakerEmbeddings} // Disable if Transformers.js TTS isn't ready
+    /> Transformers.js (SpeechT5)
+  </label>
+</div>
+<h2>Text to Speech (Browser Built-in)</h2>
+<textarea
+    value={webSpeechApiDedicatedInput} // Use the new state here
+    onChange={(e) => setWebSpeechApiDedicatedInput(e.target.value)} // Update the new state
+    placeholder="Enter text for browser TTS..."
+    rows={3}
+    style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px' }}
+    disabled={isSpeaking} // Or a dedicated isWebSpeaking state
+  />
+<div style={{ position:'absolute',zIndex:4000,marginBottom: '10px' }}>
+<label htmlFor="voice-select-webapi" style={{ position:'absolute',zIndex:4000,marginRight: '10px' }}>Voice:</label>
+<select
+      id="voice-select-webapi"
+      value={selectedVoiceURI}
+      onChange={(e) => setSelectedVoiceURI(e.target.value)}
+      style={{ position:'absolute',zIndex:4000,padding: '8px', width: 'calc(100% - 70px)'}}
+      disabled={availableVoices.length === 0 || isWebSpeaking}
+    >
+      {availableVoices.length === 0 && <option value="">Loading voices...</option>}
+      {availableVoices.map((voice) => (
+        <option key={voice.voiceURI} value={voice.voiceURI}>
+          {voice.name} ({voice.lang}) {voice.default ? '[Default]' : ''}
+        </option>
+      ))}
+</select>
+</div>
+<button
+    onClick={handleWebSpeechSpeak}
+    disabled={isWebSpeaking || !webSpeechText.trim() || availableVoices.length === 0}
+    style={{ padding: '10px 15px', width: '100%' }}
+  >
+    {isWebSpeaking ? 'Speaking...' : 'Speak Text (Browser)'}
+</button>
+</div>
+<div style={{
+        position: 'absolute', // Or 'absolute' if you prefer, relative to a parent
+        bottom: '20px',
+        left: '20px',
+        right: '20px', // Control width
+        padding: '20px',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        border: '1px solid #ccc',
+        borderRadius: '8px',
+        boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+        zIndex: 6000, // Ensure it's above other elements
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        pointerEvents:'auto',
+      }}>
+<h2>Test Text Generation (LaMini-Flan-T5-783M)</h2>
+<div id="outputTextGlobalStatus" style={{ fontStyle: 'italic', marginBottom: '10px' }}>
+          {statusMessage} {/* Display model loading status here */}
+</div>
+<textarea
+          ref={promptTextareaRef} // Assign the ref here
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Enter prompt or use Speech-to-Text..."
+          rows={3}
+          style={{ position: 'absolute', zIndex: 4000, width: '100%', padding: '8px', boxSizing: 'border-box', pointerEvents: 'auto' }}
+          disabled={!generator || isGenerating}
+/>
+<button
+          onClick={handleGenerateText}
+          disabled={!generator || isGenerating}
+          style={{ position: 'absolute', zIndex: 4000, padding: '10px 15px', pointerEvents: 'auto', cursor: (!generator || isGenerating) ? 'not-allowed' : 'pointer' }}
+>
+          {isGenerating ? 'Generating...' : 'Generate Text'}
+</button>
+        
+        {/* STT Button and status from Option A */}
+<div style={{ position: 'absolute', zIndex: 4000, marginTop: '10px', paddingTop:'10px', borderTop: '1px solid #eee' }}>
+          <button onClick={toggleListen} disabled={!recognitionRef.current} style={{ pointerEvents: 'auto' }}> {/* Ensure toggleListen is defined */}
+            {isListening ? 'Stop Listening' : 'Start Listening'}
+          </button>
+          {isListening && <p><i>Listening...</i></p>}
+          {sttError && <p style={{ color: 'red' }}>{sttError}</p>}
+</div>
+<h3>Generated Output:</h3>
+<div style={{
+          minHeight: '50px', padding: '10px', border: '1px solid #eee',
+          backgroundColor: '#f9f9f9', whiteSpace: 'pre-wrap'
+}}>
+          {generatedOutput}
+</div>
+</div>
 
-          {/* Main Floating Control Panel - All UI sections will now live inside this container */}
-          <div className="base-panel floating-control-panel">
-            
-            {/* Status Message - Placed at the top of the panel */}
-            <div className="status-display">
-              {statusMessage}
-            </div>
-            
-            {/* --- Personality and Engine Selection --- */}
-            <div className="panel-section">
-              <div className="personality-header">
-                {currentProfile.avatar && (
-                  <img 
-                    src={currentProfile.avatar} 
-                    alt={`${currentProfile.displayName} Avatar`} 
-                    className="personality-avatar"
-                  />
-                )}
-                <h2>{currentProfile.displayName}</h2>
-              </div>
-              <div className="input-group">
-                <label htmlFor="personality-select">AI Personality:</label>
-                <select
-                  id="personality-select"
-                  value={currentPersonalityKey}
-                  onChange={(e) => setCurrentPersonalityKey(e.target.value)}
-                >
-                  {Object.keys(personalityProfiles).map(key => (
-                    <option key={key} value={key}>
-                      {personalityProfiles[key].displayName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="input-group">
-                <label>Auto-Speak Engine:</label>
-                <div className="radio-group">
-                  <label>
-                    <input
-                      type="radio"
-                      name="ttsEnginePref"
-                      value="webSpeechAPI"
-                      checked={preferredTtsEngine === 'webSpeechAPI'}
-                      onChange={() => setPreferredTtsEngine('webSpeechAPI')}
-                    /> Browser
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="ttsEnginePref"
-                      value="speechT5"
-                      checked={preferredTtsEngine === 'speechT5'}
-                      onChange={() => setPreferredTtsEngine('speechT5')}
-                      disabled={!ttsPipelineInstance}
-                    /> SpeechT5
-                  </label>
-                   <label>
-                    <input
-                      type="radio"
-                      name="ttsEnginePref"
-                      value="kokoro"
-                      checked={preferredTtsEngine === 'kokoro'}
-                      onChange={() => setPreferredTtsEngine('kokoro')}
-                      disabled={!kokoroTtsInstance}
-                    /> Kokoro
-                  </label>
-                </div>
-              </div>
-            </div>
+{/* Image Captioning Section */}
+<div style={{
+  position: 'absolute', // Or 'absolute'
+  zIndex: 4000, // Ensure it's on top
+  marginTop: '20px',
+  padding: '15px',
+  borderTop: '1px solid #ddd',
+  backgroundColor: 'rgba(230, 230, 250, 0.9)', // Light blue-ish green
+  // Adjust positioning and dimensions as needed. Example:
+  // bottom: 'calc(20px + 300px + 20px)', // Example: Stack above TTS sections if they are fixed height
+  // left: '20px',
+  // right: '20px',
+  // width: 'auto', // Or specify a width
+}}>
+  <h2>Image Captioning (ViT-GPT2)</h2>
+  <input
+    type="file"
+    accept="image/*"
+    onChange={handleImageSelection} // This function will be created in a later step
+    disabled={isCaptioning || !imageCaptioner}
+    style={{ marginBottom: '10px', display: 'block' }}
+  />
+  {imageToCaption && (
+    <img
+      src={typeof imageToCaption === 'string' ? imageToCaption : URL.createObjectURL(imageToCaption)}
+      alt="Selected for captioning"
+      style={{ maxWidth: '100%', maxHeight: '200px', marginBottom: '10px', border: '1px solid #ccc' }}
+    />
+  )}
+  <button
+    onClick={handleImageCaptioning} // This function will be created in a later step
+    disabled={!imageCaptioner || !imageToCaption || isCaptioning}
+    style={{ padding: '10px 15px', width: '100%', marginBottom: '10px' }}
+  >
+    {isCaptioning ? 'Generating Caption...' : 'Generate Caption'}
+  </button>
+  <h3>Generated Caption:</h3>
+  <div style={{
+    minHeight: '40px', padding: '10px', border: '1px solid #eee',
+    backgroundColor: '#f9f9f9', whiteSpace: 'pre-wrap'
+  }}>
+    {generatedCaption}
+  </div>
+</div>
 
-            {/* --- Text Generation and STT Section --- */}
-            <div className="panel-section">
-              <h3>Text Generation & Voice Control</h3>
-              <div className="input-group">
-                <label htmlFor="prompt-textarea">Prompt:</label>
-                <textarea
-                  id="prompt-textarea"
-                  ref={promptTextareaRef}
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="Enter prompt or use Speech-to-Text..."
-                  rows={3}
-                  disabled={!generator || isGenerating}
-                />
-              </div>
-              <button
-                onClick={handleGenerateText}
-                disabled={!generator || isGenerating || !prompt.trim()}
-              >
-                {isGenerating ? 'Generating...' : 'Generate & Speak'}
-              </button>
-              <button onClick={toggleListen} disabled={!recognitionRef.current} className="auto-width">
-                {isListening ? 'Stop Listening' : 'Start Listening'}
-              </button>
-              {sttError && <p style={{ color: 'red' }}>{sttError}</p>}
-              <label>Generated Output:</label>
-              <div className="generated-output-display">
-                {generatedOutput}
-              </div>
-            </div>
-
-            {/* --- Image Captioning Section --- */}
-            <div className="panel-section">
-              <h3>Image Captioning (ViT-GPT2)</h3>
-              <div className="input-group">
-                <label htmlFor="image-input">Upload Image:</label>
-                <input
-                  id="image-input"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageSelection}
-                  disabled={isCaptioning || !imageCaptioner}
-                />
-              </div>
-              {imageToCaption && (
-                <img
-                  src={typeof imageToCaption === 'string' ? imageToCaption : URL.createObjectURL(imageToCaption)}
-                  alt="Selected for captioning"
-                  style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px', objectFit: 'contain' }}
-                />
-              )}
-              <button
-                onClick={handleImageCaptioning}
-                disabled={!imageCaptioner || !imageToCaption || isCaptioning}
-              >
-                {isCaptioning ? 'Generating Caption...' : 'Generate Caption'}
-              </button>
-              <label>Generated Caption:</label>
-              <div className="generated-output-display">
-                {generatedCaption}
-              </div>
-            </div>
-
-            {/* --- Manual TTS Section --- */}
-            <div className="panel-section">
-                <h3>Manual Text-to-Speech</h3>
-                <div className="input-group">
-                    <label htmlFor="tts-input">Text to Speak:</label>
-                    <textarea
-                        id="tts-input"
-                        value={textToSpeakInput}
-                        onChange={(e) => setTextToSpeakInput(e.target.value)}
-                        placeholder="Enter text to synthesize..."
-                        rows={3}
-                        disabled={isSpeaking}
-                    />
-                </div>
-                <button
-                    onClick={async () => {
-                        if (activeTtsEngine === 'kokoro') await synthesizeWithKokoroAndPlay(textToSpeakInput, currentPersonalityKey);
-                        else if (activeTtsEngine === 'speechT5') await synthesizeAndPlayText(textToSpeakInput);
-                        else speakWithWebAPI(textToSpeakInput);
-                    }}
-                    disabled={isSpeaking || !textToSpeakInput.trim()}
-                >
-                    {isSpeaking ? 'Synthesizing...' : `Speak with ${activeTtsEngine}`}
-                </button>
-            </div>
-            
-          </div> {/* End of floating-control-panel */}
-          
+<div style={{
+        position: 'absolute', zIndex: 4000, marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd',
+        backgroundColor: 'rgba(230, 250, 230, 0.9)', // Light green
+}}>
+<h2>Text to Speech (Transformers.js - SpeechT5)</h2>
+<textarea
+          value={textToSpeakInput}
+          onChange={(e) => setTextToSpeakInput(e.target.value)}
+          placeholder="Enter text to synthesize..."
+          rows={3}
+          style={{ position: 'absolute', zIndex: 4000, width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px', pointerEvents: 'auto' }}
+          disabled={!ttsPipelineInstance || isSpeaking}
+/>
+<button
+          onClick={handleSynthesizeSpeech}
+          disabled={!ttsPipelineInstance || !speakerEmbeddings || isSpeaking || !textToSpeakInput.trim()}
+          style={{ position: 'absolute', zIndex: 4000, padding: '10px 15px' }}
+        >
+          {isSpeaking ? 'Synthesizing...' : 'Synthesize & Play Speech'}
+        </button>
+</div>
 <div id={'contain1a'} style={{height:'75%',width:'75%'}}>
 </div>
 </div>
