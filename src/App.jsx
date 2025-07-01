@@ -1141,7 +1141,7 @@ max={2.0}
   <button
     onClick={handleImageCaptioning} // This function will be created in a later step
     disabled={!imageCaptioner || !imageToCaption || isCaptioning}
-    style={{ padding: '10px 15px', width: '100%', marginBottom: '10px' }}
+    style={{ padding: '10px 15px', width: '100%', marginBottom: '10px', pointerEvents: 'auto', zIndex:9000  }}
   >
     {isCaptioning ? 'Generating Caption...' : 'Generate Caption'}
   </button>
