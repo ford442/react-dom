@@ -1,4 +1,4 @@
-import { pipeline } from '@xenova/transformers';
+import { pipeline } from '@huggingface/transformers';
 
 /**
  * Predicts future cryptocurrency prices using a pre-trained time-series model.
