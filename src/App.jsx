@@ -1,245 +1,85 @@
-import { useState, useRef, useEffect, useCallback,useLayoutEffect } from 'react'
-import { LlamaCpp } from "../llama/dist/llama-st/llama.js";
-
-import Box from '@mui/material/Box';
-import Slider from '@mui/material/Slider';
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import PriceChart from './components/PriceChart';
+import { getHistoricalData } from './services/cryptoApi';
+import { predictFuturePrices, calculateSMA } from './services/analysis';
+import './App.css';
 
 function App() {
-useLayoutEffect(() => {
+  // State variables to hold our data and loading status
+  const [coinId, setCoinId] = useState('bitcoin');
+  const [historicalData, setHistoricalData] = useState([]);
+  const [predictedData, setPredictedData] = useState(null);
+  const [sma50, setSma50] = useState(null);
+  const [sma200, setSma200] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // useEffect hook to fetch data whenever the coinId changes
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      
+      // 1. Fetch historical data
+      const historical = await getHistoricalData(coinId, 365);
+      setHistoricalData(historical);
 
-  
-const onModelLoaded = () => { 
-  console.debug('model: loaded');
-  const prompt = document.querySelector("#prompt").value;
-  document.querySelector("#result").value = prompt;
+      if (historical.length > 0) {
+        const prices = historical.map(p => p[1]);
+        
+        // 2. Calculate trends (SMAs)
+        setSma50(calculateSMA(prices, 50));
+        setSma200(calculateSMA(prices, 200));
 
-  app.run({
-    prompt: prompt,
-    ctx_size: 4096,
-    temp: 0.1,
-    no_display_prompt: true,
-  });
+        // 3. Predict future prices
+        const predictions = await predictFuturePrices(prices, 30);
+        setPredictedData(predictions);
+      }
+      
+      setIsLoading(false);
+    };
+
+    fetchData();
+  }, [coinId]); // This effect re-runs whenever 'coinId' changes
+
+  return (
+    <div className="App">
+      <header className="App-header">
+        <h1>Crypto Price Analyzer</h1>
+        <p>Predicting future prices and identifying trends with AI.</p>
+      </header>
+      <main>
+        <div className="controls">
+          <label htmlFor="coin-select">Select a Cryptocurrency:</label>
+          <select 
+            id="coin-select" 
+            value={coinId} 
+            onChange={(e) => setCoinId(e.target.value)}
+            disabled={isLoading}
+          >
+            <option value="bitcoin">Bitcoin</option>
+            <option value="ethereum">Ethereum</option>
+            <option value="dogecoin">Dogecoin</option>
+            <option value="cardano">Cardano</option>
+          </select>
+        </div>
+        <div className="chart-container">
+          {isLoading ? (
+            <div className="loading-indicator">
+                <p>Loading Model and Analyzing Data...</p>
+                <div className="spinner"></div>
+            </div>
+          ) : (
+            <PriceChart 
+              historicalData={historicalData}
+              predictedData={predictedData}
+              sma50Data={sma50}
+              sma200Data={sma200}
+              coinId={coinId}
+            />
+          )}
+        </div>
+      </main>
+    </div>
+  );
 }
 
-const onMessageChunk = (text) => {
-  console.log(text);
-  document.querySelector('#result').value += text;
-};
-
-const onComplete = () => {
-  console.debug('model: completed');
-};
-
-const models = [
-  'https://huggingface.co/Qwen/Qwen1.5-0.5B-Chat-GGUF/resolve/main/qwen2-beta-0_5b-chat-q8_0.gguf',
-  'https://huggingface.co/Qwen/Qwen1.5-1.8B-Chat-GGUF/resolve/main/qwen1_5-1_8b-chat-q8_0.gguf',
-  'https://huggingface.co/stabilityai/stablelm-2-zephyr-1_6b/resolve/main/stablelm-2-zephyr-1_6b-Q4_1.gguf',
-  'https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf',
-  'https://huggingface.co/TheBloke/phi-2-GGUF/resolve/main/phi-2.Q4_K_M.gguf'
-];
-
-const model = models[2]; // stablelm-2-zephyr-1_6b
-
-const app = new LlamaCpp(
-  model,
-  onModelLoaded,          
-  onMessageChunk,       
-  onComplete,
-);
-
-
-  
-  
-const imageChannel = new BroadcastChannel('imageChannel');
-const fileInput = document.getElementById('fileInput');
-fileInput.addEventListener('change', (event) => {
-let file = event.target.files[0];
-if (file) {
-const reader = new FileReader();
-reader.onload = (e) => {
-const imageDataURL = e.target.result;
-window.open('./depth.1ink');
-setTimeout(function(){
-imageChannel.postMessage({ imageDataURL });
-},4500);      };
-reader.readAsDataURL(file);
-}
-});
-
-const xhrPath = document.querySelector('#loadPath').innerHTML;
-const xhr = new XMLHttpRequest();
-xhr.open('GET', xhrPath, true); // Replace with your filename
-xhr.responseType = 'arraybuffer'; // Get raw binary data
-console.log('got react run');
-function decodeUTF32(uint8Array, isLittleEndian = true) {
-const dataView = new DataView(uint8Array.buffer);
-let result = "";
-for (let i = 0; i < uint8Array.length; i += 4) {
-let codePoint;
-if (isLittleEndian) {
-codePoint = dataView.getUint32(i, true); // Little-endian
-} else {
-codePoint = dataView.getUint32(i, false); // Big-endian
-}
-result += String.fromCodePoint(codePoint);
-}
-return result;
-}
-xhr.onload = function() {
-console.log('got load loader');
-if (xhr.status === 200) {
-const utf32Data = xhr.response;
-  //  const decoder = new TextDecoder('utf-32'); // Or 'utf-32be'
-const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
-const scr = document.createElement('script');
-// scr.type = 'module';
-scr.text = jsCode;
-document.body.appendChild(scr);
-var Module = {}; // Initialize an empty Module object
-setTimeout(function(){
-Module = libload();
-Module.onRuntimeInitialized = function(){
-console.log('call main loader');
-Module.callMain();
-};
-},2500);
-}
-};
-xhr.send();
-}, [])
-  
-return (
-<>
-<link charset={"utf-8"} crossorigin rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Audiowide"/>
-<img id={'splash1'} src={'./image/shroud.jpg'} style={{backgroundColor:'rgba(233,233,233,0.0)',display:'block',position:'absolute',height:'100vh',width:'100vw',zIndex:3590}}></img>
-<img id={'splash2'} src={'./image/spinner.gif'} style={{backgroundColor:'rgba(47,47,47,1.0)',display:'block',top:'50%',left:'50%',transform:'translate(-50%,-50%)',position:'absolute',height:'20vh',width:'20vh',zIndex:3591}}></img>
-<nav id={'menu'}>
-<section className='menu-section' id={'menu-sections'}>
-<div style={{textAlign:'center'}}>
-TIMESLIDER
-</div>
-<ul className='menu-section-list'>
-<div id={'mnu'}>
-<select id={'resMode'} hidden style={{position:'absolute',zIndex:1,pointerEvents:'auto'}}>
-<option value="false">False</option>
-<option value="true">True</option>
-</select>
-<div id={'slideframe'}>
-<input type={'text'} id={'timeslider'}></input>
-</div>
-<div id={'slideframe2'}>
-<input type={'text'} id={'srslider'}></input>
-</div>
-<div id={'slideframe3'}>
-<Box sx={{ width: '15vh' }}>
-<Slider
-aria-label="TEST"
-defaultValue={1.0}
-valueLabelDisplay="auto"
-shiftStep={0.25}
-step={0.05}
-min={0.05}
-max={2.0}
-/>
-</Box></div>
-</div></ul></section>
-</nav>
-<main id={'panel'}>
-  
-<iframe src={'./bezz.1ink'} id={'circle'} title='Circular mask'></iframe>
-<input type={'button'} id={'startBtn'} style={{backgroundColor:'gold',position:'absolute',display:'block',left:'6%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
-<input type={'button'} id={'menuBtn'} style={{backgroundColor:'black',position:'absolute',display:'block',left:'3%',top:'5%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}></input>
-<input type={'button'} id={'musicBtn'} style={{backgroundColor:'cyan',position:'absolute',display:'block',left:'3%',bottom:'5%',zIndex:3200,border:'6px solid green',borderRadius:'20%'}}></input>
-<input type={'button'} id={'startBtn5'} style={{backgroundColor:'yellow',position:'absolute',display:'block',left:'2%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
-<input type={'button'} id={'startBtn2'} style={{backgroundColor:'gold',position:'absolute',display:'block',left:'9%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
-<input type={'button'} id={'startBtnC'} style={{backgroundColor:'green',position:'absolute',display:'block',left:'5%',top:'12%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
-<input type={'button'} id={'downloadButton'} style={{backgroundColor:'grey',position:'absolute',display:'block',left:'15%',top:'22%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
-<input type={'button'} id={'startBtnI'} style={{backgroundColor:'white',position:'absolute',display:'block',left:'15%',top:'12%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
-<input type={'button'} id={'pyBtn'} style={{backgroundColor:'green',position:'absolute',display:'block',left:'15%',top:'6%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
-<input type={'button'} id={'pyBtn2'} style={{backgroundColor:'green',position:'absolute',display:'block',left:'18%',top:'6%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
-<input type={'button'} id={'pyBtn3'} style={{backgroundColor:'yellow',position:'absolute',display:'block',left:'22%',top:'6%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
-<input type={'button'} id={'pyBtn4'} style={{backgroundColor:'red',position:'absolute',display:'block',left:'22%',top:'8%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
-<input type={'button'} id={'apngBtn'} style={{backgroundColor:'green',position:'absolute',display:'block',left:'35%',top:'12%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
-<input type={'button'} id={'apngBtn2'} style={{backgroundColor:'green',position:'absolute',display:'block',left:'37%',top:'12%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
-<input type={'button'} id={'mviBtn'} style={{backgroundColor:'black',position:'absolute',display:'block',left:'15%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
-<input type={'button'} id={'uniUp'} style={{backgroundColor:'black',position:'absolute',display:'block',left:'3%',top:'50%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}></input>
-<input type={'button'} id={'uniDown'} style={{backgroundColor:'black',position:'absolute',display:'block',left:'7%',top:'50%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}></input>
-<input type={'button'} id={'viewUp'} style={{backgroundColor:'black',position:'absolute',display:'block',left:'5%',top:'46%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}></input>
-<input type={'button'} id={'viewDown'} style={{backgroundColor:'black',position:'absolute',display:'block',left:'5%',top:'54%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}></input>
-<input type={'button'} id={'sizeUp'} style={{backgroundColor:'black',position:'absolute',display:'block',left:'5%',top:'86%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}></input>
-<input type={'button'} id={'sizeDown'} style={{backgroundColor:'black',position:'absolute',display:'block',left:'5%',top:'90%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}></input>
-<input type={'button'} id={'moveDown'} style={{backgroundColor:'black',position:'absolute',display:'block',right:'5%',top:'90%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}></input>
-<input type={'button'} id={'moveUp'} style={{backgroundColor:'black',position:'absolute',display:'block',right:'5%',top:'86%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}></input>
-<input type={'button'} id={'moveLeft'} style={{backgroundColor:'black',position:'absolute',display:'block',right:'3%',top:'90%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}></input>
-<input type={'button'} id={'moveRight'} style={{backgroundColor:'black',position:'absolute',display:'block',right:'7%',top:'90%',zIndex:3200,border:'6px solid #e7e7e7',borderRadius:'20%'}}></input>
-<input className="button" type={'button'} id={'moveFwd'} style={{backgroundColor:'gold',position:'absolute',display:'none',width:'6vh',height:'5vh',left:'47%',bottom:'3%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
-<input className="button" type={'button'} id={'cruiseFwd'} style={{backgroundColor:'red',position:'absolute',display:'none',width:'6vh',height:'5vh',left:'47%',bottom:'7%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
-<input type="file" id={"fileInput"} style={{zIndex:5000,position:'absolute',left:'50vh',top:'16vh'}}></input>
-<input type="file" id={"fileInput2"} style={{zIndex:5000,position:'absolute',left:'42vh',top:'26vh'}}></input>
-<label for="fileInput" className="custom-file-upload">Select File</label>
-<div id={'outText'} style={{opacity:0.0,backgroundColor:'green',position:'absolute',top:'50vh',left:'47vw',zIndex:4200}}></div>
-<div id={'outText1'} style={{opacity:0.0,backgroundColor:'green',position:'absolute',top:'52vh',left:'47vw',zIndex:4200}}></div>
-<div id={'outText2'} style={{opacity:0.0,backgroundColor:'green',position:'absolute',top:'54vh',left:'47vw',zIndex:4200}}></div>
-<div className='emscripten' id={'stat'}></div>
-<div className='emscripten' id={'status'}></div>
-<div className='emscripten'>
-<progress value={'0'} max={'100'} id={'progress'}></progress>
-</div>
-<input type={'checkbox'} id={"di"} hidden></input>
-//   //   //   //
-<div id={'srsiz'} hidden>1000</div>
-<div id={'ffire'} hidden>0</div>
-<div id={'iwid'} hidden>0</div>
-<div id={'ihig'} hidden>0</div>
-<div id={'pmhig'} hidden>0</div>
-<div id={'canvasSize'} hidden>0</div>
-<div id={'floatHigh'} hidden>1</div>
-<div id={'wid'} hidden>0</div>
-<div id={'hig'} hidden>0</div>
-<div id={'tileNum'} hidden>0</div>
-<div id={'vsiz'} hidden>0</div>
-<div id={'lwid'} hidden>0</div>
-<div id={'lhig'} hidden>0</div>
-<div id={'ihid'} hidden>0</div>
-<div id={'tim'} hidden>2500</div>
-<div id={'shut'} hidden>2</div>
-<div id={'isrc'} hidden>./intro.mp4</div>
-<div id={'idur'} hidden>0</div>
-<div id={'itim'} hidden>0</div>
-<div id={'smd'} hidden>110.10</div>
-// //  //
-<div id={'wrap'}>
-<div id={'contain1'}>
-<canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
-<div id={'contain1a'} style={{height:'75%',width:'75%'}}>
-</div>
-</div>
-<div id={'contain2'}>
-<canvas id={'bcanvas'} hidden style={{pointerEvents:'none',display:'none',zIndex:2100,position:'absolute',height:'100vh',width:'100vh',marginLeft:'auto',marginRight:'auto',backgroundColor:'rgba(0,255,0,1.0)',top:'0',imageRendering:'auto'}}></canvas>
-<img id={'resultImage'} src={''}></img>
-</div>
-</div>
-</main>
-<div>
-<img id={"imgAnimPNG"} src={''}></img>
-<img id={'mvi'} src={'./image/901464_400093426755894_1205176414_o.jpg'}></img>
-</div>
-<div style={{pointerEvents:'none',height:'100vh'}}>
-<video hidden muted src={'./video-1456459792.mp4'}
-       loop crossorigin playsinline
-       id={'ivi'} preload={'auto'}
-       style={{pointerEvents:'none',transform:'scaleY(-1.0)'}}></video>
-</div>
-<div style={{pointerEvents:'none',height:'100vh'}}>
-<video hidden muted crossorigin playsinline id={'ldv'} preload={'auto'} style={{pointerEvents:'none'}}></video>
-</div>
-<audio crossorigin id={'track'} preload={'auto'} hidden style={{pointerEvents:'none'}}></audio>
-</>
-);
-
-}
-
-export default App
+export default App;
