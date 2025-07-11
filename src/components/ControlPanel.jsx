@@ -19,7 +19,11 @@ const ControlPanel = ({
     personalityProfiles,
     currentPersonalityKey,
     setCurrentPersonalityKey,
-    currentProfile
+    currentProfile,
+    isWebSpeaking,
+    handleWebSpeechSpeak,
+    webSpeechText,
+    setWebSpeechText
 }) => {
     return (
         <div className="floating-control-panel base-panel">
@@ -72,12 +76,12 @@ const ControlPanel = ({
                 <div className="input-group">
                     <label htmlFor="prompt-textarea">Your Prompt:</label>
                     <textarea
-                        id="prompt-textarea"
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Enter prompt or use Speech-to-Text..."
+                        id="web-speech-textarea"
+                        value={webSpeechText}
+                        onChange={(e) => setWebSpeechText(e.target.value)}
+                        placeholder="Enter text for browser TTS..."
                         rows={3}
-                        disabled={isGenerating}
+                        disabled={isWebSpeaking || !webSpeechText.trim()}
                     />
                 </div>
                 <button onClick={handleGenerateText} disabled={isGenerating}>
