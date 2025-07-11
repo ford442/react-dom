@@ -1,36 +1,52 @@
-// src/components/TransformersTTS.jsx
 import React from 'react';
 
-const TransformersTTS = ({
-    textToSpeakInput,
-    setTextToSpeakInput,
-    handleSynthesizeSpeech,
-    isTtsSpeaking,
-    ttsPipelineInstance,
-    speakerEmbeddings
+const WebSpeechTTS = ({
+    webSpeechApiInput,
+    setWebSpeechApiInput,
+    handleWebSpeechSpeak,
+    isSpeaking,
+    availableVoices,
+    selectedVoiceURI,
+    setSelectedVoiceURI,
 }) => {
     return (
         <div className="panel-section">
-            <h2>Text to Speech (Transformers.js - SpeechT5)</h2>
+            <h2>Text to Speech (Browser Built-in)</h2>
             <div className="input-group">
-                <label htmlFor="tts-input-transformers">Text to Synthesize:</label>
+                <label htmlFor="web-speech-textarea">Text to Speak:</label>
                 <textarea
-                    id="tts-input-transformers"
-                    value={textToSpeakInput}
-                    onChange={(e) => setTextToSpeakInput(e.target.value)}
-                    placeholder="Enter text to synthesize..."
+                    id="web-speech-textarea"
+                    value={webSpeechApiInput}
+                    onChange={(e) => setWebSpeechApiInput(e.target.value)}
+                    placeholder="Enter text for browser TTS..."
                     rows={3}
-                    disabled={!ttsPipelineInstance || isTtsSpeaking}
+                    disabled={isSpeaking}
                 />
+            </div>
+            <div className="input-group">
+                <label htmlFor="voice-select-webapi">Select Voice:</label>
+                <select
+                    id="voice-select-webapi"
+                    value={selectedVoiceURI}
+                    onChange={(e) => setSelectedVoiceURI(e.target.value)}
+                    disabled={availableVoices.length === 0 || isSpeaking}
+                >
+                    {availableVoices.length === 0 && <option value="">Loading voices...</option>}
+                    {availableVoices.map((voice) => (
+                        <option key={voice.voiceURI} value={voice.voiceURI}>
+                            {voice.name} ({voice.lang})
+                        </option>
+                    ))}
+                </select>
             </div>
             <button
                 onClick={handleWebSpeechSpeak}
-                disabled={isSpeaking || !webSpeechApiInput}
+                disabled={isSpeaking || !webSpeechApiInput || !webSpeechApiInput.trim()}
             >
-                {isTtsSpeaking ? 'Synthesizing...' : 'Synthesize & Play Speech'}
+                {isSpeaking ? 'Speaking...' : 'Speak Text (Browser)'}
             </button>
         </div>
     );
 };
 
-export default TransformersTTS;
+export default WebSpeechTTS;
