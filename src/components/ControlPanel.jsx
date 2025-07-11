@@ -81,7 +81,7 @@ const ControlPanel = ({
                         onChange={(e) => setWebSpeechText(e.target.value)}
                         placeholder="Enter text for browser TTS..."
                         rows={3}
-                        disabled={isWebSpeaking || !webSpeechText.trim()}
+                        disabled={isWebSpeaking || !webSpeechText}
                     />
                 </div>
                 <button onClick={handleGenerateText} disabled={isGenerating}>
