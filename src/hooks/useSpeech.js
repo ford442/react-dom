@@ -1,7 +1,7 @@
 // src/hooks/useSpeech.js
 import { useState, useRef, useCallback } from 'react';
 
-export const useSpeech = (playAudio, kokoroTtsInstance, ttsPipelineInstance, speakerEmbeddings) => {
+export const useSpeech = (playAudio, kokoroTtsInstance, ttsPipelineInstance, speakerEmbeddings, setIsTtsSpeaking) => {
     const [isListening, setIsListening] = useState(false);
     const [sttError, setSttError] = useState('');
     const recognitionRef = useRef(null);
@@ -41,29 +41,25 @@ export const useSpeech = (playAudio, kokoroTtsInstance, ttsPipelineInstance, spe
 
     const synthesizeAndPlayText = useCallback(async (text, engine, personalityKey) => {
         if (!text || !text.trim()) return false;
-
-        if (engine === 'kokoro' && kokoroTtsInstance) {
-            try {
+        setIsTtsSpeaking(true);
+        let success = false;
+       try {
+            if (engine === 'kokoro' && kokoroTtsInstance) {
                 const output = await kokoroTtsInstance.generate(text.trim(), { voice: "af_heart" });
                 playAudio(output.audio, output.sampling_rate, personalityKey);
-                return true;
-            } catch (error) {
-                console.error("Kokoro TTS Error:", error);
-                return false;
-            }
-        } else if (engine === 'speechT5' && ttsPipelineInstance && speakerEmbeddings) {
-            try {
+                success = true;
+            } else if (engine === 'speechT5' && ttsPipelineInstance && speakerEmbeddings) {
                 const output = await ttsPipelineInstance(text.trim(), { speaker_embeddings: speakerEmbeddings });
                 playAudio(output.audio, output.sampling_rate, personalityKey);
-                return true;
-            } catch (error) {
-                console.error("SpeechT5 TTS Error:", error);
-                return false;
+                success = true;
             }
+        } catch (error) {
+            console.error(`${engine} TTS Error:`, error);
+            success = false;
         }
-        return false;
-    }, [playAudio, kokoroTtsInstance, ttsPipelineInstance, speakerEmbeddings]);
-
+        setIsTtsSpeaking(false);
+        return success;
+    }, [playAudio, kokoroTtsInstance, ttsPipelineInstance, speakerEmbeddings, setIsTtsSpeaking]);
 
     return {
         isListening,
