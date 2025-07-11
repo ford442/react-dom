@@ -198,7 +198,7 @@ function App() {
     }, [availableVoices, selectedVoiceURI]);
 
     const handleWebSpeechSpeak = () => {
-        speakWithWebAPI(webSpeechText);
+    speakWithWebAPI(webSpeechText);
     };
 
     // Effect to get system voices
@@ -567,16 +567,10 @@ setPreferredTtsEngine={setPreferredTtsEngine}
 />
   
 <WebSpeechTTS
-webSpeechApiInput={webSpeechApiInput}
-setWebSpeechApiInput={setWebSpeechApiInput}
-webSpeechText={webSpeechText}
-setWebSpeechText={setWebSpeechText}
+webSpeechApiInput={webSpeechText}
+setWebSpeechApiInput={setWebSpeechText}
 handleWebSpeechSpeak={handleWebSpeechSpeak}
-isWebSpeaking={isWebSpeaking}
-isTtsSpeaking={isTtsSpeaking}availableVoices={availableVoices}
-webSpeechText={webSpeechText}
-setWebSpeechText={setWebSpeechText}
-handleWebSpeechSpeakButton={handleWebSpeechSpeakButton}
+isSpeaking={isWebSpeaking}
 availableVoices={availableVoices}
 selectedVoiceURI={selectedVoiceURI}
 setSelectedVoiceURI={setSelectedVoiceURI}
