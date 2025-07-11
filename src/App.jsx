@@ -1,13 +1,9 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 // import { pipeline, env, Tensor } from '@huggingface/transformers';
 import { pipeline, env, Tensor } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.6.0";
-
-
 import Box from '@mui/material/Box'; // Assuming you still use these
 import Slider from '@mui/material/Slider'; // Assuming you still use these
 import './App.css';
-
-// NEW: Import KokoroTTS library for the new model
 import { KokoroTTS } from 'kokoro-js';
 
 const personalityProfiles = {
@@ -743,7 +739,7 @@ async function loadModel() {
         setStatusMessage(prev => `${prev} Loading TTS model (Kokoro)...`);
         
         // This single line downloads and initializes the Kokoro TTS model.
-        const kokoroInstance = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {dtype: "fp32", device: "webnn", });
+        const kokoroInstance = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {dtype: "fp32", device: "webgpu", });
         
         setKokoroTtsInstance(() => kokoroInstance);
         console.log("Kokoro TTS pipeline loaded successfully.");
