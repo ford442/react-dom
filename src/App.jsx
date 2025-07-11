@@ -156,8 +156,8 @@ function App() {
         }
     }, [imageCaptioner, imageToCaption]);
 
-    const handleGenerateText = useCallback(async () => {
-        if (!generator || !prompt.trim()) return;
+  const handleGenerateText = useCallback(async () => {
+        if (!generator || !prompt) return;
         setIsGenerating(true);
         setGeneratedOutput("Generating...");
         try {
@@ -184,7 +184,7 @@ function App() {
     }, [setupSpeechRecognition]);
 
     const speakWithWebAPI = useCallback((textToSay) => {
-        if (!synthRef.current || !textToSay || !textToSay.trim()) return;
+        if (!synthRef.current || !textToSay) return;
         if (synthRef.current.speaking) synthRef.current.cancel();
 
         const utterance = new SpeechSynthesisUtterance(textToSay);
