@@ -15,10 +15,41 @@ const ControlPanel = ({
     setActiveTtsEngine,
     kokoroTtsInstance,
     ttsPipelineInstance,
-    speakerEmbeddings
+    speakerEmbeddings,
+    personalityProfiles,
+    currentPersonalityKey,
+    setCurrentPersonalityKey,
+    currentProfile
 }) => {
     return (
-        <div className="floating-control-panel">
+        <div className="floating-control-panel base-panel">
+            {/* Personality Header */}
+            <div className="personality-header">
+                <img
+                  src={currentProfile.avatar}
+                  alt={`${currentProfile.displayName} Avatar`}
+                  className="personality-avatar"
+                />
+                <h2>{currentProfile.displayName}</h2>
+            </div>
+
+
+            {/* Personality Selector */}
+            <div className="panel-section">
+                <h4>Select AI Personality:</h4>
+                <select
+                    value={currentPersonalityKey}
+                    onChange={(e) => setCurrentPersonalityKey(e.target.value)}
+                >
+                    {Object.keys(personalityProfiles).map(key => (
+                        <option key={key} value={key}>
+                            {personalityProfiles[key].displayName}
+                        </option>
+                    ))}
+                </select>
+            </div>
+
+            {/* TTS Engine Selector */}
             <div className="panel-section">
                 <h4>Active Text-to-Speech Engine:</h4>
                 <select
@@ -33,21 +64,27 @@ const ControlPanel = ({
                     </option>
                 </select>
             </div>
+
+            {/* Text Generation */}
             <div className="panel-section">
                 <h2>Text Generation</h2>
                 <div className="status-display">{statusMessage}</div>
-                <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Enter prompt or use Speech-to-Text..."
-                    rows={3}
-                    disabled={isGenerating}
-                />
+                <div className="input-group">
+                    <label htmlFor="prompt-textarea">Your Prompt:</label>
+                    <textarea
+                        id="prompt-textarea"
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder="Enter prompt or use Speech-to-Text..."
+                        rows={3}
+                        disabled={isGenerating}
+                    />
+                </div>
                 <button onClick={handleGenerateText} disabled={isGenerating}>
                     {isGenerating ? 'Generating...' : 'Generate Text'}
                 </button>
                 <div style={{ marginTop: '10px' }}>
-                    <button onClick={toggleListen}>
+                    <button onClick={toggleListen} className="auto-width">
                         {isListening ? 'Stop Listening' : 'Start Listening'}
                     </button>
                     {sttError && <p style={{ color: 'red' }}>{sttError}</p>}
