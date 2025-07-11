@@ -30,7 +30,7 @@ const WebSpeechTTS = ({
                     value={selectedVoiceURI}
                     onChange={(e) => setSelectedVoiceURI(e.target.value)}
                     // This check is now 100% safe because availableVoices is always an array
-                    disabled={availableVoices.length === 0 || isSpeaking}
+                    disabled={!availableVoices|| isSpeaking}
                 >
                     {availableVoices.length === 0 && <option value="">Loading voices...</option>}
                     {availableVoices.map((voice) => (
