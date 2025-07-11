@@ -161,7 +161,7 @@ function App() {
     }, [availableVoices, selectedVoiceURI]);
 
     const handleWebSpeechSpeak = () => {
-        speakWithWebAPI(webSpeechApiDedicatedInput);
+        speakWithWebAPI(webSpeechText);
     };
 
     // Effect to get system voices
@@ -385,8 +385,8 @@ max={2.0}
 </div>
 <h2>Text to Speech (Browser Built-in)</h2>
 <textarea
-    value={webSpeechApiDedicatedInput} // Use the new state here
-    onChange={(e) => setWebSpeechApiDedicatedInput(e.target.value)} // Update the new state
+    value={webSpeechText} // Use the new state here
+    onChange={(e) => setWebSpeechText(e.target.value)} // Update the new state
     placeholder="Enter text for browser TTS..."
     rows={3}
     style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px' }}
@@ -530,8 +530,8 @@ setWebSpeechText={setWebSpeechText}
 handleWebSpeechSpeak={handleWebSpeechSpeak}
 isWebSpeaking={isWebSpeaking}
 isTtsSpeaking={isTtsSpeaking}availableVoices={availableVoices}
-webSpeechApiDedicatedInput={webSpeechApiDedicatedInput}
-setWebSpeechApiDedicatedInput={setWebSpeechApiDedicatedInput}
+webSpeechText={webSpeechText}
+setWebSpeechText={setWebSpeechText}
 handleWebSpeechSpeakButton={handleWebSpeechSpeakButton}
 availableVoices={availableVoices}
 selectedVoiceURI={selectedVoiceURI}
