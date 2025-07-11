@@ -4,8 +4,9 @@ import { useState, useRef, useCallback } from 'react';
 export const useSpeech = (playAudio, kokoroTtsInstance, ttsPipelineInstance, speakerEmbeddings, setIsTtsSpeaking) => {
     const [isListening, setIsListening] = useState(false);
     const [sttError, setSttError] = useState('');
+    // This ref is created here
     const recognitionRef = useRef(null);
-
+    
     const setupSpeechRecognition = useCallback((onResult) => {
         const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognitionAPI) {
@@ -67,5 +68,6 @@ export const useSpeech = (playAudio, kokoroTtsInstance, ttsPipelineInstance, spe
         setupSpeechRecognition,
         toggleListen,
         synthesizeAndPlayText,
+        recognitionRef // Expose the ref
     };
 };
