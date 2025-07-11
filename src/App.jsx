@@ -4,6 +4,7 @@ import { useSpeech } from './hooks/useSpeech';
 import ControlPanel from './components/ControlPanel';
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
+import WebSpeechTTS from './components/WebSpeechTTS';
 import './App.css';
 
 const personalityProfiles = {
@@ -66,6 +67,12 @@ function App() {
     const [activeTtsEngine, setActiveTtsEngine] = useState('kokoro');
     const [currentProfile, setCurrentProfile] = useState(personalityProfiles.default);
     const [preferredTtsEngine, setPreferredTtsEngine] = useState('kokoro');
+    const audioContextRef = useRef(null);
+    const [webSpeechApiInput, setWebSpeechApiInput] = useState("Hello from the browser's built-in speech synthesis!");
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [availableVoices, setAvailableVoices] = useState([]);
+    const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
+    const synthRef = useRef(null);
     const audioContextRef = useRef(null);
 
     useEffect(() => {
@@ -136,6 +143,43 @@ function App() {
         setupSpeechRecognition(setPrompt);
     }, [setupSpeechRecognition]);
 
+   const speakWithWebAPI = useCallback((textToSay) => {
+        if (!synthRef.current || !textToSay || !textToSay.trim()) return;
+        if (synthRef.current.speaking) synthRef.current.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(textToSay);
+        const selectedVoice = availableVoices.find(voice => voice.voiceURI === selectedVoiceURI);
+        if (selectedVoice) {
+            utterance.voice = selectedVoice;
+        }
+
+        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+        synthRef.current.speak(utterance);
+    }, [availableVoices, selectedVoiceURI]);
+
+    const handleWebSpeechSpeak = () => {
+        speakWithWebAPI(webSpeechApiInput);
+    };
+
+    // Effect to get system voices
+    useEffect(() => {
+        synthRef.current = window.speechSynthesis;
+        const populateVoices = () => {
+            const voices = synthRef.current.getVoices();
+            setAvailableVoices(voices);
+            if (voices.length > 0 && !selectedVoiceURI) {
+                const defaultVoice = voices.find(v => v.default) || voices[0];
+                setSelectedVoiceURI(defaultVoice.voiceURI);
+            }
+        };
+        populateVoices();
+        if (synthRef.current.onvoiceschanged !== undefined) {
+            synthRef.current.onvoiceschanged = populateVoices;
+        }
+}, [selectedVoiceURI]);
+  
 return (
 <>
 <link charset={"utf-8"} crossorigin rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
@@ -475,6 +519,16 @@ max={2.0}
 currentProfile={currentProfile}
 preferredTtsEngine={preferredTtsEngine}
 setPreferredTtsEngine={setPreferredTtsEngine}
+/>
+  
+<WebSpeechTTS
+webSpeechApiInput={webSpeechApiInput}
+setWebSpeechApiInput={setWebSpeechApiInput}
+handleWebSpeechSpeak={handleWebSpeechSpeak}
+isSpeaking={isSpeaking}
+availableVoices={availableVoices}
+selectedVoiceURI={selectedVoiceURI}
+setSelectedVoiceURI={setSelectedVoiceURI}
 />
   
 <div style={{
