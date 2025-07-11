@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useModels } from './hooks/useModels';
 import { useSpeech } from './hooks/useSpeech';
 import ControlPanel from './components/ControlPanel';
@@ -64,8 +64,21 @@ function App() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [currentPersonalityKey, setCurrentPersonalityKey] = useState('default');
     const [activeTtsEngine, setActiveTtsEngine] = useState('kokoro');
+    const [currentProfile, setCurrentProfile] = useState(personalityProfiles.default);
     const audioContextRef = useRef(null);
 
+    useEffect(() => {
+        const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
+        setCurrentProfile(profile);
+
+        // This part applies the theme colors from the profile
+        if (profile.themeColors) {
+            for (const [key, value] of Object.entries(profile.themeColors)) {
+                document.documentElement.style.setProperty(key, value);
+            }
+        }
+    }, [currentPersonalityKey]);
+  
     const initializeAudioContext = useCallback(() => {
         if (!audioContextRef.current) {
             audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
