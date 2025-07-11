@@ -390,7 +390,7 @@ max={2.0}
     placeholder="Enter text for browser TTS..."
     rows={3}
     style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px' }}
-    disabled={isSpeaking} // Or a dedicated isWebSpeaking state
+    disabled={isWebSpeaking} // Or a dedicated isWebSpeaking state
   />
 <div style={{ position:'absolute',zIndex:4000,marginBottom: '10px' }}>
 <label htmlFor="voice-select-webapi" style={{ position:'absolute',zIndex:4000,marginRight: '10px' }}>Voice:</label>
