@@ -65,6 +65,7 @@ function App() {
     const [currentPersonalityKey, setCurrentPersonalityKey] = useState('default');
     const [activeTtsEngine, setActiveTtsEngine] = useState('kokoro');
     const [currentProfile, setCurrentProfile] = useState(personalityProfiles.default);
+    const [preferredTtsEngine, setPreferredTtsEngine] = useState('kokoro');
     const audioContextRef = useRef(null);
 
     useEffect(() => {
@@ -108,28 +109,32 @@ function App() {
         synthesizeAndPlayText,
     } = useSpeech(playAudio, kokoroTtsInstance, ttsPipelineInstance, speakerEmbeddings);
 
-
-    const handleGenerateText = useCallback(async () => {
+ const handleGenerateText = useCallback(async () => {
         if (!generator || !prompt.trim()) return;
         setIsGenerating(true);
         setGeneratedOutput("Generating...");
-
         try {
-            const outputs = await generator(prompt, { max_new_tokens: 128 });
+            const fullPrompt = (currentProfile.systemPrompt || "") + " " + prompt;
+            const outputs = await generator(fullPrompt, { max_new_tokens: 128 });
             const newLLMText = outputs[0].generated_text;
             setGeneratedOutput(newLLMText);
-            synthesizeAndPlayText(newLLMText, activeTtsEngine, currentPersonalityKey);
+            // Logic to select the auto-speak engine
+            if (preferredTtsEngine === 'kokoro' || preferredTtsEngine === 'speechT5') {
+                await synthesizeAndPlayText(newLLMText, preferredTtsEngine, currentPersonalityKey);
+            } else {
+                // If you want to support the browser's built-in speech as an option
+                // you would add the speakWithWebAPI call here.
+                console.log("Web Speech API selected, but not implemented in this refactor step.");
+            }
         } catch (error) {
             console.error("Error during text generation:", error);
             setGeneratedOutput(`Error: ${error.message}`);
         }
         setIsGenerating(false);
-    }, [generator, prompt, synthesizeAndPlayText, activeTtsEngine, currentPersonalityKey]);
-
-    useState(() => {
+    }, [generator, prompt, synthesizeAndPlayText, preferredTtsEngine, currentPersonalityKey, currentProfile]);
+    useEffect(() => {
         setupSpeechRecognition(setPrompt);
     }, [setupSpeechRecognition]);
-
 
 return (
 <>
