@@ -363,7 +363,146 @@ max={2.0}
   maxHeight: 'calc(100vh - 40px - 40px)', // Max height considering top/bottom viewport margins
   overflowY: 'auto' // Add scroll if content exceeds maxHeight
 }}>
+<div style={{ position:'absolute',zIndex:4000,padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
+  <h4>Active Text-to-Speech Engine:</h4>
+  <select
+    value={activeTtsEngine}
+    onChange={(e) => setActiveTtsEngine(e.target.value)}
+    style={{ position:'absolute',zIndex:4000,padding: '8px', width: '100%', boxSizing: 'border-box' }}
+  >
+    <option value="webSpeechAPI">Browser Built-in</option>
+    <option value="speechT5" disabled={!ttsPipelineInstance || !speakerEmbeddings}>
+      SpeechT5 (Transformers.js)
+    </option>
+        <option value="kokoro" disabled={!kokoroTtsInstance}>
+          Kokoro (ONNX Community)
+    </option>
+    {/* You can add more options here later */}
+  </select>
+</div>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '15px', borderBottom: '1px solid #ddd', paddingBottom: '15px' }}>
+  {currentProfile.avatar && (
+    <img 
+      src={currentProfile.avatar} 
+      alt={`${currentProfile.displayName} Avatar`} 
+      style={{ position:'absolute',zIndex:4000,width: '60px', height: '60px', borderRadius: '50%', border: `3px solid ${currentProfile.themeColors['--ai-primary-color'] || '#ccc'}` }} 
+    />
+  )}
+  <div>
+    <h2 style={{position:'absolute',zIndex:4000, margin: 0, color: currentProfile.themeColors['--ai-primary-color'] || '#333' }}>
+      {currentProfile.displayName}
+    </h2>
+    {/* You can also put the select for currentPersonalityKey here if preferred */}
+  </div>
+</div>
+{/* Selector for personality (if not already placed elsewhere) */}
+<div style={{ position:'absolute',zIndex:4000,padding: '10px 0' }}>
+ <h4>Select AI Personality:</h4> {/* Changed label slightly for clarity */}
+  <select
+    id="personality-select"
+    value={currentPersonalityKey} // Use the KEY state here
+    onChange={(e) => setCurrentPersonalityKey(e.target.value)} // Use the KEY setter
+    style={{ padding: '8px', width: '100%', boxSizing: 'border-box', /* your zIndex if needed */ }}
+  >
+    {Object.keys(personalityProfiles).map(key => (
+      <option key={key} value={key}>
+        {personalityProfiles[key].displayName}
+      </option>
+    ))}
+  </select>
+</div>
+<div style={{ position:'absolute',zIndex:4000,padding: '10px 0', borderBottom: '1px solid #ddd', marginBottom: '15px' }}>
+  <h4>Auto-Speak Engine after LLM Generation:</h4>
+  <label style={{ marginRight: '15px', cursor: 'pointer' }}>
+    <input
+      type="radio"
+      name="ttsEnginePref"
+      value="webSpeechAPI"
+      checked={preferredTtsEngine === 'webSpeechAPI'}
+      onChange={() => setPreferredTtsEngine('webSpeechAPI')}
+    /> Browser Built-in
+  </label>
+  <label style={{ cursor: 'pointer' }}>
+    <input
+      type="radio"
+      name="ttsEnginePref"
+      value="transformersJS"
+      checked={preferredTtsEngine === 'transformersJS'}
+      onChange={() => setPreferredTtsEngine('transformersJS')}
+      disabled={!ttsPipelineInstance || !speakerEmbeddings} // Disable if Transformers.js TTS isn't ready
+    /> Transformers.js (SpeechT5)
+  </label>
+</div>
+<h2>Text to Speech (Browser Built-in)</h2>
+<textarea
+    value={webSpeechText} // Use the new state here
+    onChange={(e) => setWebSpeechText(e.target.value)} // Update the new state
+    placeholder="Enter text for browser TTS..."
+    rows={3}
+    style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px' }}
+    disabled={isWebSpeaking} // Or a dedicated isWebSpeaking state
+  />
+<div style={{ position:'absolute',zIndex:4000,marginBottom: '10px' }}>
+<label htmlFor="voice-select-webapi" style={{ position:'absolute',zIndex:4000,marginRight: '10px' }}>Voice:</label>
+<select
+      id="voice-select-webapi"
+      value={selectedVoiceURI}
+      onChange={(e) => setSelectedVoiceURI(e.target.value)}
+      style={{ position:'absolute',zIndex:4000,padding: '8px', width: 'calc(100% - 70px)'}}
+      disabled={availableVoices.length === 0 || isWebSpeaking}
+    >
+      {availableVoices.length === 0 && <option value="">Loading voices...</option>}
+      {availableVoices.map((voice) => (
+        <option key={voice.voiceURI} value={voice.voiceURI}>
+          {voice.name} ({voice.lang}) {voice.default ? '[Default]' : ''}
+        </option>
+      ))}
+</select>
+</div>
+<button
+    onClick={handleWebSpeechSpeak}
+    disabled={isWebSpeaking || !webSpeechText.trim() || availableVoices.length === 0}
+    style={{ padding: '10px 15px', width: '100%' }}
+  >
+    {isWebSpeaking ? 'Speaking...' : 'Speak Text (Browser)'}
+</button>
+</div>
+<div style={{
+        position: 'absolute', // Or 'absolute' if you prefer, relative to a parent
+        bottom: '20px',
+        left: '20px',
+        right: '20px', // Control width
+        padding: '20px',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        border: '1px solid #ccc',
+        borderRadius: '8px',
+        boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+        zIndex: 6000, // Ensure it's above other elements
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        pointerEvents:'auto',
+      }}>
 
+
+
+{/* Image Captioning Section */}
+<div style={{
+  position: 'absolute', // Or 'absolute'
+  zIndex: 7000, // Ensure it's on top
+  marginTop: '20px',
+  padding: '15px',
+  borderTop: '1px solid #ddd',
+  backgroundColor: 'rgba(230, 230, 250, 0.9)', // Light blue-ish green
+  // Adjust positioning and dimensions as needed. Example:
+  // bottom: 'calc(20px + 300px + 20px)', // Example: Stack above TTS sections if they are fixed height
+  // left: '20px',
+  // right: '20px',
+  // width: 'auto', // Or specify a width
+}}>
+
+
+  
    <ControlPanel
                         statusMessage={statusMessage}
                         prompt={prompt}
@@ -415,7 +554,13 @@ max={2.0}
                         generatedCaption={generatedCaption}
                     />
 
+  
+  
 <div id={'contain1a'} style={{height:'75%',width:'75%'}}>
+
+
+
+  
 </div>
 </div>
 <div id={'contain2'}>
