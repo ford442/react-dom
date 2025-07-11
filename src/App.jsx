@@ -483,8 +483,43 @@ max={2.0}
         gap: '10px',
         pointerEvents:'auto',
       }}>
-
-
+<h2>Test Text Generation (LaMini-Flan-T5-783M)</h2>
+<div id="outputTextGlobalStatus" style={{ fontStyle: 'italic', marginBottom: '10px' }}>
+          {statusMessage} {/* Display model loading status here */}
+</div>
+<textarea
+          ref={promptTextareaRef} // Assign the ref here
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="Enter prompt or use Speech-to-Text..."
+          rows={3}
+          style={{ position: 'absolute', zIndex: 4000, width: '100%', padding: '8px', boxSizing: 'border-box', pointerEvents: 'auto' }}
+          disabled={!generator || isGenerating}
+/>
+<button
+          onClick={handleGenerateText}
+          disabled={!generator || isGenerating}
+          style={{ position: 'absolute', zIndex: 4000, padding: '10px 15px', pointerEvents: 'auto', cursor: (!generator || isGenerating) ? 'not-allowed' : 'pointer' }}
+>
+          {isGenerating ? 'Generating...' : 'Generate Text'}
+</button>
+        
+        {/* STT Button and status from Option A */}
+<div style={{ position: 'absolute', zIndex: 4000, marginTop: '10px', paddingTop:'10px', borderTop: '1px solid #eee' }}>
+          <button onClick={toggleListen} disabled={!recognitionRef.current} style={{ pointerEvents: 'auto' }}> {/* Ensure toggleListen is defined */}
+            {isListening ? 'Stop Listening' : 'Start Listening'}
+          </button>
+          {isListening && <p><i>Listening...</i></p>}
+          {sttError && <p style={{ color: 'red' }}>{sttError}</p>}
+</div>
+<h3>Generated Output:</h3>
+<div style={{
+          minHeight: '50px', padding: '10px', border: '1px solid #eee',
+          backgroundColor: '#f9f9f9', whiteSpace: 'pre-wrap'
+}}>
+          {generatedOutput}
+</div>
+</div>
 
 {/* Image Captioning Section */}
 <div style={{
@@ -500,9 +535,36 @@ max={2.0}
   // right: '20px',
   // width: 'auto', // Or specify a width
 }}>
-
-
-  
+  <h2>Image Captioning (ViT-GPT2)</h2>
+  <input
+    type="file"
+    accept="image/*"
+    onChange={handleImageSelection} // This function will be created in a later step
+    disabled={isCaptioning || !imageCaptioner}
+    style={{ marginBottom: '10px', display: 'block', pointerEvents: 'auto', zIndex:9000 }}
+  />
+  {imageToCaption && (
+    <img
+      src={typeof imageToCaption === 'string' ? imageToCaption : URL.createObjectURL(imageToCaption)}
+      alt="Selected for captioning"
+      style={{ maxWidth: '100%', maxHeight: '200px', marginBottom: '10px', border: '1px solid #ccc' }}
+    />
+  )}
+  <button
+    onClick={handleImageCaptioning} // This function will be created in a later step
+    disabled={!imageCaptioner || !imageToCaption || isCaptioning}
+    style={{ padding: '10px 15px', width: '100%', marginBottom: '10px', pointerEvents: 'auto', zIndex:9000  }}
+  >
+    {isCaptioning ? 'Generating Caption...' : 'Generate Caption'}
+  </button>
+  <h3>Generated Caption:</h3>
+  <div style={{
+    minHeight: '40px', padding: '10px', border: '1px solid #eee',
+    backgroundColor: '#f9f9f9', whiteSpace: 'pre-wrap'
+  }}>
+    {generatedCaption}
+  </div>
+</div>
    <ControlPanel
                         statusMessage={statusMessage}
                         prompt={prompt}
@@ -553,14 +615,28 @@ max={2.0}
                         imageToCaption={imageToCaption}
                         generatedCaption={generatedCaption}
                     />
-
-  
-  
+<div style={{
+        position: 'absolute', zIndex: 4000, marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd',
+        backgroundColor: 'rgba(230, 250, 230, 0.9)', // Light green
+}}>
+<h2>Text to Speech (Transformers.js - SpeechT5)</h2>
+<textarea
+          value={textToSpeakInput}
+          onChange={(e) => setTextToSpeakInput(e.target.value)}
+          placeholder="Enter text to synthesize..."
+          rows={3}
+          style={{ position: 'absolute', zIndex: 4000, width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px', pointerEvents: 'auto' }}
+          disabled={!ttsPipelineInstance || isTtsSpeaking}
+/>
+<button
+          onClick={handleSynthesizeSpeech}
+          disabled={!ttsPipelineInstance || !speakerEmbeddings || isTtsSpeaking || !textToSpeakInput.trim()}
+          style={{ position: 'absolute', zIndex: 4000, padding: '10px 15px' }}
+        >
+          {isTtsSpeaking ? 'Synthesizing...' : 'Synthesize & Play Speech'}
+        </button>
+</div>
 <div id={'contain1a'} style={{height:'75%',width:'75%'}}>
-
-
-
-  
 </div>
 </div>
 <div id={'contain2'}>
