@@ -54,7 +54,7 @@ function App() {
     const {
         generator,
         statusMessage,
-        ttsPipeline,
+        ttsPipelineInstance,
         speakerEmbeddings,
         kokoroTtsInstance,
         imageCaptioner,
