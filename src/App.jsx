@@ -574,6 +574,7 @@ max={2.0}
 currentProfile={currentProfile}
 preferredTtsEngine={preferredTtsEngine}
 setPreferredTtsEngine={setPreferredTtsEngine}
+personalityProfiles={personalityProfiles} 
 />
   
 <WebSpeechTTS
