@@ -1,20 +1,25 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
-// import { pipeline, env, Tensor } from '@huggingface/transformers';
 import { pipeline, env, Tensor } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.6.0";
-
-
-import Box from '@mui/material/Box'; // Assuming you still use these
-import Slider from '@mui/material/Slider'; // Assuming you still use these
 import './App.css';
-
-// NEW: Import KokoroTTS library for the new model
 import { KokoroTTS } from 'kokoro-js';
 
+// Import new components
+import PersonalitySelector from './components/PersonalitySelector';
+import TtsEngineSelector from './components/TtsEngineSelector';
+import WebSpeechControls from './components/WebSpeechControls';
+import TextGeneration from './components/TextGeneration';
+import ImageCaptioning from './components/ImageCaptioning';
+import TransformersTtsControls from './components/TransformersTtsControls';
+import KokoroTtsControls from './components/KokoroTtsControls';
+import StatusDisplay from './components/StatusDisplay';
+import MainControls from './components/MainControls'; // For other UI elements
+
+// personalityProfiles can be kept here or moved to a separate file and imported
 const personalityProfiles = {
   default: {
     displayName: "Default Assistant",
     systemPrompt: "",
-    avatar: "/avatars/default.png", // Ensure these assets are in your public/avatars folder
+    avatar: "/avatars/default.png",
     introVideo: null,
     introPhrase: "Hello! How can I assist you today?",
     themeColors: {
@@ -28,7 +33,7 @@ const personalityProfiles = {
     displayName: "Captain Playful",
     systemPrompt: "You are Captain Playful, a friendly, shiny red toy robot...",
     avatar: "/avatars/captain_playful.png",
-    introVideo: "/intros/captain_playful.mp4", // Ensure these assets are in your public/intros folder
+    introVideo: "/intros/captain_playful.mp4",
     introPhrase: "Ahoy there, matey! Captain Playful reporting for duty!",
     themeColors: {
       '--ai-primary-color': '#FF6347',
