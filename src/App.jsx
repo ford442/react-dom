@@ -1,8 +1,9 @@
-// src/App.jsx
 import { useState, useCallback, useRef } from 'react';
 import { useModels } from './hooks/useModels';
 import { useSpeech } from './hooks/useSpeech';
 import ControlPanel from './components/ControlPanel';
+import Box from '@mui/material/Box';
+import Slider from '@mui/material/Slider';
 import './App.css';
 
 const personalityProfiles = {
