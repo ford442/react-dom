@@ -5,6 +5,7 @@ import ControlPanel from './components/ControlPanel';
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import WebSpeechTTS from './components/WebSpeechTTS';
+import ImageCaptioning from './components/ImageCaptioning'; // <-- IMPORT ahe new component
 import './App.css';
 
 const personalityProfiles = {
@@ -57,9 +58,8 @@ function App() {
         ttsPipelineInstance,
         speakerEmbeddings,
         kokoroTtsInstance,
-        imageCaptioner,
+        imageCaptioner, // <-- We get the model from our hook
     } = useModels();
-
     const [prompt, setPrompt] = useState('');
     const [generatedOutput, setGeneratedOutput] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
@@ -74,6 +74,9 @@ function App() {
     const [isTtsSpeaking, setIsTtsSpeaking] = useState(false); // For Kokoro/SpeechT5
     const [availableVoices, setAvailableVoices] = useState([]);
     const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
+    const [imageToCaption, setImageToCaption] = useState(null);
+    const [generatedCaption, setGeneratedCaption] = useState('');
+    const [isCaptioning, setIsCaptioning] = useState(false);
     const synthRef = useRef(null);
 
     useEffect(() => {
@@ -117,6 +120,39 @@ function App() {
         synthesizeAndPlayText,
         recognitionRef // <-- Get it here
     } = useSpeech(playAudio, kokoroTtsInstance, ttsPipelineInstance, speakerEmbeddings, setIsTtsSpeaking);
+
+    const handleImageSelection = (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            setImageToCaption(file);
+            setGeneratedCaption(''); // Clear previous caption
+        }
+    };
+
+    const handleImageCaptioning = useCallback(async () => {
+        if (!imageCaptioner || !imageToCaption) {
+            // You might want to set a status message here
+            return;
+        }
+
+        setIsCaptioning(true);
+        setGeneratedCaption("Generating caption...");
+
+        try {
+            const imageUrl = URL.createObjectURL(imageToCaption);
+            const captions = await imageCaptioner(imageUrl);
+            if (captions && captions.length > 0) {
+                setGeneratedCaption(captions[0].generated_text);
+            } else {
+                setGeneratedCaption("Could not generate a caption.");
+            }
+        } catch (error) {
+            console.error("Error during image captioning:", error);
+            setGeneratedCaption(`Error: ${error.message}`);
+        } finally {
+            setIsCaptioning(false);
+        }
+    }, [imageCaptioner, imageToCaption]);
 
  const handleGenerateText = useCallback(async () => {
         if (!generator || !prompt.trim()) return;
@@ -544,6 +580,15 @@ handleWebSpeechSpeakButton={handleWebSpeechSpeakButton}
 availableVoices={availableVoices}
 selectedVoiceURI={selectedVoiceURI}
 setSelectedVoiceURI={setSelectedVoiceURI}
+/>
+
+<ImageCaptioning
+handleImageSelection={handleImageSelection}
+handleImageCaptioning={handleImageCaptioning}
+isCaptioning={isCaptioning}
+imageCaptioner={imageCaptioner}
+imageToCaption={imageToCaption}
+generatedCaption={generatedCaption}
 />
   
 <div style={{
