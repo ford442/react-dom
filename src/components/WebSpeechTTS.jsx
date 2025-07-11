@@ -1,4 +1,3 @@
-// src/components/WebSpeechTTS.jsx
 import React from 'react';
 
 const WebSpeechTTS = ({
