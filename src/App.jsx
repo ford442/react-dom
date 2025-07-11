@@ -67,12 +67,13 @@ function App() {
     const [activeTtsEngine, setActiveTtsEngine] = useState('kokoro');
     const [currentProfile, setCurrentProfile] = useState(personalityProfiles.default);
     const [preferredTtsEngine, setPreferredTtsEngine] = useState('kokoro');
-    const [webSpeechApiInput, setWebSpeechApiInput] = useState("Hello from the browser's built-in speech synthesis!");
+    const audioContextRef = useRef(null);
+
+    const [webSpeechApiDedicatedInput, setWebSpeechApiDedicatedInput] = useState("Hello from the browser's built-in TTS!");
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [availableVoices, setAvailableVoices] = useState([]);
     const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
     const synthRef = useRef(null);
-    const audioContextRef = useRef(null);
 
     useEffect(() => {
         const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
