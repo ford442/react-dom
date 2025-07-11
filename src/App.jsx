@@ -160,7 +160,7 @@ function App() {
         synthRef.current.speak(utterance);
     }, [availableVoices, selectedVoiceURI]);
 
-    const handleWebSpeechSpeakButton = () => {
+    const handleWebSpeechSpeak = () => {
         speakWithWebAPI(webSpeechApiDedicatedInput);
     };
 
