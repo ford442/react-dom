@@ -13,7 +13,7 @@
     "kokoro-js": "latest",
     "@emotion/react": "latest",
     "@emotion/styled": "latest",
-    "@mui/material": "next",
+    "@mui/material": "latest",
     "react": "latest",
     "react-dom": "latest"
   },
