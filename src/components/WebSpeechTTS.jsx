@@ -2,7 +2,7 @@
 import React from 'react';
 
 const WebSpeechTTS = ({
-    webSpeechApiInput,
+    webSpeechApiInput, // This is the value for the textarea
     setWebSpeechApiInput,
     handleWebSpeechSpeak,
     isSpeaking,
