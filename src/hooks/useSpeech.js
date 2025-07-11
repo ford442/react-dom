@@ -18,7 +18,7 @@ export const useSpeech = (playAudio, kokoroTtsInstance, ttsPipelineInstance, spe
         recognitionInstance.interimResults = false;
         recognitionInstance.lang = 'en-US';
         recognitionInstance.onresult = (event) => {
-            const transcript = event.results[event.results.length - 1][0].transcript.trim();
+            const transcript = event.results[event.results.length - 1][0].transcript;
             onResult(transcript);
         };
         recognitionInstance.onerror = (event) => {
