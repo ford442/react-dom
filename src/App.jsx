@@ -547,14 +547,14 @@ setSelectedVoiceURI={setSelectedVoiceURI}
           placeholder="Enter text to synthesize..."
           rows={3}
           style={{ position: 'absolute', zIndex: 4000, width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px', pointerEvents: 'auto' }}
-          disabled={!ttsPipelineInstance || isSpeaking}
+          disabled={!ttsPipelineInstance || isTtsSpeaking}
 />
 <button
           onClick={handleSynthesizeSpeech}
-          disabled={!ttsPipelineInstance || !speakerEmbeddings || isSpeaking || !textToSpeakInput.trim()}
+          disabled={!ttsPipelineInstance || !speakerEmbeddings || isTtsSpeaking || !textToSpeakInput.trim()}
           style={{ position: 'absolute', zIndex: 4000, padding: '10px 15px' }}
         >
-          {isSpeaking ? 'Synthesizing...' : 'Synthesize & Play Speech'}
+          {isTtsSpeaking ? 'Synthesizing...' : 'Synthesize & Play Speech'}
         </button>
 </div>
 <div id={'contain1a'} style={{height:'75%',width:'75%'}}>
