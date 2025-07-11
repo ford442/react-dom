@@ -6,6 +6,7 @@ import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import WebSpeechTTS from './components/WebSpeechTTS';
 import ImageCaptioning from './components/ImageCaptioning'; // <-- IMPORT ahe new component
+import TransformersTTS from './components/TransformersTTS'; // <-- IMPORT the new component
 import './App.css';
 
 const personalityProfiles = {
@@ -71,7 +72,8 @@ function App() {
     const promptTextareaRef = useRef(null);
     const [webSpeechText, setWebSpeechText] = useState("Hello from the browser's built-in TTS!");
     const [isWebSpeaking, setIsWebSpeaking] = useState(false); // For Browser TTS
-    const [isTtsSpeaking, setIsTtsSpeaking] = useState(false); // For Kokoro/SpeechT5
+    const [textToSpeakInput, setTextToSpeakInput] = useState("Hello from Transformers.js!");
+    const [isTtsSpeaking, setIsTtsSpeaking] = useState(false);
     const [availableVoices, setAvailableVoices] = useState([]);
     const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
     const [imageToCaption, setImageToCaption] = useState(null);
@@ -224,6 +226,14 @@ useEffect(() => {
             promptTextareaRef.current.focus();
         }
 }, [generator]);
+  
+const handleSynthesizeSpeech = async () => {
+if (!textToSpeakInput.trim()) {
+alert("Please enter text in the TTS input area to synthesize.");
+return;
+}
+await synthesizeAndPlayText(textToSpeakInput, activeTtsEngine);
+};
   
 return (
 <>
