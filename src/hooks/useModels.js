@@ -1,4 +1,3 @@
-// src/hooks/useModels.js
 import { useState, useEffect } from 'react';
 import { pipeline, env, Tensor } from "@huggingface/transformers";
 import { KokoroTTS } from 'kokoro-js';
@@ -12,28 +11,21 @@ export const useModels = () => {
     const [imageCaptioner, setImageCaptioner] = useState(null);
 
     useEffect(() => {
-        env.localFilesOnly = false;
-        env.allowLocalModels = false;
-        env.useBrowserCache = true;
-        env.remoteHost = 'https://huggingface.co';
-        env.remotePathTemplate = '{model}/resolve/main/';
-        setStatusMessage('Loading models, please wait...');
-
         const loadModels = async () => {
             try {
+                setStatusMessage('Loading models, please wait...');
+                
                 // Load Text Generation Model
-                const generatorInstance = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-77M', {
-                    progress_callback: (progress) => setStatusMessage(`Loading: ${progress.file} - ${progress.status}`),
-                    dtype: "q8"
-                }, { device: "webnn" });
-                setTtsPipelineInstance(() => ttsPipe);
+                const generatorInstance = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-77M');
+                setGenerator(() => generatorInstance);
                 setStatusMessage("Text generation model loaded.");
 
                 // Load SpeechT5 Model
-                const ttsPipe = await pipeline('text-to-speech', 'Xenova/speecht5_tts', {
-                    progress_callback: (progress) => setStatusMessage(`Loading TTS: ${progress.file}`),
-                }, { device: "webnn" });
-                setTtsPipeline(() => ttsPipe);
+                // This is the section with the likely error.
+                // 1. First, we create the pipeline and wait for it to finish.
+                const ttsPipe = await pipeline('text-to-speech', 'Xenova/speecht5_tts');
+                // 2. THEN, we use the created 'ttsPipe' to set the state.
+                setTtsPipelineInstance(() => ttsPipe);
                 setStatusMessage("SpeechT5 model loaded.");
 
                 // Load Speaker Embeddings
@@ -44,14 +36,12 @@ export const useModels = () => {
                 setStatusMessage("Speaker embeddings loaded.");
 
                 // Load Kokoro TTS Model
-                const kokoroInstance = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', { dtype: "fp32", device: "webnn" });
+                const kokoroInstance = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX');
                 setKokoroTtsInstance(() => kokoroInstance);
                 setStatusMessage("Kokoro TTS model loaded.");
 
                 // Load Image Captioning Model
-                const captionerInstance = await pipeline('image-to-text', 'Xenova/vit-gpt2-image-captioning', {
-                    progress_callback: (progress) => setStatusMessage(`Loading Captioner: ${progress.file}`),
-                }, { device: "webnn" });
+                const captionerInstance = await pipeline('image-to-text', 'Xenova/vit-gpt2-image-captioning');
                 setImageCaptioner(() => captionerInstance);
                 setStatusMessage("All models loaded successfully!");
 
