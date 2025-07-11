@@ -69,7 +69,7 @@ function App() {
     const [preferredTtsEngine, setPreferredTtsEngine] = useState('kokoro');
     const audioContextRef = useRef(null);
 
-    const [webSpeechApiDedicatedInput, setWebSpeechApiDedicatedInput] = useState("Hello from the browser's built-in TTS!");
+    const [webSpeechText, setWebSpeechText] = useState("Hello from the browser's built-in TTS!");
     const [isWebSpeaking, setIsWebSpeaking] = useState(false); // For Browser TTS
     const [isTtsSpeaking, setIsTtsSpeaking] = useState(false); // For Kokoro/SpeechT5
     const [availableVoices, setAvailableVoices] = useState([]);
@@ -525,6 +525,8 @@ setPreferredTtsEngine={setPreferredTtsEngine}
 <WebSpeechTTS
 webSpeechApiInput={webSpeechApiInput}
 setWebSpeechApiInput={setWebSpeechApiInput}
+webSpeechText={webSpeechText}
+setWebSpeechText={setWebSpeechText}
 handleWebSpeechSpeak={handleWebSpeechSpeak}
 isWebSpeaking={isWebSpeaking}
 isTtsSpeaking={isTtsSpeaking}availableVoices={availableVoices}
