@@ -2,7 +2,7 @@
 import React from 'react';
 
 const WebSpeechTTS = ({
-    webSpeechApiInput, // This is the value for the textarea
+    webSpeechApiInput,
     setWebSpeechApiInput,
     handleWebSpeechSpeak,
     isSpeaking,
@@ -41,8 +41,8 @@ const WebSpeechTTS = ({
                 </select>
             </div>
             <button
-                onClick={handleWebSpeechSpeak}
-                disabled={isSpeaking || !webSpeechApiInput}
+                onClick={handleWebSpeechSpeak} // This now correctly calls the function from props
+                disabled={isSpeaking || !webSpeechApiInput || !webSpeechApiInput.trim()}
             >
                 {isSpeaking ? 'Speaking...' : 'Speak Text (Browser)'}
             </button>
