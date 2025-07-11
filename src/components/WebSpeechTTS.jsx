@@ -1,3 +1,4 @@
+// src/components/WebSpeechTTS.jsx
 import React from 'react';
 
 const WebSpeechTTS = ({
@@ -5,7 +6,7 @@ const WebSpeechTTS = ({
     setWebSpeechApiInput,
     handleWebSpeechSpeak,
     isSpeaking,
-    availableVoices,
+    availableVoices = [], // This default value prevents the error
     selectedVoiceURI,
     setSelectedVoiceURI,
 }) => {
@@ -40,7 +41,7 @@ const WebSpeechTTS = ({
                 </select>
             </div>
             <button
-                onClick={handleWebSpeechSpeak} // This now correctly calls the function from props
+                onClick={handleWebSpeechSpeak}
                 disabled={isSpeaking || !webSpeechApiInput || !webSpeechApiInput.trim()}
             >
                 {isSpeaking ? 'Speaking...' : 'Speak Text (Browser)'}
