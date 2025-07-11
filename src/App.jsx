@@ -68,7 +68,7 @@ function App() {
     const [currentProfile, setCurrentProfile] = useState(personalityProfiles.default);
     const [preferredTtsEngine, setPreferredTtsEngine] = useState('kokoro');
     const audioContextRef = useRef(null);
-
+    const promptTextareaRef = useRef(null);
     const [webSpeechText, setWebSpeechText] = useState("Hello from the browser's built-in TTS!");
     const [isWebSpeaking, setIsWebSpeaking] = useState(false); // For Browser TTS
     const [isTtsSpeaking, setIsTtsSpeaking] = useState(false); // For Kokoro/SpeechT5
@@ -108,13 +108,14 @@ function App() {
         sourceNode.connect(audioCtx.destination);
         sourceNode.start();
     }, [initializeAudioContext]);
-
+  
     const {
         isListening,
         sttError,
         setupSpeechRecognition,
         toggleListen,
         synthesizeAndPlayText,
+        recognitionRef // <-- Get it here
     } = useSpeech(playAudio, kokoroTtsInstance, ttsPipelineInstance, speakerEmbeddings, setIsTtsSpeaking);
 
  const handleGenerateText = useCallback(async () => {
@@ -180,6 +181,13 @@ function App() {
             synthRef.current.onvoiceschanged = populateVoices;
         }
 }, [selectedVoiceURI]);
+  
+useEffect(() => {
+        // You can add focus logic back in here if you want
+        if (generator && promptTextareaRef.current) {
+            promptTextareaRef.current.focus();
+        }
+}, [generator]);
   
 return (
 <>
