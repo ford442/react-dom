@@ -471,6 +471,12 @@ max={2.0}
   </div>
 </div>
 
+<ControlPanel
+currentProfile={currentProfile}
+preferredTtsEngine={preferredTtsEngine}
+setPreferredTtsEngine={setPreferredTtsEngine}
+/>
+  
 <div style={{
         position: 'absolute', zIndex: 4000, marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd',
         backgroundColor: 'rgba(230, 250, 230, 0.9)', // Light green
