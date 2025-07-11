@@ -6,7 +6,6 @@ import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import './App.css';
 
-
 const personalityProfiles = {
   default: {
     displayName: "Default Assistant",
@@ -94,7 +93,7 @@ function App() {
         setupSpeechRecognition,
         toggleListen,
         synthesizeAndPlayText,
-    } = useSpeech(playAudio, kokoroTtsInstance, ttsPipeline, speakerEmbeddings);
+    } = useSpeech(playAudio, kokoroTtsInstance, ttsPipelineInstance, speakerEmbeddings);
 
 
     const handleGenerateText = useCallback(async () => {
