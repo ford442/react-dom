@@ -227,13 +227,9 @@ useEffect(() => {
         }
 }, [generator]);
   
-const handleSynthesizeSpeech = async () => {
-if (!textToSpeakInput.trim()) {
-alert("Please enter text in the TTS input area to synthesize.");
-return;
-}
-await synthesizeAndPlayText(textToSpeakInput, activeTtsEngine);
-};
+  const handleSynthesizeSpeech = async () => {
+        await synthesizeAndPlayText(textToSpeakInput, activeTtsEngine);
+    };
   
 return (
 <>
@@ -569,33 +565,56 @@ max={2.0}
     {generatedCaption}
   </div>
 </div>
-
-<ControlPanel
-currentProfile={currentProfile}
-preferredTtsEngine={preferredTtsEngine}
-setPreferredTtsEngine={setPreferredTtsEngine}
-personalityProfiles={personalityProfiles} 
-/>
-  
-<WebSpeechTTS
-webSpeechApiInput={webSpeechText}
-setWebSpeechApiInput={setWebSpeechText}
-handleWebSpeechSpeak={handleWebSpeechSpeak}
-isSpeaking={isWebSpeaking}
-availableVoices={availableVoices}
-selectedVoiceURI={selectedVoiceURI}
-setSelectedVoiceURI={setSelectedVoiceURI}
-/>
-
-<ImageCaptioning
-handleImageSelection={handleImageSelection}
-handleImageCaptioning={handleImageCaptioning}
-isCaptioning={isCaptioning}
-imageCaptioner={imageCaptioner}
-imageToCaption={imageToCaption}
-generatedCaption={generatedCaption}
-/>
-  
+   <ControlPanel
+                        statusMessage={statusMessage}
+                        prompt={prompt}
+                        setPrompt={setPrompt}
+                        handleGenerateText={handleGenerateText}
+                        isGenerating={isGenerating}
+                        toggleListen={toggleListen}
+                        isListening={isListening}
+                        sttError={sttError}
+                        generatedOutput={generatedOutput}
+                        activeTtsEngine={activeTtsEngine}
+                        setActiveTtsEngine={setActiveTtsEngine}
+                        kokoroTtsInstance={kokoroTtsInstance}
+                        ttsPipelineInstance={ttsPipelineInstance}
+                        speakerEmbeddings={speakerEmbeddings}
+                        personalityProfiles={personalityProfiles}
+                        currentPersonalityKey={currentPersonalityKey}
+                        setCurrentPersonalityKey={setCurrentPersonalityKey}
+                        currentProfile={currentProfile}
+                        preferredTtsEngine={preferredTtsEngine}
+                        setPreferredTtsEngine={setPreferredTtsEngine}
+                        isTtsSpeaking={isTtsSpeaking}
+                        promptTextareaRef={promptTextareaRef}
+                        recognitionRef={recognitionRef}
+                    />
+                    <WebSpeechTTS
+                        webSpeechApiInput={webSpeechText}
+                        setWebSpeechApiInput={setWebSpeechText}
+                        handleWebSpeechSpeak={handleWebSpeechSpeak}
+                        isSpeaking={isWebSpeaking}
+                        availableVoices={availableVoices}
+                        selectedVoiceURI={selectedVoiceURI}
+                        setSelectedVoiceURI={setSelectedVoiceURI}
+                    />
+                    <TransformersTTS
+                        textToSpeakInput={textToSpeakInput}
+                        setTextToSpeakInput={setTextToSpeakInput}
+                        handleSynthesizeSpeech={handleSynthesizeSpeech}
+                        isTtsSpeaking={isTtsSpeaking}
+                        ttsPipelineInstance={ttsPipelineInstance}
+                        speakerEmbeddings={speakerEmbeddings}
+                    />
+                    <ImageCaptioning
+                        handleImageSelection={handleImageSelection}
+                        handleImageCaptioning={handleImageCaptioning}
+                        isCaptioning={isCaptioning}
+                        imageCaptioner={imageCaptioner}
+                        imageToCaption={imageToCaption}
+                        generatedCaption={generatedCaption}
+                    />
 <div style={{
         position: 'absolute', zIndex: 4000, marginTop: '20px', padding: '15px', borderTop: '1px solid #ddd',
         backgroundColor: 'rgba(230, 250, 230, 0.9)', // Light green
