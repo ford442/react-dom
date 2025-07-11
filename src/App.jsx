@@ -6,8 +6,48 @@ import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import './App.css';
 
+
 const personalityProfiles = {
-    // ... (keep the personalityProfiles object as is)
+  default: {
+    displayName: "Default Assistant",
+    systemPrompt: "",
+    avatar: "/avatars/default.png", // Ensure these assets are in your public/avatars folder
+    introVideo: null,
+    introPhrase: "Hello! How can I assist you today?",
+    themeColors: {
+      '--ai-primary-color': '#4A90E2',
+      '--ai-secondary-color': '#F5F5F5',
+      '--ai-text-color': '#333333',
+      '--ai-bubble-bg': '#E8F0FE',
+    }
+  },
+  captainPlayful: {
+    displayName: "Captain Playful",
+    systemPrompt: "You are Captain Playful, a friendly, shiny red toy robot...",
+    avatar: "/avatars/captain_playful.png",
+    introVideo: "/intros/captain_playful.mp4", // Ensure these assets are in your public/intros folder
+    introPhrase: "Ahoy there, matey! Captain Playful reporting for duty!",
+    themeColors: {
+      '--ai-primary-color': '#FF6347',
+      '--ai-secondary-color': '#FFFF00',
+      '--ai-text-color': '#4B0082',
+      '--ai-bubble-bg': '#FFDAB9',
+    }
+  },
+  professorPuzzle: {
+    displayName: "Professor Puzzle (Owl)",
+    systemPrompt: "Hoo-hoo! You are Professor Puzzle...",
+    avatar: "/avatars/professor_puzzle.png",
+    introVideo: null,
+    introPhrase: "Hoo-hoo, a new challenger approaches! What puzzle can I help you unravel today?",
+    themeColors: {
+      '--ai-primary-color': '#228B22',
+      '--ai-secondary-color': '#F5DEB3',
+      '--ai-text-color': '#5D4037',
+      '--ai-bubble-bg': '#E8F5E9',
+    }
+  },
+  // Add more personalities as needed
 };
 
 function App() {
