@@ -25,7 +25,7 @@ const TransformersTTS = ({
             </div>
             <button
                 onClick={handleWebSpeechSpeak}
-                disabled={isSpeaking || !webSpeechApiInput.trim()}
+                disabled={isSpeaking || !webSpeechApiInput}
             >
                 {isTtsSpeaking ? 'Synthesizing...' : 'Synthesize & Play Speech'}
             </button>
