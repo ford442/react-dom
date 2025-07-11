@@ -70,7 +70,8 @@ function App() {
     const audioContextRef = useRef(null);
 
     const [webSpeechApiDedicatedInput, setWebSpeechApiDedicatedInput] = useState("Hello from the browser's built-in TTS!");
-    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [isWebSpeaking, setIsWebSpeaking] = useState(false); // For Browser TTS
+    const [isTtsSpeaking, setIsTtsSpeaking] = useState(false); // For Kokoro/SpeechT5
     const [availableVoices, setAvailableVoices] = useState([]);
     const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
     const synthRef = useRef(null);
@@ -114,7 +115,7 @@ function App() {
         setupSpeechRecognition,
         toggleListen,
         synthesizeAndPlayText,
-    } = useSpeech(playAudio, kokoroTtsInstance, ttsPipelineInstance, speakerEmbeddings);
+    } = useSpeech(playAudio, kokoroTtsInstance, ttsPipelineInstance, speakerEmbeddings, setIsTtsSpeaking);
 
  const handleGenerateText = useCallback(async () => {
         if (!generator || !prompt.trim()) return;
@@ -153,14 +154,14 @@ function App() {
             utterance.voice = selectedVoice;
         }
 
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
+        utterance.onstart = () => setIsWebSpeaking(true);
+        utterance.onend = () => setIsWebSpeaking(false);
+        utterance.onerror = () => setIsWebSpeaking(false);
         synthRef.current.speak(utterance);
     }, [availableVoices, selectedVoiceURI]);
 
-    const handleWebSpeechSpeak = () => {
-        speakWithWebAPI(webSpeechApiInput);
+    const handleWebSpeechSpeakButton = () => {
+        speakWithWebAPI(webSpeechApiDedicatedInput);
     };
 
     // Effect to get system voices
@@ -525,7 +526,11 @@ setPreferredTtsEngine={setPreferredTtsEngine}
 webSpeechApiInput={webSpeechApiInput}
 setWebSpeechApiInput={setWebSpeechApiInput}
 handleWebSpeechSpeak={handleWebSpeechSpeak}
-isSpeaking={isSpeaking}
+isWebSpeaking={isWebSpeaking}
+isTtsSpeaking={isTtsSpeaking}availableVoices={availableVoices}
+webSpeechApiDedicatedInput={webSpeechApiDedicatedInput}
+setWebSpeechApiDedicatedInput={setWebSpeechApiDedicatedInput}
+handleWebSpeechSpeakButton={handleWebSpeechSpeakButton}
 availableVoices={availableVoices}
 selectedVoiceURI={selectedVoiceURI}
 setSelectedVoiceURI={setSelectedVoiceURI}
