@@ -67,7 +67,6 @@ function App() {
     const [activeTtsEngine, setActiveTtsEngine] = useState('kokoro');
     const [currentProfile, setCurrentProfile] = useState(personalityProfiles.default);
     const [preferredTtsEngine, setPreferredTtsEngine] = useState('kokoro');
-    const audioContextRef = useRef(null);
     const [webSpeechApiInput, setWebSpeechApiInput] = useState("Hello from the browser's built-in speech synthesis!");
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [availableVoices, setAvailableVoices] = useState([]);
