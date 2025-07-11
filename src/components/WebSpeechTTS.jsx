@@ -42,7 +42,7 @@ const WebSpeechTTS = ({
             </div>
             <button
                 onClick={handleWebSpeechSpeak}
-                disabled={isSpeaking || !webSpeechApiInput.trim()}
+                disabled={isSpeaking || !webSpeechApiInput}
             >
                 {isSpeaking ? 'Speaking...' : 'Speak Text (Browser)'}
             </button>
