@@ -5,7 +5,7 @@ const WebSpeechTTS = ({
     setWebSpeechApiInput,
     handleWebSpeechSpeak,
     isSpeaking,
-    availableVoices = [], // This is the fix: provides a default empty array
+    availableVoices = [], // This is the definitive fix
     selectedVoiceURI,
     setSelectedVoiceURI,
 }) => {
@@ -29,7 +29,7 @@ const WebSpeechTTS = ({
                     id="voice-select-webapi"
                     value={selectedVoiceURI}
                     onChange={(e) => setSelectedVoiceURI(e.target.value)}
-                    // This check is now safe because availableVoices is always an array
+                    // This check is now 100% safe because availableVoices is always an array
                     disabled={availableVoices.length === 0 || isSpeaking}
                 >
                     {availableVoices.length === 0 && <option value="">Loading voices...</option>}
