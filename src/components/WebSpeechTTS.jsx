@@ -32,7 +32,7 @@ const WebSpeechTTS = ({
                     // This check is now 100% safe because availableVoices is always an array
                     disabled={!availableVoices|| isSpeaking}
                 >
-                    {availableVoices.length === 0 && <option value="">Loading voices...</option>}
+                    {!availableVoices && <option value="">Loading voices...</option>}
                     {availableVoices.map((voice) => (
                         <option key={voice.voiceURI} value={voice.voiceURI}>
                             {voice.name} ({voice.lang})
