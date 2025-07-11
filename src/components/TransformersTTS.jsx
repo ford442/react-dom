@@ -1,3 +1,4 @@
+// src/components/WebSpeechTTS.jsx
 import React from 'react';
 
 const WebSpeechTTS = ({
@@ -5,7 +6,7 @@ const WebSpeechTTS = ({
     setWebSpeechApiInput,
     handleWebSpeechSpeak,
     isSpeaking,
-    availableVoices,
+    availableVoices = [], // This default value prevents the error
     selectedVoiceURI,
     setSelectedVoiceURI,
 }) => {
@@ -29,9 +30,9 @@ const WebSpeechTTS = ({
                     id="voice-select-webapi"
                     value={selectedVoiceURI}
                     onChange={(e) => setSelectedVoiceURI(e.target.value)}
-                    disabled={!availableVoices || isSpeaking}
+                    disabled={availableVoices.length === 0 || isSpeaking}
                 >
-                    {!availableVoices && <option value="">Loading voices...</option>}
+                    {/* This .map() call is now safe */}
                     {availableVoices.map((voice) => (
                         <option key={voice.voiceURI} value={voice.voiceURI}>
                             {voice.name} ({voice.lang})
