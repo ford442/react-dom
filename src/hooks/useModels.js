@@ -6,7 +6,7 @@ import { KokoroTTS } from 'kokoro-js';
 export const useModels = () => {
     const [generator, setGenerator] = useState(null);
     const [statusMessage, setStatusMessage] = useState('Initializing...');
-    const [ttsPipeline, setTtsPipeline] = useState(null);
+    const [ttsPipelineInstance, setTtsPipelineInstance] = useState(null);
     const [speakerEmbeddings, setSpeakerEmbeddings] = useState(null);
     const [kokoroTtsInstance, setKokoroTtsInstance] = useState(null);
     const [imageCaptioner, setImageCaptioner] = useState(null);
@@ -26,7 +26,7 @@ export const useModels = () => {
                     progress_callback: (progress) => setStatusMessage(`Loading: ${progress.file} - ${progress.status}`),
                     dtype: "q8"
                 }, { device: "webnn" });
-                setGenerator(() => generatorInstance);
+                setTtsPipelineInstance(() => ttsPipe);
                 setStatusMessage("Text generation model loaded.");
 
                 // Load SpeechT5 Model
@@ -67,7 +67,7 @@ export const useModels = () => {
     return {
         generator,
         statusMessage,
-        ttsPipeline,
+        ttsPipelineInstance,
         speakerEmbeddings,
         kokoroTtsInstance,
         imageCaptioner,
