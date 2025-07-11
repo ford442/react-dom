@@ -29,9 +29,9 @@ const WebSpeechTTS = ({
                     id="voice-select-webapi"
                     value={selectedVoiceURI}
                     onChange={(e) => setSelectedVoiceURI(e.target.value)}
-                    disabled={availableVoices.length === 0 || isSpeaking}
+                    disabled={!availableVoices || isSpeaking}
                 >
-                    {availableVoices.length === 0 && <option value="">Loading voices...</option>}
+                    {!availableVoices && <option value="">Loading voices...</option>}
                     {availableVoices.map((voice) => (
                         <option key={voice.voiceURI} value={voice.voiceURI}>
                             {voice.name} ({voice.lang})
