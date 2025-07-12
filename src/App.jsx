@@ -792,58 +792,68 @@ document.getElementById("startBtn5").addEventListener('click', function() {
     xhr.open('GET', xhrPath, true);
     xhr.responseType = 'arraybuffer';
     console.log(`Requesting external script from: ${xhrPath}`);
+
     function decodeUTF32(uint8Array, isLittleEndian = true) {
-        // ... (decode function remains the same)
         const dataView = new DataView(uint8Array.buffer);
         let result = "";
         for (let i = 0; i < uint8Array.length; i += 4) {
-            let codePoint;
-            if (isLittleEndian) {
-                codePoint = dataView.getUint32(i, true);
-            } else {
-                codePoint = dataView.getUint32(i, false);
-            }
+            let codePoint = dataView.getUint32(i, true);
             result += String.fromCodePoint(codePoint);
         }
         return result;
     }
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            console.log("Script content loaded. Decoding and modifying...");
-            let jsCode = decodeUTF32(new Uint8Array(xhr.response), true);
 
-            // --- THE FIX IS HERE ---
-            // We are manually making the 'libload' function global by
-            // prepending 'window.' to its definition.
-            if (jsCode.trim().startsWith('libload')) {
-                 jsCode = 'window.' + jsCode;
-                 console.log("Modified script to be global. It now starts with 'window.libload=...'");
-            }
-            const scr = document.createElement('script');
-            scr.text = jsCode;
-            scr.onload = () => {
-                console.log("SUCCESS: Script 'onload' event fired.");
-                if (typeof window.libload === 'function') {
-                    console.log("libload() is now available on the window object. Initializing module...");
-                    const Module = window.libload();
-                    if (Module && typeof Module.onRuntimeInitialized === 'function') {
-                        Module.onRuntimeInitialized = function() {
-                            console.log('Module runtime initialized. Calling main...');
-                            Module.callMain();
-                        };
-                    } else {
-                         console.log('Module loaded, but onRuntimeInitialized is not ready yet. It may be called automatically.');
-                    }
-                } else {
-                    console.error('CRITICAL ERROR: libload() was not found on the window object.');
+    xhr.onload = function() {
+        // Wrap all logic in a try...catch block to find hidden errors
+        try {
+            if (xhr.status === 200) {
+                console.log("Script content loaded. Decoding...");
+
+                if (!xhr.response) {
+                    console.error("XHR response was null. Aborting.");
+                    return;
                 }
-            };
-            scr.onerror = () => {
-                console.error('ERROR: The dynamically added script failed to execute.');
-            };
-            document.body.appendChild(scr);
+
+                const jsCode = decodeUTF32(new Uint8Array(xhr.response), true);
+                console.log("Decoding complete. Modifying script scope...");
+
+                const modifiedJsCode = ('window.' + jsCode.trim());
+                console.log("Scope modification complete.");
+
+                const scr = document.createElement('script');
+                scr.text = modifiedJsCode;
+
+                scr.onload = () => {
+                    console.log("SUCCESS: Script 'onload' event fired.");
+                    if (typeof window.libload === 'function') {
+                        console.log("libload() is available. Initializing module...");
+                        const Module = window.libload();
+                        if (Module && typeof Module.onRuntimeInitialized === 'function') {
+                            Module.onRuntimeInitialized = function() {
+                                console.log('Module runtime initialized. Calling main...');
+                                Module.callMain();
+                            };
+                        }
+                    } else {
+                        console.error('CRITICAL ERROR: libload() was not found on the window object.');
+                    }
+                };
+                
+                scr.onerror = (e) => {
+                    console.error('ERROR: The dynamically added script failed to execute.', e);
+                };
+
+                document.body.appendChild(scr);
+
+            } else {
+                console.error(`XHR request failed with status: ${xhr.status}`);
+            }
+        } catch (error) {
+            // This will now catch any error that occurs during the process
+            console.error("A critical error occurred inside the xhr.onload handler:", error);
         }
     };
+    
     xhr.send();
 });
   
