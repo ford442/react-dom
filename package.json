@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "serve": "vite preview"
+    "serve": "vite preview",
+    "postinstall": "cd node_modules/ossos && npm install && npm run build"
   },
   "dependencies": {
     "@huggingface/transformers": "3.6.0",
