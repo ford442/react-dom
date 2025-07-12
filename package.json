@@ -16,7 +16,7 @@
     "@mui/material": "latest",
     "react": "latest",
    "react-dom": "latest",
-  "ossos": "file:"../ossos"",
+  "ossos": "file:'../ossos'",
     "gl-matrix": "latest",
     "three": "latest"
   },
