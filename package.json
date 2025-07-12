@@ -15,8 +15,7 @@
     "@emotion/styled": "latest",
     "@mui/material": "latest",
     "react": "latest",
-    "react-dom": "latest",
-    "gl-matrix": "latest"
+    "react-dom": "latest"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "latest",
