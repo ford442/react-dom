@@ -785,7 +785,8 @@ async function loadModel() {
       setStatusMessage(prev => `${prev} Image Captioning Error: ${error.message}.`);
     }
 }
-
+  
+document.getElementById("startBtn5").addEventListener('click',function(){
 const xhrPath = document.querySelector('#loadPath').innerHTML;
 const xhr = new XMLHttpRequest();
 xhr.open('GET', xhrPath, true);
@@ -825,7 +826,31 @@ Module.callMain();
 }
 };
 xhr.send();
+});
 loadModel();
+
+setTimeout(function(){
+document.querySelector('#splash2').style.zIndex=3000;
+document.querySelector('#splash2').style.display='none';
+},4200);
+setTimeout(function(){
+document.querySelector('#splash1').style.zIndex=3000;
+document.querySelector('#splash1').style.display='none';
+},4500);
+
+setTimeout(function(){
+document.getElementById('vsiz').innerHTML=parseInt(window.innerHeight,10);
+// document.getElementById('vsiz').innerHTML=parseInt(window.innerHeight,10)*3.0;
+document.getElementById('startBtn5').click();
+},1500);
+
+setTimeout(function(){
+window.scrollTo({
+top: 0,
+left: 0,
+behavior: "smooth",
+});
+},1500);
 }, []);
 
 return (
@@ -900,7 +925,7 @@ max={2.0}
 <div id={'outText'} style={{opacity:0.0,backgroundColor:'green',position:'absolute',top:'50vh',left:'47vw',zIndex:4200}}></div>
 <div id={'outText1'} style={{opacity:0.0,backgroundColor:'green',position:'absolute',top:'52vh',left:'47vw',zIndex:4200}}></div>
 <div id={'outText2'} style={{opacity:0.0,backgroundColor:'green',position:'absolute',top:'54vh',left:'47vw',zIndex:4200}}></div>
-<div id={'modPath'} hidden>https://wasm.noahcohn.com/b3hd/w0-037-mod.3ijs</div>
+<div id={'modPath'} hidden>https://wasm.noahcohn.com/b3hd/w0-035b-mod.3ijs</div>
 <div id={'loadPath'} hidden>https://wasm.noahcohn.com/b3hd/w0-037-load-32.3ijs</div>
 <div id={'computePath'} hidden>https://glsl.1ink.us/wgsl/compute_070.wgsl'</div>
 <div id={'computePathNovid'} hidden>https://glsl.1ink.us/wgsl/compute_070v.wgsl'</div>
