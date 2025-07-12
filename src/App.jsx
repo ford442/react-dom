@@ -20,6 +20,19 @@ const personalityProfiles = {
       '--ai-bubble-bg': '#E8F0FE',
     }
   },
+  sceneCreator: {
+    displayName: "Scene Creator",
+    systemPrompt: "You are a helpful assistant that expands a user's idea into a detailed scene for a text-to-image generator.",
+    avatar: "/avatars/default.png",
+    introVideo: null,
+    introPhrase: "Ready to create a scene! What's the idea?",
+    themeColors: {
+        '--ai-primary-color': '#4A90E2',
+        '--ai-secondary-color': '#F5F5F5',
+        '--ai-text-color': '#333333',
+        '--ai-bubble-bg': '#E8F0FE',
+    }
+  },
   captainPlayful: {
     displayName: "Captain Playful",
     systemPrompt: "You are Captain Playful, a friendly, shiny red toy robot...",
@@ -87,6 +100,9 @@ const [imageToCaption, setImageToCaption] = useState(null); // Will store URL or
 const [generatedCaption, setGeneratedCaption] = useState('');
 const [isCaptioning, setIsCaptioning] = useState(false);
 
+const [isListeningForWakeWord, setIsListeningForWakeWord] = useState(false);
+const WAKE_WORD = "hey ai";
+
 const promptTextareaRef = useRef(null); // Ref for the prompt textarea
 const audioContextRef = useRef(null); // For playing audio
 const recognitionRef = useRef(null); // To hold the SpeechRecognition instance
@@ -108,7 +124,7 @@ const speakWithWebSpeechAPI = useCallback((textToSay) => {
 }, [synthRef, availableVoices, selectedVoiceURI, setIsSpeaking, setStatusMessage]);
 
 const [webSpeechApiInput, setWebSpeechApiInput] = useState("Hello from browser TTS!");
-  
+
 const initializeAudioContext = useCallback(() => {
   if (!audioContextRef.current) {
     audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -121,7 +137,7 @@ const initializeAudioContext = useCallback(() => {
   }
   return audioContextRef.current;
 }, []);
-  
+
 const playAudio = useCallback((audioArray, samplingRate) => {
   const audioCtx = initializeAudioContext();
   if (!audioCtx) {
@@ -170,7 +186,7 @@ const playAudio = useCallback((audioArray, samplingRate) => {
   currentNode.connect(audioCtx.destination);
   sourceNode.start();
 }, [initializeAudioContext, currentPersonalityKey]);
-  
+
 const speakWithWebAPI = useCallback((textToSay) => {
   if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
   if (synthRef.current.speaking) { synthRef.current.cancel(); }
@@ -208,7 +224,7 @@ const speakWithWebAPI = useCallback((textToSay) => {
     setIsSpeaking,
     setStatusMessage
 ]);
-  
+
 const synthesizeAndPlayText = useCallback(async (text) => {
   if (!ttsPipelineInstance || !speakerEmbeddings) {
     setStatusMessage("TTS model or speaker embeddings not loaded yet.");
@@ -273,9 +289,6 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   setIsSpeaking
 ]);
 
-
-
-  
 // NEW: Synthesis function for the Kokoro TTS model.
 const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => {
     // Synthesizes text to speech using the Kokoro TTS model and plays it.
@@ -302,7 +315,7 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
 
     try {
         const output = await kokoroTtsInstance.generate(text.trim(),{voice: "af_heart"});
-        
+
         // Store the result of generate()
         const kokoroAudioOutput = output; // Assuming 'output' is the variable holding the result of generate()
 
@@ -310,7 +323,7 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
         console.log("Kokoro TTS output object:", kokoroAudioOutput);
 
         // Attempt to access audio data and sample rate using common property names
-        let audioData = kokoroAudioOutput.audio; 
+        let audioData = kokoroAudioOutput.audio;
         let sampleRate = kokoroAudioOutput.sampling_rate;
 
         // Check if data and sample_rate were found
@@ -327,7 +340,7 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
         if (!(audioData instanceof Float32Array)) {
           console.warn("Kokoro TTS audio data was not Float32Array, attempting conversion from Int16Array.");
           const rawData = audioData instanceof ArrayBuffer ? new Int16Array(audioData) : (Array.isArray(audioData) ? Int16Array.from(audioData) : audioData);
-          
+
           if (rawData instanceof Int16Array) {
              const float32Data = new Float32Array(rawData.length);
              for (let i = 0; i < rawData.length; i++) {
@@ -357,141 +370,135 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
     return true;
   }, [kokoroTtsInstance, initializeAudioContext, playAudio, currentPersonalityKey]);
 
-  
-  
 const setupSpeechRecognition = useCallback(() => {
-  const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognitionAPI) {
-    setSttError("Your browser doesn't support Speech Recognition. Try Chrome or Edge.");
-    setStatusMessage(prev => `${prev} Speech Recognition not supported.`);
-    return;
-  }
-  const recognitionInstance = new SpeechRecognitionAPI();
-  recognitionInstance.continuous = false;
-  recognitionInstance.interimResults = false;
-  recognitionInstance.lang = 'en-US';
-  recognitionInstance.onresult = (event) => {
-    const last = event.results.length - 1;
-    const transcript = event.results[last][0].transcript.trim();
-    console.log('Speech recognized by onresult:', transcript);
-    setPrompt(transcript);
-    sttJustFinishedRef.current = true;
-  };
-  recognitionInstance.onerror = (event) => {
-    console.error('Speech recognition error:', event.error, event.message);
-    setSttError(`Speech Error: ${event.error} - ${event.message || 'Unknown error'}`);
-    setIsListening(false);
-    sttJustFinishedRef.current = false;
-  };
-  recognitionInstance.onend = () => {
-    setIsListening(false);
-    console.log('Speech recognition ended.');
-  };
-  recognitionRef.current = recognitionInstance;
-}, [setPrompt, setStatusMessage, setSttError, setIsListening]);
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI) {
+        setSttError("Your browser doesn't support Speech Recognition. Try Chrome or Edge.");
+        setStatusMessage(prev => `${prev} Speech Recognition not supported.`);
+        return;
+    }
+    const recognitionInstance = new SpeechRecognitionAPI();
+    recognitionInstance.continuous = true; // Always on
+    recognitionInstance.interimResults = true; // Get results as they come
+    recognitionInstance.lang = 'en-US';
+
+    recognitionInstance.onresult = (event) => {
+        let final_transcript = '';
+        let interim_transcript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+                final_transcript += event.results[i][0].transcript;
+            } else {
+                interim_transcript += event.results[i][0].transcript;
+            }
+        }
+
+        const fullTranscript = (final_transcript || interim_transcript).toLowerCase().trim();
+
+        if (isListeningForWakeWord && fullTranscript.includes(WAKE_WORD)) {
+            console.log("Wake word detected!");
+            setIsListeningForWakeWord(false);
+            setIsListening(true);
+            setStatusMessage("Wake word detected, now listening for prompt...");
+            // recognitionInstance.stop(); // Stop and restart to clear the wake word from the buffer
+            // setTimeout(() => recognitionInstance.start(), 100);
+        } else if (isListening && final_transcript) {
+            console.log('Speech recognized by onresult:', final_transcript);
+            setPrompt(final_transcript);
+            sttJustFinishedRef.current = true;
+            setIsListening(false);
+            setIsListeningForWakeWord(true); // Go back to listening for the wake word
+        }
+    };
+
+    recognitionInstance.onerror = (event) => {
+        console.error('Speech recognition error:', event.error, event.message);
+        setSttError(`Speech Error: ${event.error} - ${event.message || 'Unknown error'}`);
+        setIsListening(false);
+        setIsListeningForWakeWord(false);
+        sttJustFinishedRef.current = false;
+    };
+
+    recognitionInstance.onend = () => {
+        if (isListening || isListeningForWakeWord) {
+            console.log('Speech recognition ended, restarting...');
+            recognitionInstance.start(); // Keep it running
+        } else {
+            console.log('Speech recognition ended.');
+        }
+    };
+    recognitionRef.current = recognitionInstance;
+}, [setPrompt, setStatusMessage, setSttError, setIsListening, isListening, isListeningForWakeWord]);
 
 const toggleListen = () => {
-  if (!recognitionRef.current) {
-    setSttError("Speech recognition not initialized.");
-    return;
-  }
-  if (isListening) {
-    recognitionRef.current.stop();
-  } else {
-    try {
-      setPrompt('');
-      sttJustFinishedRef.current = false;
-      recognitionRef.current.start();
-      setIsListening(true);
-      setSttError('');
-      setStatusMessage("Listening for speech...");
-    } catch (e) {
-      console.error("Error starting recognition (already started?):", e);
-      setIsListening(false);
+    if (!recognitionRef.current) {
+        setSttError("Speech recognition not initialized.");
+        return;
     }
-  }
+    if (isListening || isListeningForWakeWord) {
+        recognitionRef.current.stop();
+        setIsListening(false);
+        setIsListeningForWakeWord(false);
+        setStatusMessage("Listening stopped.");
+    } else {
+        try {
+            setPrompt('');
+            sttJustFinishedRef.current = false;
+            setIsListeningForWakeWord(true);
+            recognitionRef.current.start();
+            setSttError('');
+            setStatusMessage("Listening for wake word...");
+        } catch (e) {
+            console.error("Error starting recognition (already started?):", e);
+            setIsListening(false);
+            setIsListeningForWakeWord(false);
+        }
+    }
 };
+
 const handleGenerateText = useCallback(async () => {
-  if (!generator) {
-    alert("The text generation model is not loaded yet. Please wait.");
-    return;
-  }
-  let textToProcess = prompt.trim();
-  let isRespeaking = false;
-  if (!textToProcess && generatedOutput.trim()) {
-    textToProcess = generatedOutput.trim();
-    isRespeaking = true;
-    setStatusMessage("Re-speaking previous output...");
-  } else if (!textToProcess) {
-    alert("Please enter some text or use speech-to-text to provide a prompt.");
-    return;
-  }
-  if (!isRespeaking) {
+    if (!generator) {
+        alert("The text generation model is not loaded yet. Please wait.");
+        return;
+    }
+    let textToProcess = prompt.trim();
+    if (!textToProcess) {
+        alert("Please enter some text or use speech-to-text to provide a prompt.");
+        return;
+    }
+
     setIsGenerating(true);
     setGeneratedOutput("Generating, please wait...");
-    setStatusMessage("Generating text with personality: " + (currentProfile?.displayName || 'Default'));
-  }
-  let newLLMText = "";
-  try {
-    const systemInstruction = currentProfile.systemPrompt || "";
-    if (!isRespeaking) {
-      const fullPromptForLLM = systemInstruction + textToProcess;
-      console.log("Sending to LLM:", fullPromptForLLM);
-      const outputs = await generator(fullPromptForLLM, {
-        max_new_tokens: 128,
-        min_new_tokens: 32,
-      });
-      if (outputs && outputs.length > 0 && outputs[0].generated_text) {
-        newLLMText = outputs[0].generated_text;
-        setGeneratedOutput(newLLMText);
-      } else {
-        newLLMText = "No text was generated or output format was unexpected.";
-        setGeneratedOutput(newLLMText);
-        setStatusMessage("Text generation failed to produce output.");
-        if (!isRespeaking) setIsGenerating(false);
-        return;
-      }
-    } else {
-      newLLMText = textToProcess;
+    setStatusMessage("Generating image prompt with personality: " + (currentProfile?.displayName || 'Default'));
+
+    try {
+        const systemInstruction = currentProfile.systemPrompt ? `${currentProfile.systemPrompt}\n\nExpand the following idea into a detailed scene description for a text-to-image AI:` : "Expand the following idea into a detailed scene description for a text-to-image AI:";
+        const fullPromptForLLM = `${systemInstruction}\n\n${textToProcess}`;
+
+        console.log("Sending to LLM:", fullPromptForLLM);
+        const outputs = await generator(fullPromptForLLM, {
+            max_new_tokens: 128,
+            min_new_tokens: 32,
+        });
+
+        if (outputs && outputs.length > 0 && outputs[0].generated_text) {
+            const newLLMText = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
+            setGeneratedOutput(newLLMText);
+            setStatusMessage("Image prompt generated successfully.");
+        } else {
+            setGeneratedOutput("No text was generated or output format was unexpected.");
+            setStatusMessage("Text generation failed to produce output.");
+        }
+    } catch (error) {
+        console.error("Error during text generation:", error);
+        setGeneratedOutput(`Error: ${error.message}`);
+        setStatusMessage(`Error in processing: ${error.message}`);
+    } finally {
+        setIsGenerating(false);
     }
-    setStatusMessage("Text processing complete. Auto-speaking...");
-    
-    // MODIFIED: Replaced 'bark' with 'kokoro' and updated the function call
-    if (preferredTtsEngine === 'webSpeechAPI') {
-      setWebSpeechApiDedicatedInput(newLLMText);
-      speakWithWebAPI(newLLMText);
-    } else if (preferredTtsEngine === 'speechT5') {
-      setTextToSpeakInput(newLLMText);
-      await synthesizeAndPlayText(newLLMText);
-    } else if (preferredTtsEngine === 'kokoro') {
-      setTextToSpeakInput(newLLMText);
-      await synthesizeWithKokoroAndPlay(newLLMText, currentPersonalityKey);
-    }
-  } catch (error) {
-    console.error("Error during text generation or auto-speak setup:", error);
-    setGeneratedOutput(`Error: ${error.message}`);
-    setStatusMessage(`Error in processing: ${error.message}`);
-  }
-  if (!isRespeaking) {
-    setIsGenerating(false);
-  }
-}, [
-  generator,
-  prompt,
-  generatedOutput,
-  currentProfile,
-  preferredTtsEngine,
-  synthesizeAndPlayText,
-  speakWithWebAPI,
-  synthesizeWithKokoroAndPlay, // MODIFIED
-  setIsGenerating,
-  setGeneratedOutput,
-  setStatusMessage,
-  setTextToSpeakInput,
-  setWebSpeechApiDedicatedInput,
-  currentPersonalityKey
-]);
-  
+}, [generator, prompt, currentProfile]);
+
 const handleWebSpeechSpeakButton = () => {
 speakWithWebAPI(webSpeechApiInput);
 };
@@ -535,15 +542,15 @@ const profile = personalityProfiles[currentPersonalityKey] || personalityProfile
             ttsFunctionToCall = () => synthesizeAndPlayText(profile.introPhrase);
             ttsReady = true;
           }
-        } 
+        }
         // MODIFIED: Check for 'kokoro' and the corresponding instance.
-        else if (preferredTtsEngine === 'kokoro') { 
+        else if (preferredTtsEngine === 'kokoro') {
           if (kokoroTtsInstance) {
             ttsFunctionToCall = () => synthesizeWithKokoroAndPlay(profile.introPhrase, currentPersonalityKey);
             ttsReady = true;
           }
         }
-        
+
         if (ttsReady && ttsFunctionToCall) {
           await ttsFunctionToCall();
         } else {
@@ -651,11 +658,11 @@ const handleWebSpeechSpeak = () => {
   }
   speakWithWebSpeechAPI(webSpeechText);
 };
-  
+
 useEffect(() => {
 setupSpeechRecognition();
 }, [setupSpeechRecognition]);
-  
+
 useEffect(() => {
 if (generator && ttsPipelineInstance && promptTextareaRef.current) {
 promptTextareaRef.current.focus();
@@ -665,16 +672,16 @@ promptTextareaRef.current.focus();
 useEffect(() => {
   if (prompt.trim() && sttJustFinishedRef.current && !isGenerating && !isSpeaking) {
     console.log("STT provided new prompt, automatically triggering text generation:", prompt);
-    handleGenerateText(); 
+    handleGenerateText();
     sttJustFinishedRef.current = false;
   }
 }, [prompt, isGenerating, isSpeaking, handleGenerateText]);
-  
+
 useLayoutEffect(() => {
     console.log('Forcing remote settings and disabling cache for loading.');
     env.localFilesOnly = false;
     env.allowLocalModels = false;
-    env.useBrowserCache = true; 
+    env.useBrowserCache = true;
     env.remoteHost = 'https://huggingface.co';
     env.remotePathTemplate = '{model}/resolve/main/';
     // env.wasm.numThreads = 16;
@@ -730,17 +737,17 @@ async function loadModel() {
         console.error("Failed to load TTS pipeline or speaker embeddings:", error);
         setStatusMessage(prev => `${prev} TTS Error: ${error.message}.`);
       }
-      
+
     // REMOVED: Logic for loading the Bark TTS model.
     // try { ... } catch (error) { ... }
 
     // NEW: Logic for loading the Kokoro TTS model.
     try {
         setStatusMessage(prev => `${prev} Loading TTS model (Kokoro)...`);
-        
+
         // This single line downloads and initializes the Kokoro TTS model.
         const kokoroInstance = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {dtype: "fp32", device: "webgpu", });
-        
+
         setKokoroTtsInstance(() => kokoroInstance);
         console.log("Kokoro TTS pipeline loaded successfully.");
 
@@ -972,10 +979,10 @@ max={2.0}
 </div>
   <div style={{ display: 'flex', alignItems: 'center', gap: '15px', borderBottom: '1px solid #ddd', paddingBottom: '15px' }}>
   {currentProfile.avatar && (
-    <img 
-      src={currentProfile.avatar} 
-      alt={`${currentProfile.displayName} Avatar`} 
-      style={{ position:'absolute',zIndex:4000,width: '60px', height: '60px', borderRadius: '50%', border: `3px solid ${currentProfile.themeColors['--ai-primary-color'] || '#ccc'}` }} 
+    <img
+      src={currentProfile.avatar}
+      alt={`${currentProfile.displayName} Avatar`}
+      style={{ position:'absolute',zIndex:4000,width: '60px', height: '60px', borderRadius: '50%', border: `3px solid ${currentProfile.themeColors['--ai-primary-color'] || '#ccc'}` }}
     />
   )}
   <div>
@@ -1097,9 +1104,10 @@ max={2.0}
         {/* STT Button and status from Option A */}
 <div style={{ position: 'absolute', zIndex: 4000, marginTop: '10px', paddingTop:'10px', borderTop: '1px solid #eee' }}>
           <button onClick={toggleListen} disabled={!recognitionRef.current} style={{ pointerEvents: 'auto' }}> {/* Ensure toggleListen is defined */}
-            {isListening ? 'Stop Listening' : 'Start Listening'}
+            {isListening || isListeningForWakeWord ? 'Stop Listening' : 'Start Listening'}
           </button>
-          {isListening && <p><i>Listening...</i></p>}
+          {isListening && <p><i>Listening for prompt...</i></p>}
+          {isListeningForWakeWord && <p><i>Listening for wake word...</i></p>}
           {sttError && <p style={{ color: 'red' }}>{sttError}</p>}
 </div>
 <h3>Generated Output:</h3>
