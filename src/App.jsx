@@ -70,33 +70,6 @@ const personalityProfiles = {
 
 
 function App() {
-
-async function setupCharacter() {
-    // 1. Fetch and parse your GLTF file
-  const gltf = await Gltf2.fetch('https://glsl.1ink.us/gltf/nabba.gltf');
-    //--------------------------------
-    // 2. Setup the Armature from the GLTF skin data
-    const arm = new Armature();
-    for (let j of gltf.getSkin().joints) {
-        // Add each bone to the armature with its properties
-        arm.addBone(j.name, j.parentIndex, j.rotation, j.position, j.scale);
-    }
-    //--------------------------------
-    // 3. Bind the armature with a skinning method
-    // SkinMTX uses standard matrix skinning. '0.07' is a default length for bones.
-    arm.bind(SkinMTX, 0.07);
-    // This material would come from the library's examples, using a custom shader
-    // that understands the armature's skinning data.
-    const mat = SkinMTXMaterial('cyan', arm.getSkinOffsets()[0]);
-    //--------------------------------
-    // 4. Load the mesh using the GLTF data and the custom material
-    const mesh = UtilGltf2.loadMesh(gltf, null, mat);
-        // Add your mesh to the scene
-    App.addMesh(mesh);
-}
-
-setupCharacter();
-  
 const [generator, setGenerator] = useState(null);
 const [statusMessage, setStatusMessage] = useState('Initializing...');
 const [prompt, setPrompt] = useState('');
@@ -149,8 +122,6 @@ const mountRef = useRef(null); // Ref for the DOM element where the canvas will 
 const appRef = useRef(null);   // Ref to hold the Three.js Starter instance
   
  useEffect(() => {
-    // This effect runs only once when the component mounts
-    
     // 1. Initialize the Three.js Starter class
     const app = new Starter({
       webgl2: true,
@@ -159,7 +130,6 @@ const appRef = useRef(null);   // Ref to hold the Three.js Starter instance
     });
     appRef.current = app; // Store the instance in our ref
     app.render(); // Start the render loop
-
     // Helper function from the example
     const armature_from_gltf = (gltf, defaultBoneLen = 0.07) => {
         const arm = new Armature();
@@ -170,27 +140,24 @@ const appRef = useRef(null);   // Ref to hold the Three.js Starter instance
         return arm;
     }
 
-     const setupCharacter = async () => {
+const setupCharacter = async () => {
       try {
         const gltf = await Gltf2.fetch('https://glsl.1ink.us/gltf/nabba.gltf');
-        
         const arm = armature_from_gltf(gltf);
         arm.bind(SkinMTX, 0.07);
-        
         const mat = SkinMTXMaterial('cyan', arm.getSkinOffsets()[0]);
         const mesh = UtilGltf2.loadMesh(gltf, null, mat);
-        
         // Use the Starter instance from the ref to add the mesh
         if (appRef.current) {
           appRef.current.add(mesh);
         }
-        
       } catch (error) {
         console.error("Failed to set up character:", error);
         setStatusMessage("Error loading avatar.");
       }
-    };
-    setupCharacter();
+};
+   
+setupCharacter();
 
    
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
