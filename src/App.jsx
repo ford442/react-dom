@@ -62,7 +62,6 @@ const personalityProfiles = {
   // Add more personalities as needed
 };
 
-
 import { Armature, SkinMTX } from 'ossos';
 import { Gltf2 } from 'path/to/your/gltf-parser'; // The project uses a custom GLTF parser
 import * as THREE from 'three';
