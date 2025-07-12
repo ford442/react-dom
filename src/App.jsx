@@ -69,6 +69,45 @@ import { UtilGltf2 } from '../../ossos/examples/threejs/_lib/UtilGltf2.js';
 import * as THREE from 'three';
 
 function App() {
+
+useEffect(() => {
+        // 1. Initialize the Three.js Starter class
+        const app = new Starter({
+            webgl2: true,
+            grid: true,
+            container: mountRef.current // Tell Starter where to append the canvas
+        });
+        appRef.current = app;
+        app.render();
+        // 2. Define helper functions inside the effect
+        const armature_from_gltf = (gltf, defaultBoneLen = 0.07) => {
+            const arm = new Armature();
+            for (let j of gltf.getSkin().joints) {
+                arm.addBone(j.name, j.parentIndex, j.rotation, j.position, j.scale);
+            }
+            arm.bind(SkinMTX, defaultBoneLen);
+            return arm;
+        };
+        const setupCharacter = async () => {
+            try {
+                setStatusMessage("Loading avatar...");
+                const gltf = await Gltf2.fetch('https://glsl.1ink.us/gltf/nabba.gltf');
+                const arm = armature_from_gltf(gltf);
+                const mat = SkinMTXMaterial('cyan', arm.getSkinOffsets()[0]);
+                const mesh = UtilGltf2.loadMesh(gltf, null, mat);
+                // Use the Starter instance from the ref to add the mesh
+                if (appRef.current) {
+                    appRef.current.add(mesh);
+                    setStatusMessage(prev => prev.includes("Loading") ? "Avatar loaded." : prev);
+                }
+            } catch (error) {
+                console.error("Failed to set up character:", error);
+                setStatusMessage("Error loading avatar.");
+            }
+        };
+        setupCharacter();
+}, []); // The empty dependency array [] is crucial. It makes the effect run only ONCE.
+
   
 const [generator, setGenerator] = useState(null);
 const [statusMessage, setStatusMessage] = useState('Initializing...');
