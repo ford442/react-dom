@@ -953,6 +953,7 @@ max={2.0}
 <div id={'outText1'} style={{opacity:0.0,backgroundColor:'green',position:'absolute',top:'52vh',left:'47vw',zIndex:4200}}></div>
 <div id={'outText2'} style={{opacity:0.0,backgroundColor:'green',position:'absolute',top:'54vh',left:'47vw',zIndex:4200}}></div>
 <div id={'modPath'} hidden>https://wasm.noahcohn.com/b3hd/w0-035b-mod.3ijs</div>
+<div id={'modulePath'} hidden>https://wasm.noahcohn.com/b3hd/w0-035b-mod.3ijs</div>
 <div id={'loadPath'} hidden>https://wasm.noahcohn.com/b3hd/w0-037-load-32.3ijs</div>
 <div id={'computePath'} hidden>https://glsl.1ink.us/wgsl/compute_070.wgsl'</div>
 <div id={'computePathNovid'} hidden>https://glsl.1ink.us/wgsl/compute_070v.wgsl'</div>
