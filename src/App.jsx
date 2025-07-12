@@ -857,15 +857,6 @@ document.getElementById("startBtn5").addEventListener('click', function() {
 loadModel();
 
 setTimeout(function(){
-document.querySelector('#splash2').style.zIndex=3000;
-document.querySelector('#splash2').style.display='none';
-},4200);
-setTimeout(function(){
-document.querySelector('#splash1').style.zIndex=3000;
-document.querySelector('#splash1').style.display='none';
-},4500);
-
-setTimeout(function(){
 document.getElementById('vsiz').innerHTML=parseInt(window.innerHeight,10);
 // document.getElementById('vsiz').innerHTML=parseInt(window.innerHeight,10)*3.0;
 document.getElementById('startBtn5').click();
