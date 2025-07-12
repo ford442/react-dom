@@ -5,6 +5,12 @@ import Box from '@mui/material/Box'; // Assuming you still use these
 import Slider from '@mui/material/Slider'; // Assuming you still use these
 import './App.css';
 import { KokoroTTS } from 'kokoro-js';
+import { Gltf2, Armature, SkinMTX } from "./lib/ossos/ossos.ts";
+import SkinMTXMaterial from '../../ossos/examples/threejs/_lib/SkinMTXMaterial.js';
+import { UtilGltf2 } from '../../ossos/examples/threejs/_lib/UtilGltf2.js';
+import Starter from '../../ossos/examples/threejs/_lib/Starter.js'; // Adjust the import path
+
+import * as THREE from 'three';
 
 const personalityProfiles = {
   default: {
@@ -62,11 +68,6 @@ const personalityProfiles = {
   // Add more personalities as needed
 };
 
-import { Gltf2, Armature, SkinMTX } from "./lib/ossos/ossos.ts";
-import SkinMTXMaterial from '../../ossos/examples/threejs/_lib/SkinMTXMaterial.js';
-import { UtilGltf2 } from '../../ossos/examples/threejs/_lib/UtilGltf2.js';
-
-import * as THREE from 'three';
 
 function App() {
 
@@ -91,7 +92,7 @@ async function setupCharacter() {
     // 4. Load the mesh using the GLTF data and the custom material
     const mesh = UtilGltf2.loadMesh(gltf, null, mat);
         // Add your mesh to the scene
-    App.add(mesh);
+    App.addMesh(mesh);
 }
 
 setupCharacter();
@@ -143,6 +144,55 @@ const synthRef = useRef(null);
 const sttJustFinishedRef = useRef(false);
 const playedIntroForPersonalityRef = useRef(null);
 
+  
+const mountRef = useRef(null); // Ref for the DOM element where the canvas will live
+const appRef = useRef(null);   // Ref to hold the Three.js Starter instance
+  
+ useEffect(() => {
+    // This effect runs only once when the component mounts
+    
+    // 1. Initialize the Three.js Starter class
+    const app = new Starter({
+      webgl2: true,
+      grid: true,
+      container: mountRef.current // Tell Starter where to append the canvas
+    });
+    appRef.current = app; // Store the instance in our ref
+    app.render(); // Start the render loop
+
+    // Helper function from the example
+    const armature_from_gltf = (gltf, defaultBoneLen = 0.07) => {
+        const arm = new Armature();
+        for (let j of gltf.getSkin().joints) {
+            arm.addBone(j.name, j.parentIndex, j.rotation, j.position, j.scale);
+        }
+        arm.bind(SkinMTX, defaultBoneLen);
+        return arm;
+    }
+
+     const setupCharacter = async () => {
+      try {
+        const gltf = await Gltf2.fetch('https://glsl.1ink.us/gltf/nabba.gltf');
+        
+        const arm = armature_from_gltf(gltf);
+        arm.bind(SkinMTX, 0.07);
+        
+        const mat = SkinMTXMaterial('cyan', arm.getSkinOffsets()[0]);
+        const mesh = UtilGltf2.loadMesh(gltf, null, mat);
+        
+        // Use the Starter instance from the ref to add the mesh
+        if (appRef.current) {
+          appRef.current.add(mesh);
+        }
+        
+      } catch (error) {
+        console.error("Failed to set up character:", error);
+        setStatusMessage("Error loading avatar.");
+      }
+    };
+    setupCharacter();
+
+   
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
   if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
   if (synthRef.current.speaking) { synthRef.current.cancel(); }
@@ -1033,6 +1083,10 @@ max={2.0}
 // //  //
 <div id={'wrap'}>
 <div id={'contain1'}>
+
+<div ref={mountRef} className="three-container" style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: -1 }} />
+
+  
 <canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
 {/* =================================================================== */}
 {/* NEW, CLEANED-UP UI PANEL - REPLACES ALL THE OVERLAPPING DIVS */}
