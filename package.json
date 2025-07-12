@@ -18,6 +18,7 @@
    "react-dom": "latest",
     "ossos": "../ossos",
     "gl-matrix": "latest"
+    "three": "latest"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "latest",
