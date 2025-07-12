@@ -785,15 +785,15 @@ async function loadModel() {
       setStatusMessage(prev => `${prev} Image Captioning Error: ${error.message}.`);
     }
 }
-  document.getElementById("startBtn5").addEventListener('click', function() {
+  
+document.getElementById("startBtn5").addEventListener('click', function() {
     const xhrPath = document.querySelector('#loadPath').innerHTML;
     const xhr = new XMLHttpRequest();
     xhr.open('GET', xhrPath, true);
     xhr.responseType = 'arraybuffer';
-    console.log('Requesting external script...');
-
-    // This function decodes the script content
+    console.log(`Requesting external script from: ${xhrPath}`);
     function decodeUTF32(uint8Array, isLittleEndian = true) {
+        // ... (decode function remains the same)
         const dataView = new DataView(uint8Array.buffer);
         let result = "";
         for (let i = 0; i < uint8Array.length; i += 4) {
@@ -807,46 +807,43 @@ async function loadModel() {
         }
         return result;
     }
-
     xhr.onload = function() {
-        console.log('Script content loaded from XHR.');
         if (xhr.status === 200) {
-            const utf32Data = xhr.response;
-            const jsCode = decodeUTF32(new Uint8Array(utf32Data), true);
-            const scr = document.createElement('script');
-            scr.text = jsCode;
+            console.log("Script content loaded. Decoding and modifying...");
+            let jsCode = decodeUTF32(new Uint8Array(xhr.response), true);
 
             // --- THE FIX IS HERE ---
-            // The `onload` function will only run AFTER the browser
-            // has executed the script content.
+            // We are manually making the 'libload' function global by
+            // prepending 'window.' to its definition.
+            if (jsCode.trim().startsWith('libload')) {
+                 jsCode = 'window.' + jsCode;
+                 console.log("Modified script to be global. It now starts with 'window.libload=...'");
+            }
+            const scr = document.createElement('script');
+            scr.text = jsCode;
             scr.onload = () => {
-                console.log('Script has been executed, libload should now be defined.');
-                
-                // Check if the function exists on the window object before calling it
+                console.log("SUCCESS: Script 'onload' event fired.");
                 if (typeof window.libload === 'function') {
-                    // It's safe to call libload() now!
+                    console.log("libload() is now available on the window object. Initializing module...");
                     const Module = window.libload();
-                    
-                    // Set up the runtime initialization callback
-                    Module.onRuntimeInitialized = function() {
-                        console.log('Module runtime initialized. Calling main...');
-                        Module.callMain();
-                    };
+                    if (Module && typeof Module.onRuntimeInitialized === 'function') {
+                        Module.onRuntimeInitialized = function() {
+                            console.log('Module runtime initialized. Calling main...');
+                            Module.callMain();
+                        };
+                    } else {
+                         console.log('Module loaded, but onRuntimeInitialized is not ready yet. It may be called automatically.');
+                    }
                 } else {
-                    console.error('Error: libload() was not found on the window object after the script loaded.');
+                    console.error('CRITICAL ERROR: libload() was not found on the window object.');
                 }
             };
-            
-            // It's also good practice to handle potential loading errors
             scr.onerror = () => {
-                console.error('The dynamically added script failed to load.');
+                console.error('ERROR: The dynamically added script failed to execute.');
             };
-
-            // Append the script to the body to trigger its execution
             document.body.appendChild(scr);
         }
     };
-    
     xhr.send();
 });
   
