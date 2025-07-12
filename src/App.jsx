@@ -785,7 +785,6 @@ async function loadModel() {
       setStatusMessage(prev => `${prev} Image Captioning Error: ${error.message}.`);
     }
 }
-  
 document.getElementById("startBtn5").addEventListener('click', function() {
     const xhrPath = document.querySelector('#loadPath').innerHTML;
     const xhr = new XMLHttpRequest();
@@ -797,66 +796,64 @@ document.getElementById("startBtn5").addEventListener('click', function() {
         const dataView = new DataView(uint8Array.buffer);
         let result = "";
         for (let i = 0; i < uint8Array.length; i += 4) {
-            let codePoint = dataView.getUint32(i, true);
+            const codePoint = dataView.getUint32(i, true);
             result += String.fromCodePoint(codePoint);
         }
         return result;
     }
 
+    xhr.onerror = function() {
+        console.error("XHR request failed. Check the network path and CORS policy.");
+    };
+
     xhr.onload = function() {
-        // Wrap all logic in a try...catch block to find hidden errors
         try {
             if (xhr.status === 200) {
                 console.log("Script content loaded. Decoding...");
-
-                if (!xhr.response) {
-                    console.error("XHR response was null. Aborting.");
-                    return;
-                }
-
                 const jsCode = decodeUTF32(new Uint8Array(xhr.response), true);
-                console.log("Decoding complete. Modifying script scope...");
+                console.log("Decoding complete. Executing in a controlled scope...");
 
-                const modifiedJsCode = ('window.' + jsCode.trim());
-                console.log("Scope modification complete.");
-
-                const scr = document.createElement('script');
-                scr.text = modifiedJsCode;
-
-                scr.onload = () => {
-                    console.log("SUCCESS: Script 'onload' event fired.");
-                    if (typeof window.libload === 'function') {
-                        console.log("libload() is available. Initializing module...");
-                        const Module = window.libload();
-                        if (Module && typeof Module.onRuntimeInitialized === 'function') {
-                            Module.onRuntimeInitialized = function() {
-                                console.log('Module runtime initialized. Calling main...');
-                                Module.callMain();
-                            };
-                        }
-                    } else {
-                        console.error('CRITICAL ERROR: libload() was not found on the window object.');
-                    }
-                };
+                // --- THE FINAL FIX ---
+                // We create a new function that contains the library's code.
+                // After the library code runs, it will have created a 'libload' variable
+                // within its scope. We then return that variable.
+                const runAndGetModule = new Function(`
+                    ${jsCode}
+                    return libload;
+                `);
                 
-                scr.onerror = (e) => {
-                    console.error('ERROR: The dynamically added script failed to execute.', e);
-                };
+                // Now, we execute the function and get the returned module.
+                const ModuleFactory = runAndGetModule();
 
-                document.body.appendChild(scr);
+                if (typeof ModuleFactory !== 'function') {
+                    throw new Error("The executed script did not return a function named 'libload'.");
+                }
+                
+                // The returned value is the 'libload' function itself.
+                console.log("SUCCESS: 'libload' has been captured. Initializing module...");
+                const Module = ModuleFactory(); // Call the factory to get the final module object.
 
+                if (Module && typeof Module.onRuntimeInitialized === 'function') {
+                    Module.onRuntimeInitialized = function() {
+                        console.log('Module runtime initialized. Calling main...');
+                        Module.callMain();
+                    };
+                } else {
+                     console.log('Module initialized directly. The onRuntimeInitialized callback might have already fired or is not needed.');
+                     if (Module && typeof Module.callMain === 'function') {
+                         Module.callMain();
+                     }
+                }
             } else {
                 console.error(`XHR request failed with status: ${xhr.status}`);
             }
         } catch (error) {
-            // This will now catch any error that occurs during the process
-            console.error("A critical error occurred inside the xhr.onload handler:", error);
+            console.error("A critical error occurred while executing the dynamic script:", error);
         }
     };
-    
+
     xhr.send();
 });
-  
 loadModel();
 
 setTimeout(function(){
