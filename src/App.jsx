@@ -926,6 +926,7 @@ max={2.0}
 <input type={'button'} id={'startBtn2'} style={{backgroundColor:'gold',position:'absolute',display:'block',left:'9%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'startBtnC'} style={{backgroundColor:'green',position:'absolute',display:'block',left:'5%',top:'12%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'startBtnB'} style={{backgroundColor:'green',position:'absolute',display:'none',left:'15%',top:'12%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
+<input type={'button'} id={'startBtnH'} style={{backgroundColor:'green',position:'absolute',display:'block',left:'7%',top:'32%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'startBtnPM'} style={{backgroundColor:'green',position:'absolute',display:'none',left:'25%',top:'12%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'downloadButton'} style={{backgroundColor:'grey',position:'absolute',display:'block',left:'15%',top:'22%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'startBtnI'} style={{backgroundColor:'white',position:'absolute',display:'block',left:'15%',top:'12%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
