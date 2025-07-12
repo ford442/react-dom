@@ -6,7 +6,7 @@
   "dev": "vite",
 "build": "vite build --mode production",
   "serve": "vite preview",
-  "preinstall": "cd node_modules/ossos && npm install && npm run build && cd ../.."
+  "postinstall": "cd node_modules/ossos && npm install && npm run build"
 },
   "dependencies": {
     "@huggingface/transformers": "3.6.0",
