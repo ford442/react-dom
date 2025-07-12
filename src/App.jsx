@@ -68,7 +68,31 @@ import * as THREE from 'three';
 
 function App() {
 
+async function setupCharacter() {
+    // 1. Fetch and parse your GLTF file
+  const gltf = await Gltf2.fetch('https://glsl.1ink.us/gltf/nabba.gltf');
+    //--------------------------------
+    // 2. Setup the Armature from the GLTF skin data
+    const arm = new Armature();
+    for (let j of gltf.getSkin().joints) {
+        // Add each bone to the armature with its properties
+        arm.addBone(j.name, j.parentIndex, j.rotation, j.position, j.scale);
+    }
+    //--------------------------------
+    // 3. Bind the armature with a skinning method
+    // SkinMTX uses standard matrix skinning. '0.07' is a default length for bones.
+    arm.bind(SkinMTX, 0.07);
+    // This material would come from the library's examples, using a custom shader
+    // that understands the armature's skinning data.
+    const mat = SkinMTXMaterial('cyan', arm.getSkinOffsets()[0]);
+    //--------------------------------
+    // 4. Load the mesh using the GLTF data and the custom material
+    const mesh = Gltf2Util.loadMesh(gltf, null, mat);
+        // Add your mesh to the scene
+    App.add(mesh);
+}
 
+setupCharacter();
   
 const [generator, setGenerator] = useState(null);
 const [statusMessage, setStatusMessage] = useState('Initializing...');
