@@ -120,44 +120,52 @@ const playedIntroForPersonalityRef = useRef(null);
   
 const mountRef = useRef(null); // Ref for the DOM element where the canvas will live
 const appRef = useRef(null);   // Ref to hold the Three.js Starter instance
-  
- useEffect(() => {
-    // 1. Initialize the Three.js Starter class
-    const app = new Starter({
-      webgl2: true,
-      grid: true,
-      container: mountRef.current // Tell Starter where to append the canvas
-    });
-    appRef.current = app; // Store the instance in our ref
-    app.render(); // Start the render loop
-    // Helper function from the example
-    const armature_from_gltf = (gltf, defaultBoneLen = 0.07) => {
-        const arm = new Armature();
-        for (let j of gltf.getSkin().joints) {
-            arm.addBone(j.name, j.parentIndex, j.rotation, j.position, j.scale);
-        }
-        arm.bind(SkinMTX, defaultBoneLen);
-        return arm;
-    }
+   useEffect(() => {
+        // This effect will run only once after the component mounts.
 
-const setupCharacter = async () => {
-      try {
-        const gltf = await Gltf2.fetch('https://glsl.1ink.us/gltf/nabba.gltf');
-        const arm = armature_from_gltf(gltf);
-        arm.bind(SkinMTX, 0.07);
-        const mat = SkinMTXMaterial('cyan', arm.getSkinOffsets()[0]);
-        const mesh = UtilGltf2.loadMesh(gltf, null, mat);
-        // Use the Starter instance from the ref to add the mesh
-        if (appRef.current) {
-          appRef.current.add(mesh);
-        }
-      } catch (error) {
-        console.error("Failed to set up character:", error);
-        setStatusMessage("Error loading avatar.");
-      }
-};
-   
-setupCharacter();
+        // 1. Initialize the Three.js Starter class
+        const app = new Starter({
+            webgl2: true,
+            grid: true,
+            container: mountRef.current // Tell Starter where to append the canvas
+        });
+        appRef.current = app;
+        app.render();
+
+        // 2. Define helper functions inside the effect
+        const armature_from_gltf = (gltf, defaultBoneLen = 0.07) => {
+            const arm = new Armature();
+            for (let j of gltf.getSkin().joints) {
+                arm.addBone(j.name, j.parentIndex, j.rotation, j.position, j.scale);
+            }
+            arm.bind(SkinMTX, defaultBoneLen);
+            return arm;
+        };
+
+        const setupCharacter = async () => {
+            try {
+                setStatusMessage("Loading avatar...");
+                const gltf = await Gltf2.fetch('https://glsl.1ink.us/gltf/nabba.gltf');
+                
+                const arm = armature_from_gltf(gltf);
+                
+                const mat = SkinMTXMaterial('cyan', arm.getSkinOffsets()[0]);
+                const mesh = UtilGltf2.loadMesh(gltf, null, mat);
+                
+                // Use the Starter instance from the ref to add the mesh
+                if (appRef.current) {
+                    appRef.current.add(mesh);
+                    setStatusMessage(prev => prev.includes("Loading") ? "Avatar loaded." : prev);
+                }
+            } catch (error) {
+                console.error("Failed to set up character:", error);
+                setStatusMessage("Error loading avatar.");
+            }
+        };
+
+        // 3. Call your setup functions
+        setupCharacter();
+
 
    
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
@@ -1052,7 +1060,6 @@ max={2.0}
 <div id={'contain1'}>
 
 <div ref={mountRef} className="three-container" style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: -1 }} />
-
   
 <canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
 {/* =================================================================== */}
