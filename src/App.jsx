@@ -70,7 +70,7 @@ function App() {
 
 async function setupCharacter() {
     // 1. Fetch and parse your GLTF file
-    const gltf = await Gltf2.fetch('../path/to/your/model.gltf');
+  const gltf = await Gltf2.fetch('../_res/models/nabba/nabba.gltf');
 
     //--------------------------------
     // 2. Setup the Armature from the GLTF skin data
