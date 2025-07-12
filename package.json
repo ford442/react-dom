@@ -2,11 +2,12 @@
   "name": "material-ui-vite",
   "version": "5.0.0",
   "private": true,
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "serve": "vite preview"
-  },
+"scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "serve": "vite preview",
+  "postinstall": "cd node_modules/ossos && npm install && npm run build"
+},
   "dependencies": {
     "@huggingface/transformers": "3.6.0",
     "onnxruntime-web": "latest",
