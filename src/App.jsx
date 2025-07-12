@@ -69,7 +69,10 @@ import { UtilGltf2 } from '../../ossos/examples/threejs/_lib/UtilGltf2.js';
 import * as THREE from 'three';
 
 function App() {
-
+  
+const mountRef = useRef(null); // Ref for the DOM element where the canvas will live
+const appRef = useRef(null);   // Ref to hold the Three.js Starter instance
+  
 useEffect(() => {
         // 1. Initialize the Three.js Starter class
         const app = new Starter({
