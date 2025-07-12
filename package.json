@@ -16,7 +16,6 @@
     "@mui/material": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "ossos": "github:ford442/ossos",
     "gl-matrix": "latest"
   },
   "devDependencies": {
