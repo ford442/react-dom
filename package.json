@@ -16,7 +16,7 @@
     "@mui/material": "latest",
     "react": "latest",
    "react-dom": "latest",
-  "ossos": "file:../ossos", // 👈 This is the crucial change
+  "ossos": "file:"../ossos"",
     "gl-matrix": "latest",
     "three": "latest"
   },
