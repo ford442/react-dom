@@ -785,48 +785,71 @@ async function loadModel() {
       setStatusMessage(prev => `${prev} Image Captioning Error: ${error.message}.`);
     }
 }
-  
-document.getElementById("startBtn5").addEventListener('click',function(){
-const xhrPath = document.querySelector('#loadPath').innerHTML;
-const xhr = new XMLHttpRequest();
-xhr.open('GET', xhrPath, true);
-xhr.responseType = 'arraybuffer';
-console.log('got react run');
-function decodeUTF32(uint8Array, isLittleEndian = true) {
-const dataView = new DataView(uint8Array.buffer);
-let result = "";
-for (let i = 0; i < uint8Array.length; i += 4) {
-let codePoint;
-if (isLittleEndian) {
-codePoint = dataView.getUint32(i, true);
-} else {
-codePoint = dataView.getUint32(i, false);
-}
-result += String.fromCodePoint(codePoint);
-}
-return result;
-}
-xhr.onload = function() {
-console.log('got load loader');
-if (xhr.status === 200) {
-const utf32Data = xhr.response;
-const jsCode = decodeUTF32(new Uint8Array(utf32Data), true);
-const scr = document.createElement('script');
-scr.type = 'module';
-scr.text = jsCode;
-document.body.appendChild(scr);
-var Module = {};
-setTimeout(function(){
-Module = libload();
-Module.onRuntimeInitialized = function(){
-console.log('call main loader');
-Module.callMain();
-};
-},2500);
-}
-};
-xhr.send();
+  document.getElementById("startBtn5").addEventListener('click', function() {
+    const xhrPath = document.querySelector('#loadPath').innerHTML;
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', xhrPath, true);
+    xhr.responseType = 'arraybuffer';
+    console.log('Requesting external script...');
+
+    // This function decodes the script content
+    function decodeUTF32(uint8Array, isLittleEndian = true) {
+        const dataView = new DataView(uint8Array.buffer);
+        let result = "";
+        for (let i = 0; i < uint8Array.length; i += 4) {
+            let codePoint;
+            if (isLittleEndian) {
+                codePoint = dataView.getUint32(i, true);
+            } else {
+                codePoint = dataView.getUint32(i, false);
+            }
+            result += String.fromCodePoint(codePoint);
+        }
+        return result;
+    }
+
+    xhr.onload = function() {
+        console.log('Script content loaded from XHR.');
+        if (xhr.status === 200) {
+            const utf32Data = xhr.response;
+            const jsCode = decodeUTF32(new Uint8Array(utf32Data), true);
+            const scr = document.createElement('script');
+            scr.text = jsCode;
+
+            // --- THE FIX IS HERE ---
+            // The `onload` function will only run AFTER the browser
+            // has executed the script content.
+            scr.onload = () => {
+                console.log('Script has been executed, libload should now be defined.');
+                
+                // Check if the function exists on the window object before calling it
+                if (typeof window.libload === 'function') {
+                    // It's safe to call libload() now!
+                    const Module = window.libload();
+                    
+                    // Set up the runtime initialization callback
+                    Module.onRuntimeInitialized = function() {
+                        console.log('Module runtime initialized. Calling main...');
+                        Module.callMain();
+                    };
+                } else {
+                    console.error('Error: libload() was not found on the window object after the script loaded.');
+                }
+            };
+            
+            // It's also good practice to handle potential loading errors
+            scr.onerror = () => {
+                console.error('The dynamically added script failed to load.');
+            };
+
+            // Append the script to the body to trigger its execution
+            document.body.appendChild(scr);
+        }
+    };
+    
+    xhr.send();
 });
+  
 loadModel();
 
 setTimeout(function(){
