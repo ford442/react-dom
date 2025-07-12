@@ -916,7 +916,7 @@ max={2.0}
 />
 
 
-<select id=sh1>
+<select id={'sh1'}>
 <option value="Random">Random</option>
 <option value="movewithouttracvveling">Move Without Travelling</option>
 <option value="Default">Default</option>
