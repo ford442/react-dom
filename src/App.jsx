@@ -914,6 +914,21 @@ step={0.05}
 min={0.05}
 max={2.0}
 />
+
+
+<select id=sh1>
+<option value="Random">Random</option>
+<option value="movewithouttracvveling">Move Without Travelling</option>
+<option value="Default">Default</option>
+<option value="crystalineballs">Crystal Palace</option>
+<option value="WOOL">Infinite Wool</option>
+<option value="hovercubes">Demoscene Cube</option>
+<option value="melter">Northern Melt</option>
+<option value="PSYfractal">Psychedelic Fractal</option>
+<option value="EYEgod">The Eye of God</option>
+</select>
+  
+  
 </Box></div>
 </div></ul></section>
 </nav>
