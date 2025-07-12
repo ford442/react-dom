@@ -89,7 +89,7 @@ async function setupCharacter() {
     const mat = SkinMTXMaterial('cyan', arm.getSkinOffsets()[0]);
     //--------------------------------
     // 4. Load the mesh using the GLTF data and the custom material
-    const mesh = Gltf2Util.loadMesh(gltf, null, mat);
+    const mesh = UtilGltf2.loadMesh(gltf, null, mat);
         // Add your mesh to the scene
     App.add(mesh);
 }
