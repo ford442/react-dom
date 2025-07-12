@@ -1026,6 +1026,7 @@ max={2.0}
 </div>
 <input type={'checkbox'} id={"di"} hidden></input>
 //   //   //   //
+<div id={'vsiz'} hidden>0</div>
 <div id={'srsiz'} hidden>1000</div>
 <div id={'ffire'} hidden>0</div>
 <div id={'iwid'} hidden>0</div>
