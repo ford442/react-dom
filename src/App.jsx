@@ -63,7 +63,7 @@ const personalityProfiles = {
 };
 
 import { Armature, SkinMTX } from 'ossos';
-import { Gltf2 } from 'path/to/your/gltf-parser'; // The project uses a custom GLTF parser
+import { Gltf2 } from 'ossos/src/parsers/gltf2/index';
 import * as THREE from 'three';
 
 function App() {
