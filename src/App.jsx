@@ -63,7 +63,7 @@ const personalityProfiles = {
 };
 
 import { Gltf2, Armature, SkinMTX } from "./lib/ossos/ossos.ts";
-import SkinMTXMaterial from './lib/SkinMTXMaterial.js';
+import SkinMTXMaterial from './_lib/SkinMTXMaterial.js';
 
 import * as THREE from 'three';
 
