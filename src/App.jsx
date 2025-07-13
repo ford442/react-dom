@@ -76,8 +76,7 @@ const appRef = useRef(null);   // Ref to hold the Three.js Starter instance
   
 useEffect(() => {
         // 1. Initialize the Three.js Starter class
-          const container = mountRef.current;
-
+        const container = mountRef.current;
         const app = new Starter({
                 container: container ,
                 width: container.clientHeight,
@@ -85,7 +84,8 @@ useEffect(() => {
                 webgl2: true,
                 grid: true,
             });
-            appRef.current = app;
+        appRef.current = app;
+        app.setSize(container.clientHeight,container.clientHeight);
         app.render();
         // 2. Define helper functions inside the effect
         const armature_from_gltf = (gltf, defaultBoneLen = 0.07) => {
@@ -96,6 +96,7 @@ useEffect(() => {
             arm.bind(SkinMTX, defaultBoneLen);
             return arm;
         };
+  
         const setupCharacter = async () => {
             try {
                 setStatusMessage("Loading avatar...");
@@ -113,6 +114,7 @@ useEffect(() => {
                 setStatusMessage("Error loading avatar.");
             }
         };
+  
         setupCharacter();
 }, []); // The empty dependency array [] is crucial. It makes the effect run only ONCE.
   
@@ -516,21 +518,17 @@ const handleGenerateText = useCallback(async () => {
         alert("Please enter some text or use speech-to-text to provide a prompt.");
         return;
     }
-
     setIsGenerating(true);
     setGeneratedOutput("Generating, please wait...");
     setStatusMessage("Generating image prompt with personality: " + (currentProfile?.displayName || 'Default'));
-
     try {
         const systemInstruction = currentProfile.systemPrompt ? `${currentProfile.systemPrompt}\n\nExpand the following idea into a detailed scene description for a text-to-image AI:` : "Expand the following idea into a detailed scene description for a text-to-image AI:";
         const fullPromptForLLM = `${systemInstruction}\n\n${textToProcess}`;
-
         console.log("Sending to LLM:", fullPromptForLLM);
         const outputs = await generator(fullPromptForLLM, {
             max_new_tokens: 128,
             min_new_tokens: 32,
         });
-
         if (outputs && outputs.length > 0 && outputs[0].generated_text) {
             const newLLMText = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
             setGeneratedOutput(newLLMText);
@@ -563,7 +561,6 @@ const handleSynthesizeSpeech = async () => {
 useEffect(() => {
 const profile = personalityProfiles[currentPersonalityKey] || personalityProfiles.default;
   setCurrentProfile(profile);
-
   if (profile.themeColors) {
     for (const [key, value] of Object.entries(profile.themeColors)) {
       document.documentElement.style.setProperty(key, value);
@@ -599,7 +596,6 @@ const profile = personalityProfiles[currentPersonalityKey] || personalityProfile
             ttsReady = true;
           }
         }
-
         if (ttsReady && ttsFunctionToCall) {
           await ttsFunctionToCall();
         } else {
