@@ -80,7 +80,7 @@ useEffect(() => {
 
         const app = new Starter({
                 container: container ,
-                width: container.clientWidth,
+                width: container.clientHeight,
                 height: container.clientHeight,
                 webgl2: true,
                 grid: true,
