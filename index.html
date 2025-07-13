@@ -41,6 +41,21 @@ scr.type = 'module';
 scr.text = jsCode;
 document.body.appendChild(scr);
 }
+  
 };
 xhr.send();
+  
+setTimeout(function(){
+document.getElementById('vsiz').innerHTML=parseInt(window.innerHeight,10);
+document.getElementById('startBtn5').click();
+},1500);
+
+setTimeout(function(){
+window.scrollTo({
+top: 0,
+left: 0,
+behavior: "smooth",
+});
+},1500);
+  
 </script>
