@@ -85,7 +85,6 @@ useEffect(() => {
                 grid: true,
             });
         appRef.current = app;
-        app.setSize(container.clientHeight,container.clientHeight);
         app.render();
         // 2. Define helper functions inside the effect
         const armature_from_gltf = (gltf, defaultBoneLen = 0.07) => {
@@ -96,7 +95,8 @@ useEffect(() => {
             arm.bind(SkinMTX, defaultBoneLen);
             return arm;
         };
-  
+          app.setSize(container.clientHeight,container.clientHeight);
+
         const setupCharacter = async () => {
             try {
                 setStatusMessage("Loading avatar...");
