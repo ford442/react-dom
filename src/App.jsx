@@ -76,8 +76,10 @@ const appRef = useRef(null);   // Ref to hold the Three.js Starter instance
   
 useEffect(() => {
         // 1. Initialize the Three.js Starter class
+          const container = mountRef.current;
+
         const app = new Starter({
-                container: container,
+                container: container ,
                 width: container.clientWidth,
                 height: container.clientHeight,
                 webgl2: true,
