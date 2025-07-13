@@ -46,9 +46,9 @@ document.body.appendChild(scr);
 xhr.send();
   
 setTimeout(function(){
-document.querySelector('floating-control-panel').style.position='absolute'
-document.querySelector('floating-control-panel').style.pointerEvents='auto'
-document.getElementById("getThree").addEventListener('click',function(){
+document.querySelector('#floating-control-panel').style.position='absolute'
+document.querySelector('#floating-control-panel').style.pointerEvents='auto'
+document.querySelector("#getThree").addEventListener('click',function(){
 document.querySelector('#mvi').id='ivi';
 document.querySelector('#scanvas').style.transform='ScaleY(-1.0)';
 document.querySelector('#scanvas').style.pointerEvents='none';
@@ -62,8 +62,8 @@ document.querySelector('#tti').style.opacity=0.0;
 document.querySelector('#tvi').id='mvi';
 document.querySelector('#startBtnC').click();
 });
-document.getElementById('vsiz').innerHTML=parseInt(window.innerHeight,10);
-document.getElementById('startBtn5').click();
+document.querySelector('#vsiz').innerHTML=parseInt(window.innerHeight,10);
+document.querySelector('#startBtn5').click();
 },2500);
 
 setTimeout(function(){
