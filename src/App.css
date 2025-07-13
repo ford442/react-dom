@@ -96,7 +96,7 @@ body {
 
 /* Main Floating Control Panel Style */
 .floating-control-panel {
-  zIndex: 3300;
+  z-index: 3300;
   position: absolute;
   bottom: 20px;
   left: 20px;
