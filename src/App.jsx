@@ -900,17 +900,6 @@ document.getElementById("startBtn5").addEventListener('click', function() {
 });
 loadModel();
 
-setTimeout(function(){
-document.getElementById('startBtn5').click();
-},1500);
-
-setTimeout(function(){
-window.scrollTo({
-top: 0,
-left: 0,
-behavior: "smooth",
-});
-},1500);
 }, []);
 
 return (
