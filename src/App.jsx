@@ -77,11 +77,13 @@ const appRef = useRef(null);   // Ref to hold the Three.js Starter instance
 useEffect(() => {
         // 1. Initialize the Three.js Starter class
         const app = new Starter({
-            webgl2: true,
-            grid: true,
-            container: mountRef.current // Tell Starter where to append the canvas
-        });
-        appRef.current = app;
+                container: container,
+                width: container.clientWidth,
+                height: container.clientHeight,
+                webgl2: true,
+                grid: true,
+            });
+            appRef.current = app;
         app.render();
         // 2. Define helper functions inside the effect
         const armature_from_gltf = (gltf, defaultBoneLen = 0.07) => {
@@ -830,6 +832,7 @@ async function loadModel() {
       setStatusMessage(prev => `${prev} Image Captioning Error: ${error.message}.`);
     }
 }
+  
 document.getElementById("startBtn5").addEventListener('click', function() {
     const xhrPath = document.querySelector('#loadPath').innerHTML;
     const xhr = new XMLHttpRequest();
