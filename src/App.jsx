@@ -964,6 +964,8 @@ max={2.0}
 <input type={'button'} id={'musicBtn'} style={{backgroundColor:'cyan',position:'absolute',display:'block',left:'3%',bottom:'5%',zIndex:3200,border:'6px solid green',borderRadius:'20%'}}></input>
 <input type={'button'} id={'startBtn5'} style={{backgroundColor:'yellow',position:'absolute',display:'block',left:'2%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'getThree'} style={{backgroundColor:'yellow',position:'absolute',display:'block',right:'2%',bottom:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
+<input type={'button'} id={'moveFwd'} style={{backgroundColor:'yellow',position:'absolute',display:'none',right:'12%',bottom:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
+<input type={'button'} id={'moveFwdb'} style={{backgroundColor:'yellow',position:'absolute',display:'none',right:'22%',bottom:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'startBtn2'} style={{backgroundColor:'gold',position:'absolute',display:'block',left:'9%',top:'9%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'startBtnC'} style={{backgroundColor:'green',position:'absolute',display:'block',left:'5%',top:'12%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
 <input type={'button'} id={'startBtnB'} style={{backgroundColor:'green',position:'absolute',display:'none',left:'15%',top:'12%',zIndex:3200,border:'4px solid #e7e7e7',borderRadius:'17%'}}></input>
