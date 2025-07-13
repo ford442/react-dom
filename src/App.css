@@ -37,10 +37,10 @@ body {
 
 .canvas-container {
   /* Make the container a full-screen layer */
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
-  width: 100vw;
+  width: 100vh;
   height: 100vh;
   z-index: 3300; /* Can be behind your UI panel */
 
@@ -96,7 +96,8 @@ body {
 
 /* Main Floating Control Panel Style */
 .floating-control-panel {
-  position: fixed;
+  zIndex: 3300;
+  position: absolute;
   bottom: 20px;
   left: 20px;
   right: 20px;
