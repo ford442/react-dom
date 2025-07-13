@@ -35,6 +35,27 @@ body {
   display: none;
 }
 
+.canvas-container {
+  /* Make the container a full-screen layer */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 3300; /* Can be behind your UI panel */
+
+  /* Use Flexbox to center its child */
+  display: flex;
+  justify-content: center; /* Horizontally center */
+  align-items: center;     /* Vertically center */
+}
+
+.centered-square {
+  /* Your square's specific styling */
+  background-color: rgba(0, 0, 0, 0.1); /* Optional: just to see it */
+  border: 1px solid #ccc;
+}
+
 #wrap {
   position: absolute;
   top: 0;
