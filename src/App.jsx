@@ -1035,7 +1035,8 @@ max={2.0}
 <div id={'contain1'}>
 <canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
 
-<div ref={mountRef} className="three-container" style={{ position: 'absolute', top: '0', width: '100vh', height: '100vh', zIndex: 3301, pointerEvents: 'auto' }} />
+<div ref={mountRef} className="three-container" style={{ position: 'absolute',display:'block', top: '0', width: '100vh', height: '100vh', zIndex: 3301, pointerEvents: 'auto' }} />
+</div>
 
 {/* =================================================================== */}
 {/* NEW, CLEANED-UP UI PANEL - REPLACES ALL THE OVERLAPPING DIVS */}
