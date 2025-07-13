@@ -97,7 +97,7 @@ useEffect(() => {
         };
           app.setSize(container.clientHeight,container.clientHeight);
 document.querySelector('canvas[data-engine="three.js r138"]').id='tvi';
-document.querySelector('fiv[class="three-container"]').id='tti';
+document.querySelector('div[class="three-container"]').id='tti';
 
         const setupCharacter = async () => {
             try {
