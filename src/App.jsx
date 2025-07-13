@@ -5,6 +5,12 @@ import Box from '@mui/material/Box'; // Assuming you still use these
 import Slider from '@mui/material/Slider'; // Assuming you still use these
 import './App.css';
 import { KokoroTTS } from 'kokoro-js';
+import { Gltf2, Armature, SkinMTX } from "./lib/ossos/ossos.ts";
+import SkinMTXMaterial from '../../ossos/examples/threejs/_lib/SkinMTXMaterial.js';
+import { UtilGltf2 } from '../../ossos/examples/threejs/_lib/UtilGltf2.js';
+import Starter from '../../ossos/examples/threejs/_lib/Starter.js'; 
+
+import * as THREE from 'three';
 
 const personalityProfiles = {
   default: {
@@ -62,11 +68,6 @@ const personalityProfiles = {
   // Add more personalities as needed
 };
 
-import { Gltf2, Armature, SkinMTX } from "./lib/ossos/ossos.ts";
-import SkinMTXMaterial from '../../ossos/examples/threejs/_lib/SkinMTXMaterial.js';
-import { UtilGltf2 } from '../../ossos/examples/threejs/_lib/UtilGltf2.js';
-
-import * as THREE from 'three';
 
 function App() {
   
