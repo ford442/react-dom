@@ -110,7 +110,6 @@ useEffect(() => {
         };
         setupCharacter();
 }, []); // The empty dependency array [] is crucial. It makes the effect run only ONCE.
-
   
 const [generator, setGenerator] = useState(null);
 const [statusMessage, setStatusMessage] = useState('Initializing...');
@@ -134,11 +133,7 @@ const [webSpeechApiDedicatedInput, setWebSpeechApiDedicatedInput] = useState("He
 const [currentPersonalityKey, setCurrentPersonalityKey] = useState('default');
 const [currentProfile, setCurrentProfile] = useState(personalityProfiles.default); // Store the whole profile
 
-// MODIFIED: Replaced 'bark' with 'kokoro'
 const [activeTtsEngine, setActiveTtsEngine] = useState('kokoro'); // Default: 'webSpeechAPI', 'speechT5', 'kokoro'
-
-// REMOVED: State for the Bark pipeline instance is no longer needed.
-// const [barkPipelineInstance, setBarkPipelineInstance] = useState(null);
 
 // NEW: State to hold the loaded Kokoro TTS model instance.
 const [kokoroTtsInstance, setKokoroTtsInstance] = useState(null);
@@ -906,8 +901,6 @@ document.getElementById("startBtn5").addEventListener('click', function() {
 loadModel();
 
 setTimeout(function(){
-document.getElementById('vsiz').innerHTML=parseInt(window.innerHeight,10);
-// document.getElementById('vsiz').innerHTML=parseInt(window.innerHeight,10)*3.0;
 document.getElementById('startBtn5').click();
 },1500);
 
