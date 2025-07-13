@@ -46,6 +46,8 @@ document.body.appendChild(scr);
 xhr.send();
   
 setTimeout(function(){
+document.querySelector('floating-control-panel').style.position='absolute'
+document.querySelector('floating-control-panel').style.pointerEvents='auto'
 document.getElementById("getThree").addEventListener('click',function(){
 document.querySelector('#mvi').id='ivi';
 document.querySelector('#scanvas').style.transform='ScaleY(-1.0)';
