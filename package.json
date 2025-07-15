@@ -17,7 +17,8 @@
     "react": "latest",
    "react-dom": "latest",
     "gl-matrix": "latest",
-    "three": "latest"
+    "three": "latest",
+    "sentiment": "latest"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "latest",
