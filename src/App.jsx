@@ -755,38 +755,33 @@ const handleImageCaptioning = useCallback(async () => {
             setGeneratedCaption(newCaption);
             setStatusMessage("Image caption generated successfully.");
 
-            // --- NEW AUTO-SPEAK LOGIC ---
-            // After setting the caption, automatically speak it.
             if (newCaption) {
-                console.log(`Auto-speaking caption with ${preferredTtsEngine}: "${newCaption}"`);
-                if (preferredTtsEngine === 'webSpeechAPI') {
+                if (preferredTtsEngine === 'kokoro') {
+                    // *** FIX: Added the default 'en_sam' voiceId ***
+                    await synthesizeWithKokoroAndPlay(newCaption, null, 'en_sam');
+                } else if (preferredTtsEngine === 'webSpeechAPI') {
                     speakWithWebAPI(newCaption);
                 } else if (preferredTtsEngine === 'speechT5') {
                     await synthesizeAndPlayText(newCaption);
-                } else if (preferredTtsEngine === 'kokoro') {
-                    await synthesizeWithKokoroAndPlay(newCaption);
                 }
             }
-            // --- END NEW LOGIC ---
 
         } else {
             setGeneratedCaption("No caption generated or unexpected output format.");
-            setStatusMessage("Caption generation failed to produce output.");
         }
     } catch (error) {
         console.error("Error during image captioning:", error);
         setGeneratedCaption(`Error: ${error.message}`);
-        setStatusMessage(`Image Captioning Error: ${error.message}`);
     } finally {
         setIsCaptioning(false);
     }
 }, [
     imageCaptioner,
     imageToCaption,
-    preferredTtsEngine, // Added dependency
-    speakWithWebAPI,      // Added dependency
-    synthesizeAndPlayText,  // Added dependency
-    synthesizeWithKokoroAndPlay // Added dependency
+    preferredTtsEngine,
+    speakWithWebAPI,
+    synthesizeAndPlayText,
+    synthesizeWithKokoroAndPlay
 ]);
 
 useEffect(() => {
