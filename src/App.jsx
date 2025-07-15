@@ -583,20 +583,23 @@ const handleGenerateText = useCallback(async () => {
             repetition_penalty: 1.2, 
             no_repeat_ngram_size: 3,
         });
-        if (outputs && outputs.length > 0 && outputs[0].generated_text) {
-            const newLLMText = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
-            setGeneratedOutput(newLLMText);
-          
-           // 1. Parse for commands
+      if (outputs && outputs.length > 0 && outputs[0].generated_text) {
+            // *** FIX STARTS HERE ***
+
+            // 1. Get the raw text from the model's output
+            const rawOutput = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
+
+            // 2. Parse for the animation command
             const commandMatch = rawOutput.match(/CMD:\s*\(\['([^']*)'\]/);
             const animationCommand = commandMatch ? commandMatch[1] : null;
 
-            // 2. Clean the dialogue for display
+            // 3. Clean the dialogue for display and state update
             const dialogue = rawOutput.split('CMD:')[0].trim();
-            setGeneratedOutput(dialogue);
+            setGeneratedOutput(dialogue); // Update the UI with just the text
 
-            // 3. Trigger the animation
+            // 4. Trigger the avatar animation if a command was found
             if (animationCommand) {
+                console.log(`Animation command received: ${animationCommand}`);
                 handleAvatarAnimation(animationCommand);
             }
           
