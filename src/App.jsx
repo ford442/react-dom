@@ -66,25 +66,9 @@ const personalityProfiles = {
       '--ai-bubble-bg': '#E8F5E9',
     }
   },
-    dialogueWriter: {
-        displayName: "Dialogue Writer",
-        systemPrompt: `You are a creative writer. Based on the user's topic, create two distinct characters who would have an interesting conversation.
-You MUST reply in the following format, and nothing else:
-SCENE: [A brief, one-sentence description of the setting]
-PERSONA_1_NAME: [Character 1 Name]
-PERSONA_1_DESC: [A short personality description for Character 1, starting with "You are..."]
-PERSONA_2_NAME: [Character 2 Name]
-PERSONA_2_DESC: [A short personality description for Character 2, starting with "You are..."]`,
-        avatar: "/avatars/default.png", // You can create a new avatar for this
-        introPhrase: "Give me a topic, and I'll create a scene for you.",
-        themeColors: {
-            '--ai-primary-color': '#6A1B9A', // A creative purple
-            '--ai-secondary-color': '#F3E5F5',
-            '--ai-text-color': '#333333',
-            '--ai-bubble-bg': '#E1BEE7',
-        }
-    },
+  // Add more personalities as needed
 };
+
 
 function App() {
   
@@ -119,46 +103,6 @@ app.setSize(container.clientHeight,container.clientHeight);
 document.querySelector('canvas[data-engine="three.js r138"]').id='tvi';
 document.querySelector('div[class="three-container"]').id='tti';
 
-const handleCreateCharacterScene = useCallback(async () => {
-    const topic = prompt.trim();
-    if (!generator || !topic) {
-        alert("Please select the 'Dialogue Writer' personality and enter a topic first.");
-        return;
-    }
-    setIsGenerating(true);
-    setStatusMessage("The writer is creating a scene...");
-    setConversationHistory([]); // Clear old conversations
-    const writerProfile = personalityProfiles.dialogueWriter;
-    const fullPromptForWriter = `${writerProfile.systemPrompt}\n\nTopic: "${topic}"`;
-    try {
-        const outputs = await generator(fullPromptForWriter, { max_new_tokens: 256 });
-        const writerOutput = outputs[0].generated_text.replace(fullPromptForWriter, "").trim();
-        // Parse the structured output
-        const scene = writerOutput.match(/SCENE: (.*)/)?.[1] || "A neutral setting.";
-        const persona1Name = writerOutput.match(/PERSONA_1_NAME: (.*)/)?.[1];
-        const persona1Desc = writerOutput.match(/PERSONA_1_DESC: (.*)/)?.[1];
-        const persona2Name = writerOutput.match(/PERSONA_2_NAME: (.*)/)?.[1];
-        const persona2Desc = writerOutput.match(/PERSONA_2_DESC: (.*)/)?.[1];
-        if (persona1Name && persona1Desc && persona2Name && persona2Desc) {
-            const personas = [
-                { name: persona1Name, voice: 'af_nova', personality: persona1Desc },
-                { name: persona2Name, voice: 'bm_fable', personality: persona2Desc }
-            ];
-            setGeneratedPersonas(personas);
-            setSceneDescription(scene);
-            setStatusMessage("Scene created! Ready to start the dialogue.");
-        } else {
-            setStatusMessage("The writer failed to create a valid scene. Please try again.");
-            console.error("Failed to parse writer output:", writerOutput);
-        }
-    } catch (error) {
-        console.error("Error creating scene:", error);
-        setStatusMessage("An error occurred during scene creation.");
-    } finally {
-        setIsGenerating(false);
-    }
-}, [generator, prompt]);
-  
 const setupCharacter = async () => {
             try {
                 setStatusMessage("Loading avatar...");
@@ -628,14 +572,19 @@ const handleGenerateText = useCallback(async () => {
     setConversationHistory([]);
     setIsGenerating(true);
 if (isSelfConversationMode) {
-    if (generatedPersonas.length < 2) {
-        alert("Please use the 'Dialogue Writer' to create a scene and characters first!");
-        setIsGenerating(false);
-        return;
-    }
+    setStatusMessage("Starting self-conversation...");
 
-    setStatusMessage("Starting dialogue...");
-    const [personaA, personaB] = generatedPersonas; // Use the dynamically created personas
+    // --- NEW: Define detailed personas with motivations ---
+    const personaA = {
+        name: "Alex",
+        voice: "af_nova",
+        personality: "You are Alex, a curious and enthusiastic science enthusiast. You are fascinated by new ideas and always try to find the positive and exciting angle."
+    };
+    const personaB = {
+        name: "Benjamin", // Using a different name to avoid confusion
+        voice: "bm_fable",
+        personality: "You are Benjamin, a witty and cautious skeptic. You often play devil's advocate, questioning the practicalities of new ideas with a touch of dry humor."
+    };
 
     const CONVERSATION_TURNS = 4; // Results in 4 total messages
     const generationArgs = {
