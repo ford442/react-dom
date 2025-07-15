@@ -177,7 +177,7 @@ const sttJustFinishedRef = useRef(false);
 const playedIntroForPersonalityRef = useRef(null);
 
 
-  /**
+/**
  * Animate the avatar based on a command.
  * @param {string} command - The animation command (e.g., 'wave').
  */
@@ -188,26 +188,27 @@ const handleAvatarAnimation = (command) => {
     }
 
     const arm = armRef.current;
-    
-    // Reset all bone rotations to their initial pose first
-    arm.updatePose(); // Resets to the base pose
 
+    // FIX: Replaced the incorrect 'updatePose()' with 'resetPose()'.
+    // This function resets all bones to their original positions and rotations
+    // before we apply the new animation command.
+    arm.resetPose();
+
+    // Now, apply the specific animation command
     if (command === 'wave') {
-        // NOTE: You will likely need to change 'upper_arm.R' to the actual name 
-        // of the right upper arm bone in your nabba.gltf model.
-        const waveBone = arm.getBone('upper_arm.R'); 
-        
+        // NOTE: You may still need to find the correct bone name for your model.
+        const waveBone = arm.getBone('upper_arm.R');
+
         if (waveBone) {
             console.log("Executing 'wave' animation.");
-            // Apply a rotation to make the arm wave.
-            // This rotates the bone on its Z-axis. You may need to adjust the axis and angle.
+            // Apply a rotation to the bone to make it wave.
             waveBone.rot.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
         } else {
-            console.warn("Could not find bone 'upper_arm.R' to perform wave animation.");
+            console.warn("Could not find bone named 'upper_arm.R' to perform wave animation.");
         }
     }
-    
-    // After changing any bone, you must update the armature's skinning matrices
+
+    // After changing any bone, this call correctly updates the model's visual skin.
     arm.updateSkin();
 };
 
