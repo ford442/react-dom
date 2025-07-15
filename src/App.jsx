@@ -626,7 +626,7 @@ if (isSelfConversationMode) {
     const personaA = { name: "Alex", voice: "af_alloy" };
     const personaB = { name: "Ben", voice: "am_adam" };
     const CONVERSATION_TURNS = 2; // This will result in 4 total messages
-    let historyForLLM = `This is a short dialogue between ${personaA.name} and ${personaB.name} about "${prompt}". Keep responses to one sentence.\n`;
+        let historyForLLM = `The following is a conversation between two friends, ${personaA.name} and ${personaB.name}, about the user's topic: "${prompt}".\n`;
   const generationArgs = {
             max_new_tokens: 64,
             temperature: 0.8,
@@ -634,25 +634,44 @@ if (isSelfConversationMode) {
             repetition_penalty: 1.2,
             no_repeat_ngram_size: 2, // Prevents repeating short phrases
         };
+      const generateAndClean = async (promptText) => {
+            const output = await generator(promptText, generationArgs);
+            return output[0].generated_text.replace(promptText, "").trim();
+        };
+
       try {
+            // --- Kickstart the conversation with Persona A ---
+            let currentPrompt = `${historyForLLM}\n${personaA.name}:`;
+            let nextText = await generateAndClean(currentPrompt);
+
             for (let i = 0; i < CONVERSATION_TURNS; i++) {
-                // Persona A's Turn
-                setStatusMessage(`${personaA.name} is thinking...`);
-                let promptA = `${historyForLLM}\n${personaA.name}:`;
-                let outputA_raw = await generator(promptA, generationArgs); // Use new args
-                let textA = outputA_raw[0].generated_text.replace(promptA, "").trim();
+                // --- Persona A's Turn ---
+                let textA = nextText;
                 setConversationHistory(prev => [...prev, { speaker: personaA.name, text: textA }]);
-                await speakForPersona(textA, personaA.voice);
+                const ttsPromiseA = speakForPersona(textA, personaA.voice);
                 historyForLLM += `${personaA.name}: ${textA}\n`;
 
-                // Persona B's Turn
+                // While A is speaking, generate B's response with a specific prompt
                 setStatusMessage(`${personaB.name} is thinking...`);
-                let promptB = `${historyForLLM}\n${personaB.name}:`;
-                let outputB_raw = await generator(promptB, generationArgs); // Use new args
-                let textB = outputB_raw[0].generated_text.replace(promptB, "").trim();
+                currentPrompt = `${historyForLLM}\n${personaB.name}:`; // Prompt for B is the full history so far
+                nextText = await generateAndClean(currentPrompt);
+                
+                await ttsPromiseA; // Wait for A to finish talking
+
+                // --- Persona B's Turn ---
+                let textB = nextText;
                 setConversationHistory(prev => [...prev, { speaker: personaB.name, text: textB }]);
-                await speakForPersona(textB, personaB.voice);
+                const ttsPromiseB = speakForPersona(textB, personaB.voice);
                 historyForLLM += `${personaB.name}: ${textB}\n`;
+
+                // While B is speaking, generate A's *next* response (if not the last turn)
+                if (i < CONVERSATION_TURNS - 1) {
+                    setStatusMessage(`${personaA.name} is thinking...`);
+                    currentPrompt = `${historyForLLM}\n${personaA.name}:`; // Prompt for A is the full history so far
+                    nextText = await generateAndClean(currentPrompt);
+                }
+                
+                await ttsPromiseB; // Wait for B to finish
             }
             setStatusMessage("Self-conversation finished.");
         } catch (error) {
@@ -664,7 +683,7 @@ if (isSelfConversationMode) {
         try {
             const systemInstruction = currentProfile.systemPrompt;
             const fullPromptForLLM = `${systemInstruction}\n\nUser: ${textToProcess}\nAI:`;
-            const outputs = await generator(fullPromptForLLM, { max_new_tokens: 128 });
+            const outputs = await generator(fullPromptForLLM, { max_new_tokens: 256 });
             const dialogue = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
             
             setGeneratedOutput(dialogue);
@@ -798,7 +817,7 @@ const handleImageCaptioning = useCallback(async () => {
 
     try {
         const imageSrc = typeof imageToCaption === 'string' ? imageToCaption : URL.createObjectURL(imageToCaption);
-        const captions = await imageCaptioner(imageSrc, { max_new_tokens: 128 });
+        const captions = await imageCaptioner(imageSrc, { max_new_tokens: 256 });
 
         if (captions && captions.length > 0 && captions[0].generated_text) {
             const newCaption = captions[0].generated_text;
