@@ -179,7 +179,8 @@ const playedIntroForPersonalityRef = useRef(null);
 
 /**
  * Animate the avatar based on a command.
- * @param {string} command - The animation command (e.g., 'wave').
+ * This version uses the correct bone names and a simplified approach.
+ * @param {string} command - The animation command (e.g., 'wave' or 'idle').
  */
 const handleAvatarAnimation = (command) => {
     if (!armRef.current) {
@@ -187,32 +188,35 @@ const handleAvatarAnimation = (command) => {
         return;
     }
 
-  
-   console.log("Inspecting the armature object:", armRef.current);
-    debugger; 
     const arm = armRef.current;
 
-    // FIX: Replaced the incorrect 'updatePose()' with 'resetPose()'.
-    // This function resets all bones to their original positions and rotations
-    // before we apply the new animation command.
-  //  arm.resetPose();
+    // --- The Core Logic ---
 
-    // Now, apply the specific animation command
-    if (command === 'wave') {
-        // NOTE: You may still need to find the correct bone name for your model.
-        const waveBone = arm.getBone('upper_arm.R');
+    // First, get the bone we want to animate using the CORRECT name from your log.
+    const waveBone = arm.getBone('UpperArm_R'); // Correct name is 'UpperArm_R'
 
-        if (waveBone) {
-            console.log("Executing 'wave' animation.");
-            // Apply a rotation to the bone to make it wave.
-            waveBone.rot.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
-        } else {
-            console.warn("Could not find bone named 'upper_arm.R' to perform wave animation.");
-        }
+    if (!waveBone) {
+        console.warn("Could not find bone named 'UpperArm_R'.");
+        return;
     }
 
-    // After changing any bone, this call correctly updates the model's visual skin.
-    arm.updateSkin();
+    // Now, apply the specific animation based on the command
+    if (command === 'wave') {
+        console.log("Executing 'wave' animation on UpperArm_R.");
+        
+        // Apply a rotation to the bone to make it wave.
+        // We set the rotation directly.
+        waveBone.rot.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+
+    } else if (command === 'idle') {
+        console.log("Executing 'idle' animation.");
+        
+        // To return to idle, we reset the bone's rotation to its default (identity).
+        waveBone.rot.identity();
+    }
+    
+    // That's it! The material should automatically use these new values.
+    // No need to call updateSkin() or resetPose().
 };
 
   
