@@ -177,11 +177,6 @@ const sttJustFinishedRef = useRef(false);
 const playedIntroForPersonalityRef = useRef(null);
 
 
-/**
- * Animate the avatar based on a command.
- * This version uses the correct method for accessing bones based on the console log.
- * @param {string} command - The animation command (e.g., 'wave' or 'idle').
- */
 const handleAvatarAnimation = (command) => {
     if (!armRef.current) {
         console.warn("Armature not available to animate.");
@@ -190,50 +185,44 @@ const handleAvatarAnimation = (command) => {
 
     const arm = armRef.current;
 
-    // --- The Correct Way to Get a Bone ---
     // 1. Get the index of the bone from the 'names' map.
     const boneIndex = arm.names.get('UpperArm_R');
 
-    // 2. Check if the index was found.
     if (boneIndex === undefined) {
-        console.warn("Could not find index for bone named 'UpperArm_R'.");
+        console.error("DEBUG: Could not find index for bone 'UpperArm_R'.");
         return;
     }
+    console.log(`DEBUG: Found index for 'UpperArm_R': ${boneIndex}`);
 
-    // 3. Use the index to get the actual bone object from the 'bones' array.
+    // 2. Try to get the bone object from the 'bones' array.
     const waveBone = arm.bones[boneIndex];
-    // --- End of Bone Access Logic ---
 
+    // 3. Log the result and PAUSE EXECUTION.
+    console.log("--- PLEASE EXPAND THE OBJECT BELOW IN THE CONSOLE ---");
+    console.log("Inspecting the 'waveBone' object:", waveBone);
+    debugger; // This will pause your browser's code execution.
 
+    // The rest of the code is commented out for this test.
+    /*
     if (!waveBone) {
-        // This check is just for safety, the main error was finding the bone.
-        console.warn("Bone object is undefined even with correct index.");
+        console.error("Cannot proceed, waveBone is undefined.");
         return;
     }
-
-    // Create a temporary THREE.Quaternion to perform the rotation math.
     const tempQuat = new THREE.Quaternion();
-
     if (command === 'wave') {
-        console.log("Executing 'wave' animation on UpperArm_R.");
         tempQuat.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
-
-        // Copy the results into the bone's 'rot' array.
         waveBone.rot[0] = tempQuat.x;
         waveBone.rot[1] = tempQuat.y;
         waveBone.rot[2] = tempQuat.z;
         waveBone.rot[3] = tempQuat.w;
-
     } else if (command === 'idle') {
-        console.log("Executing 'idle' animation.");
-        // Reset the bone's rotation to the default (0, 0, 0, 1).
         waveBone.rot[0] = 0;
         waveBone.rot[1] = 0;
         waveBone.rot[2] = 0;
         waveBone.rot[3] = 1;
     }
+    */
 };
-
   
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
   if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
