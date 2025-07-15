@@ -9,22 +9,14 @@ import { Gltf2, Armature, SkinMTX } from "./lib/ossos/ossos.ts";
 import SkinMTXMaterial from '../../ossos/examples/threejs/_lib/SkinMTXMaterial.js';
 import { UtilGltf2 } from '../../ossos/examples/threejs/_lib/UtilGltf2.js';
 import Starter from '../../ossos/examples/threejs/_lib/Starter.js'; 
+import Sentiment from 'sentiment'; // <-- ADD THIS IMPORT
 
 import * as THREE from 'three';
 
 const personalityProfiles = {
   default: {
     displayName: "Default Assistant",
-    systemPrompt: `You are a helpful and expressive AI assistant controlling a 3D avatar. 
-Respond to the user's query. After your response, you MUST include a command on a new line.
-The command format is: CMD: (['animation'])
-Available animations: 'wave', 'idle'.
-
-Example:
-User: Hello there!
-AI:
-Hello! It's great to see you today.
-CMD: (['wave'])`,
+    systemPrompt: "You are a helpful and expressive AI assistant having a friendly conversation.",
     avatar: "/avatars/default.png", 
     introVideo: null,
     introPhrase: "Hello! How can I assist you today?",
@@ -40,7 +32,7 @@ CMD: (['wave'])`,
     systemPrompt: "You are a helpful assistant that expands a user's idea into a detailed scene for a text-to-image generator.",
     avatar: "/avatars/default.png",
     introVideo: null,
-    introPhrase: "Ready to create a scene! What's the idea?",
+    introPhrase: "Hello! How can I assist you today?",
     themeColors: {
         '--ai-primary-color': '#4A90E2',
         '--ai-secondary-color': '#F5F5F5',
@@ -79,7 +71,9 @@ CMD: (['wave'])`,
 
 
 function App() {
-  
+
+const sentimentAnalyzer = useRef(new Sentiment());
+
 const mountRef = useRef(null); // Ref for the DOM element where the canvas will live
 const appRef = useRef(null);   // Ref to hold the Three.js Starter instance
   
@@ -543,13 +537,13 @@ const toggleListen = () => {
         }
     }
 };
-
-  const handleGenerateText = useCallback(async () => {
+  
+const handleGenerateText = useCallback(async () => {
     if (!generator) {
-        alert("The text generation model is not loaded yet. Please wait.");
+        alert("The text generation model is not loaded yet.");
         return;
     }
-    let textToProcess = prompt.trim();
+    const textToProcess = prompt.trim();
     if (!textToProcess) {
         alert("Please enter a prompt.");
         return;
@@ -562,26 +556,28 @@ const toggleListen = () => {
         const systemInstruction = currentProfile.systemPrompt;
         const fullPromptForLLM = `${systemInstruction}\n\nUser: ${textToProcess}\nAI:`;
 
-        const outputs = await generator(fullPromptForLLM, {
-            max_new_tokens: 128,
-            min_new_tokens: 32,
-        });
+        const outputs = await generator(fullPromptForLLM, { max_new_tokens: 128 });
 
         if (outputs && outputs.length > 0 && outputs[0].generated_text) {
-            const rawOutput = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
+            const dialogue = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
 
-            // 1. Parse the response for dialogue and animation command
-            const commandMatch = rawOutput.match(/CMD:\s*\(\['([^']*)'\]/);
-            const animationCommand = commandMatch ? commandMatch[1] : 'idle'; // Default to 'idle' if no command is found
-            const dialogue = rawOutput.split('CMD:')[0].trim();
-
-            // 2. Update the UI with the dialogue
+            // 1. Update the UI
             setGeneratedOutput(dialogue);
 
-            // 3. Animate the avatar
-            handleAvatarAnimation(animationCommand);
+            // 2. Animate based on sentiment of the response
+            if (dialogue && sentimentAnalyzer.current) {
+                const sentimentResult = sentimentAnalyzer.current.analyze(dialogue);
+                const score = sentimentResult.score;
 
-            // 4. Automatically speak the dialogue using the preferred engine
+                // Simple logic: positive score waves, otherwise idle.
+                if (score > 1) {
+                    handleAvatarAnimation('wave'); // 'wave' can represent happiness
+                } else {
+                    handleAvatarAnimation('idle');
+                }
+            }
+
+            // 3. Speak the dialogue
             if (dialogue) {
                 setStatusMessage("Speaking...");
                 if (preferredTtsEngine === 'webSpeechAPI') {
@@ -591,11 +587,9 @@ const toggleListen = () => {
                 } else if (preferredTtsEngine === 'kokoro') {
                     await synthesizeWithKokoroAndPlay(dialogue);
                 }
-            } else {
-                 setStatusMessage("Generation complete (no dialogue).");
             }
         } else {
-            setGeneratedOutput("No text was generated or output was unexpected.");
+            setGeneratedOutput("No text was generated.");
             setStatusMessage("Generation failed.");
         }
     } catch (error) {
