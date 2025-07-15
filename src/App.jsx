@@ -578,12 +578,12 @@ if (isSelfConversationMode) {
     const personaA = {
         name: "Alex",
         voice: "af_nova",
-        personality: "You are Alex, a curious and enthusiastic science enthusiast. You are fascinated by new ideas and always try to find the positive and exciting angle."
+        personality: "A curious and enthusiastic science enthusiast."
     };
     const personaB = {
         name: "Benjamin", // Using a different name to avoid confusion
         voice: "bm_fable",
-        personality: "You are Benjamin, a witty and cautious skeptic. You often play devil's advocate, questioning the practicalities of new ideas with a touch of dry humor."
+        personality: "A cautious and witty skeptic."
     };
 
     const CONVERSATION_TURNS = 4; // Results in 4 total messages
@@ -599,95 +599,52 @@ if (isSelfConversationMode) {
         const output = await generator(promptText, generationArgs);
         let rawText = output[0].generated_text.replace(promptText, "").trim();
         rawText = rawText.split('\n')[0];
-        const lastInstanceIndex = rawText.lastIndexOf(`${personaName}:`);
-        if (lastInstanceIndex !== -1) {
-            rawText = rawText.substring(lastInstanceIndex + personaName.length + 1).trim();
-        }
         return rawText.replace(/^"|"$/g, '');
     };
 
     try {
-        let lastResponse = "";
+        // --- NEW: The "Transcript" Prompt ---
+        // We set the scene and characters ONLY ONCE at the beginning.
+        let historyForLLM = `The following is a short, witty dialogue between two characters:
+- ${personaA.name}: ${personaA.personality}
+- ${personaB.name}: ${personaB.personality}
 
-        // --- Kickstart the conversation with Persona A ---
-        let kickoffPrompt = `This is a scene from a TV show.
-Characters:
-- ${personaA.personality}
-- ${personaB.personality}
-The topic of discussion is "${prompt}".
-It's your turn to act as ${personaA.name}. Write their opening line.
-${personaA.name}:`;
-        
-        let textA = await generateAndClean(kickoffPrompt, personaA.name);
-        lastResponse = textA;
-        
+They are discussing the topic: "${prompt}".
+
+The scene begins with ${personaA.name} speaking.
+`;
+
+        // The overlapping execution loop remains, but the prompt construction is much simpler.
         for (let i = 0; i < CONVERSATION_TURNS; i++) {
             // --- Persona A's Turn ---
+            setStatusMessage(`${personaA.name} is thinking...`);
+            let promptA = `${historyForLLM}${personaA.name}:`; // Prompt is just the history + the speaker's name
+            let textA = await generateAndClean(promptA, personaA.name);
+            
+            // Add the new line to the history for the *next* turn
+            historyForLLM += `${personaA.name}: ${textA}\n`;
             setConversationHistory(prev => [...prev, { speaker: personaA.name, text: textA }]);
             const ttsPromiseA = speakForPersona(textA, personaA.voice);
 
-            // While A is speaking, generate B's response
-            let promptB = `This is a scene from a TV show.
-Characters:
-- ${personaA.personality}
-- ${personaB.personality}
-The last line was spoken by ${personaA.name}: "${lastResponse}"
-Now, it's your turn to act as ${personaB.name}. Write their reply in character.
-${personaB.name}:`;
-            let textB = await generateAndClean(promptB, personaB.name);
-            lastResponse = textB;
-            await ttsPromiseA;
             // --- Persona B's Turn ---
+            setStatusMessage(`${personaB.name} is thinking...`);
+            let promptB = `${historyForLLM}${personaB.name}:`; // Prompt is the UPDATED history + speaker's name
+            let textB = await generateAndClean(promptB, personaB.name);
+
+            await ttsPromiseA; // Wait for A to finish talking
+            
+            // Add the new line to the history for the *next* turn
+            historyForLLM += `${personaB.name}: ${textB}\n`;
             setConversationHistory(prev => [...prev, { speaker: personaB.name, text: textB }]);
             const ttsPromiseB = speakForPersona(textB, personaB.voice);
-            // While B is speaking, generate A's next response
-            if (i < CONVERSATION_TURNS - 1) {
-                let promptA_next = `This is a scene from a TV show.
-Characters:
-- ${personaA.personality}
-- ${personaB.personality}
-The last line was spoken by ${personaB.name}: "${lastResponse}"
-Now, it's your turn to act as ${personaA.name}. Write their reply in character.
-${personaA.name}:`;
-                textA = await generateAndClean(promptA_next, personaA.name);
-                lastResponse = textA;
-            }
-            
-            await ttsPromiseB;
+
+            await ttsPromiseB; // Wait for B to finish before the next loop
         }
         setStatusMessage("Self-conversation finished.");
     } catch (error) {
         console.error("Error during self-conversation:", error);
         setStatusMessage(`Error: ${error.message}`);
     }
-} else { // --- NORMAL MODE LOGIC ---
-        setStatusMessage("AI is thinking...");
-        try {
-            const systemInstruction = currentProfile.systemPrompt;
-            const fullPromptForLLM = `${systemInstruction}\n\nUser: ${textToProcess}\nAI:`;
-            const outputs = await generator(fullPromptForLLM, { max_new_tokens: 256 });
-            const dialogue = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
-            setGeneratedOutput(dialogue);
-            if (dialogue && sentimentAnalyzer.current) {
-                const sentimentResult = sentimentAnalyzer.current.analyze(dialogue);
-                if (sentimentResult.score > 1) handleAvatarAnimation('wave');
-                else handleAvatarAnimation('idle');
-            }
-            if (dialogue) {
-                // *** THIS IS THE FIX ***
-                // We now pass a default voiceId for the normal mode.
-                if (preferredTtsEngine === 'kokoro') {
-                    await synthesizeWithKokoroAndPlay(dialogue, currentPersonalityKey, 'en_sam');
-                } else if (preferredTtsEngine === 'webSpeechAPI') {
-                    speakWithWebAPI(dialogue);
-                } else if (preferredTtsEngine === 'speechT5') {
-                    await synthesizeAndPlayText(dialogue);
-                }
-            }
-        } catch (error) {
-            console.error("Error during text generation:", error);
-            setGeneratedOutput(`Error: ${error.message}`);
-        }
     }
 setIsGenerating(false);
 }, [
