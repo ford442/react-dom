@@ -71,7 +71,10 @@ const personalityProfiles = {
 
 
 function App() {
-
+  
+const [isSelfConversationMode, setIsSelfConversationMode] = useState(false);
+const [conversationHistory, setConversationHistory] = useState([]);
+  
 const sentimentAnalyzer = useRef(new Sentiment());
 
 const mountRef = useRef(null); // Ref for the DOM element where the canvas will live
@@ -444,10 +447,10 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
     if (audioCtx.state !== 'running') { /* TODO: handle error */ setIsSpeaking(false); return false; }
 
     setIsSpeaking(true);
-    setStatusMessage(`Synthesizing with Kokoro: "${text.substring(0, 30)}..."`);
+    setStatusMessage(`Synthesizing with Kokoro (${voiceId}): "${text.substring(0, 20)}..."`);
 
     try {
-        const output = await kokoroTtsInstance.generate(text.trim(),{voice: "af_heart"});
+        const output = await kokoroTtsInstance.generate(text.trim(), { voice: voiceId });
 
         // Store the result of generate()
         const kokoroAudioOutput = output; // Assuming 'output' is the variable holding the result of generate()
@@ -560,7 +563,7 @@ const toggleListen = () => {
   
 const handleGenerateText = useCallback(async () => {
     if (!generator) {
-        alert("The text generation model is not loaded yet.");
+        alert("The text generation model is not loaded yet. Please wait.");
         return;
     }
     const textToProcess = prompt.trim();
@@ -568,66 +571,83 @@ const handleGenerateText = useCallback(async () => {
         alert("Please enter a prompt.");
         return;
     }
+
+    // Clear previous outputs
+    setGeneratedOutput('');
+    setConversationHistory([]);
     setIsGenerating(true);
-    setGeneratedOutput("Generating...");
-    setStatusMessage("AI is thinking...");
 
-    try {
-        const systemInstruction = currentProfile.systemPrompt;
-        const fullPromptForLLM = `${systemInstruction}\n\nUser: ${textToProcess}\nAI:`;
+    // --- SELF-CONVERSATION MODE LOGIC ---
+    if (isSelfConversationMode) {
+        setStatusMessage("Starting self-conversation...");
 
-        const outputs = await generator(fullPromptForLLM, { max_new_tokens: 128 });
+        const personaA = { name: "Alex", voice: "en_sam" };
+        const personaB = { name: "Ben", voice: "en_david" };
+        const CONVERSATION_TURNS = 2; // Each turn includes A and B, so this makes 4 total messages
+        let currentDialogue = `The topic is: "${textToProcess}".`;
+        let historyForLLM = `This is a dialogue between two friends, ${personaA.name} and ${personaB.name}.\n\n`;
 
-        if (outputs && outputs.length > 0 && outputs[0].generated_text) {
+        try {
+            for (let i = 0; i < CONVERSATION_TURNS; i++) {
+                // --- Persona A's Turn ---
+                setStatusMessage(`Turn ${i + 1}: ${personaA.name} is thinking...`);
+                let promptA = `${historyForLLM}${currentDialogue}\n\n${personaA.name}:`;
+                let outputA_raw = await generator(promptA, { max_new_tokens: 64, no_repeat_ngram_size: 2 });
+                let textA = outputA_raw[0].generated_text.replace(promptA, "").trim();
+
+                setConversationHistory(prev => [...prev, { speaker: personaA.name, text: textA }]);
+                await synthesizeWithKokoroAndPlay(textA, null, personaA.voice);
+                historyForLLM += `${currentDialogue}\n${personaA.name}: ${textA}\n`;
+                currentDialogue = `${personaA.name} just said: "${textA}".`;
+
+                // --- Persona B's Turn ---
+                setStatusMessage(`Turn ${i + 1}: ${personaB.name} is thinking...`);
+                let promptB = `${historyForLLM}\n${personaB.name}:`;
+                let outputB_raw = await generator(promptB, { max_new_tokens: 64, no_repeat_ngram_size: 2 });
+                let textB = outputB_raw[0].generated_text.replace(promptB, "").trim();
+
+                setConversationHistory(prev => [...prev, { speaker: personaB.name, text: textB }]);
+                await synthesizeWithKokoroAndPlay(textB, null, personaB.voice);
+                historyForLLM += `${personaB.name}: ${textB}\n`;
+                currentDialogue = `${personaB.name} just said: "${textB}".`;
+            }
+            setStatusMessage("Self-conversation finished.");
+        } catch (error) {
+            console.error("Error during self-conversation:", error);
+            setStatusMessage(`Error: ${error.message}`);
+        }
+
+    // --- NORMAL MODE LOGIC ---
+    } else {
+        setStatusMessage("AI is thinking...");
+        // This is the single-response logic we had before
+        try {
+            const systemInstruction = currentProfile.systemPrompt;
+            const fullPromptForLLM = `${systemInstruction}\n\nUser: ${textToProcess}\nAI:`;
+            const outputs = await generator(fullPromptForLLM, { max_new_tokens: 128 });
             const dialogue = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
-
-            // 1. Update the UI
             setGeneratedOutput(dialogue);
-
-            // 2. Animate based on sentiment of the response
+            // ... (sentiment analysis and speaking logic remains the same here) ...
             if (dialogue && sentimentAnalyzer.current) {
                 const sentimentResult = sentimentAnalyzer.current.analyze(dialogue);
-                const score = sentimentResult.score;
-
-                // Simple logic: positive score waves, otherwise idle.
-                if (score > 1) {
-                    handleAvatarAnimation('wave'); // 'wave' can represent happiness
-                } else {
-                    handleAvatarAnimation('idle');
-                }
+                if (sentimentResult.score > 1) handleAvatarAnimation('wave');
+                else handleAvatarAnimation('idle');
             }
-
-            // 3. Speak the dialogue
             if (dialogue) {
-                setStatusMessage("Speaking...");
-                if (preferredTtsEngine === 'webSpeechAPI') {
-                    speakWithWebAPI(dialogue);
-                } else if (preferredTtsEngine === 'speechT5') {
-                    await synthesizeAndPlayText(dialogue);
-                } else if (preferredTtsEngine === 'kokoro') {
-                    await synthesizeWithKokoroAndPlay(dialogue);
-                }
+                 await synthesizeWithKokoroAndPlay(dialogue, currentPersonalityKey);
             }
-        } else {
-            setGeneratedOutput("No text was generated.");
-            setStatusMessage("Generation failed.");
+
+        } catch (error) {
+            console.error("Error during text generation:", error);
+            setGeneratedOutput(`Error: ${error.message}`);
         }
-    } catch (error) {
-        console.error("Error during text generation:", error);
-        setGeneratedOutput(`Error: ${error.message}`);
-        setStatusMessage("An error occurred.");
-    } finally {
-        setIsGenerating(false);
     }
+
+    setIsGenerating(false);
 }, [
-    generator,
-    prompt,
-    currentProfile,
-    handleAvatarAnimation,
-    preferredTtsEngine,
-    speakWithWebAPI,
-    synthesizeAndPlayText,
-    synthesizeWithKokoroAndPlay
+    // You'll need to add the new state variables to this dependency array
+    generator, prompt, currentProfile, isSelfConversationMode, preferredTtsEngine, 
+    handleAvatarAnimation, synthesizeWithKokoroAndPlay, speakWithWebAPI
 ]);
 
 const handleWebSpeechSpeakButton = () => {
@@ -1188,6 +1208,17 @@ max={2.0}
                         ))}
                     </select>
                 </div>
+              <div className="input-group">
+    <label htmlFor="self-convo-checkbox" className="radio-group"> {/* Using radio-group style for alignment */}
+        <input
+            id="self-convo-checkbox"
+            type="checkbox"
+            checked={isSelfConversationMode}
+            onChange={(e) => setIsSelfConversationMode(e.target.checked)}
+        />
+        Self-Conversation Mode
+    </label>
+</div>
                 <div className="input-group">
                     <label>Auto-Speak Engine (for intros):</label>
                     <div className="radio-group">
@@ -1254,12 +1285,20 @@ max={2.0}
 
     {sttError && <p className="stt-error">{sttError}</p>}
 
-    <div className="input-group">
-        <label>AI Response:</label> {/* Changed label */}
-        <div className='generated-output-display'>{generatedOutput}</div>
+<div className="input-group">
+    <label>AI Response:</label>
+    <div className='generated-output-display'>
+        {isSelfConversationMode ? (
+            // In self-conversation mode, render the history
+            conversationHistory.map((msg, index) => (
+                <p key={index}><strong>{msg.speaker}:</strong> {msg.text}</p>
+            ))
+        ) : (
+            // In normal mode, show the single output
+            generatedOutput
+        )}
     </div>
 </div>
-        </div>
 
         {/* Column 2: Other Tools */}
         <div className="panel-column">
