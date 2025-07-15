@@ -179,7 +179,7 @@ const playedIntroForPersonalityRef = useRef(null);
 
 /**
  * Animate the avatar based on a command.
- * This final version correctly manipulates the bone's rotation data.
+ * This version uses the correct method for accessing bones based on the console log.
  * @param {string} command - The animation command (e.g., 'wave' or 'idle').
  */
 const handleAvatarAnimation = (command) => {
@@ -190,25 +190,35 @@ const handleAvatarAnimation = (command) => {
 
     const arm = armRef.current;
 
-    // Get the bone we want to animate.
-    const waveBone = arm.getBone('UpperArm_R');
+    // --- The Correct Way to Get a Bone ---
+    // 1. Get the index of the bone from the 'names' map.
+    const boneIndex = arm.names.get('UpperArm_R');
 
-    if (!waveBone) {
-        console.warn("Could not find bone named 'UpperArm_R'.");
+    // 2. Check if the index was found.
+    if (boneIndex === undefined) {
+        console.warn("Could not find index for bone named 'UpperArm_R'.");
         return;
     }
 
-    // Create a temporary THREE.Quaternion object to perform the rotation calculation.
+    // 3. Use the index to get the actual bone object from the 'bones' array.
+    const waveBone = arm.bones[boneIndex];
+    // --- End of Bone Access Logic ---
+
+
+    if (!waveBone) {
+        // This check is just for safety, the main error was finding the bone.
+        console.warn("Bone object is undefined even with correct index.");
+        return;
+    }
+
+    // Create a temporary THREE.Quaternion to perform the rotation math.
     const tempQuat = new THREE.Quaternion();
 
-    // Now, apply the specific animation based on the command.
     if (command === 'wave') {
         console.log("Executing 'wave' animation on UpperArm_R.");
-
-        // 1. Calculate the desired rotation on our temporary quaternion.
         tempQuat.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
 
-        // 2. Copy the resulting x, y, z, w values into the bone's 'rot' array.
+        // Copy the results into the bone's 'rot' array.
         waveBone.rot[0] = tempQuat.x;
         waveBone.rot[1] = tempQuat.y;
         waveBone.rot[2] = tempQuat.z;
@@ -216,8 +226,7 @@ const handleAvatarAnimation = (command) => {
 
     } else if (command === 'idle') {
         console.log("Executing 'idle' animation.");
-
-        // To return to idle, we set the bone's rotation to the identity quaternion (0, 0, 0, 1).
+        // Reset the bone's rotation to the default (0, 0, 0, 1).
         waveBone.rot[0] = 0;
         waveBone.rot[1] = 0;
         waveBone.rot[2] = 0;
