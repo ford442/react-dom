@@ -158,8 +158,14 @@ const [imageCaptioner, setImageCaptioner] = useState(null);
 const [imageToCaption, setImageToCaption] = useState(null); // Will store URL or File object
 const [generatedCaption, setGeneratedCaption] = useState('');
 const [isCaptioning, setIsCaptioning] = useState(false);
+  
 const armRef = useRef(null);
-
+const animationState = useRef({
+    action: 'idle', // The current animation action (e.g., 'wave')
+    startTime: 0,   // When the animation started
+    duration: 1000, // Duration of the animation in milliseconds (1 second)
+});
+const clock = useRef(new THREE.Clock()); // Three.js clock for timing
 const [isListeningForWakeWord, setIsListeningForWakeWord] = useState(false);
 const WAKE_WORD = "hey ai";
 
@@ -170,56 +176,70 @@ const synthRef = useRef(null);
 const sttJustFinishedRef = useRef(false);
 const playedIntroForPersonalityRef = useRef(null);
 
+
+  useEffect(() => {
+    // The main animation loop function
+    const animate = () => {
+        // Schedule the next frame
+        requestAnimationFrame(animate);
+
+        // Get the elapsed time since the animation started
+        const elapsedTime = clock.current.getElapsedTime() * 1000;
+        const animProgress = (elapsedTime - animationState.current.startTime) / animationState.current.duration;
+
+        const arm = armRef.current;
+        if (arm && animationState.current.action === 'wave') {
+            const waveBone = arm.bones[arm.names.get('UpperArm_R')];
+            if (waveBone && waveBone.local) {
+                // Use a "ping-pong" effect for the wave
+                // Math.sin creates a smooth back-and-forth motion from 0 -> 1 -> 0
+                const waveAngle = (Math.PI / 2) * Math.sin(animProgress * Math.PI);
+
+                // Apply the calculated angle
+                const tempQuat = new THREE.Quaternion();
+                tempQuat.setFromAxisAngle(new THREE.Vector3(0, 0, 1), waveAngle);
+                waveBone.local.rot[0] = tempQuat.x;
+                waveBone.local.rot[1] = tempQuat.y;
+                waveBone.local.rot[2] = tempQuat.z;
+                waveBone.local.rot[3] = tempQuat.w;
+
+                // When the animation is done, reset to idle
+                if (animProgress >= 1) {
+                    animationState.current.action = 'idle';
+                    waveBone.local.rot[0] = 0;
+                    waveBone.local.rot[1] = 0;
+                    waveBone.local.rot[2] = 0;
+                    waveBone.local.rot[3] = 1;
+                }
+            }
+        }
+        
+        // Render the scene
+        if (appRef.current) {
+            appRef.current.render();
+        }
+    };
+
+    // Start the animation loop
+    animate();
+}, []); // The empty array ensures this runs only once
+  
 /**
  * Animate the avatar based on a command.
  * This final version uses the correct object path (bone.local.rot) to set the animation.
  * @param {string} command - The animation command (e.g., 'wave' or 'idle').
  */
 const handleAvatarAnimation = (command) => {
-    if (!armRef.current) {
-        console.warn("Armature not available to animate.");
-        return;
-    }
+    if (!armRef.current) return;
 
-    const arm = armRef.current;
-
-    // 1. Get the index of the bone from the 'names' map.
-    const boneIndex = arm.names.get('UpperArm_R');
-
-    if (boneIndex === undefined) {
-        console.warn("Could not find index for bone named 'UpperArm_R'.");
-        return;
-    }
-
-    // 2. Use the index to get the bone object from the 'bones' array.
-    const waveBone = arm.bones[boneIndex];
-
-    if (!waveBone || !waveBone.local) {
-        console.error("Bone object or its 'local' property is undefined. Cannot animate.");
-        return;
-    }
-
-    // 3. Create a temporary THREE.Quaternion to do the math.
-    const tempQuat = new THREE.Quaternion();
-
-    // 4. Apply the animation by modifying the 'rot' array inside the 'local' property.
+    // If a new command comes in, start its animation timer
     if (command === 'wave') {
-        console.log("Executing 'wave' animation on UpperArm_R.");
-        tempQuat.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
-
-        // This is the key: Accessing '.local.rot'
-        waveBone.local.rot[0] = tempQuat.x;
-        waveBone.local.rot[1] = tempQuat.y;
-        waveBone.local.rot[2] = tempQuat.z;
-        waveBone.local.rot[3] = tempQuat.w;
-
-    } else if (command === 'idle') {
-        console.log("Executing 'idle' animation.");
-        // Reset the rotation to its default state (0, 0, 0, 1).
-        waveBone.local.rot[0] = 0;
-        waveBone.local.rot[1] = 0;
-        waveBone.local.rot[2] = 0;
-        waveBone.local.rot[3] = 1;
+        console.log("Triggering 'wave' animation.");
+        animationState.current.action = 'wave';
+        animationState.current.startTime = clock.current.getElapsedTime() * 1000;
+    } else {
+        // For 'idle', we simply set the action. The loop will handle resting position.
+        animationState.current.action = 'idle';
     }
 };
   
