@@ -179,7 +179,7 @@ const playedIntroForPersonalityRef = useRef(null);
 
 /**
  * Animate the avatar based on a command.
- * This version uses the correct bone names and a simplified approach.
+ * This final version correctly manipulates the bone's rotation data.
  * @param {string} command - The animation command (e.g., 'wave' or 'idle').
  */
 const handleAvatarAnimation = (command) => {
@@ -190,33 +190,39 @@ const handleAvatarAnimation = (command) => {
 
     const arm = armRef.current;
 
-    // --- The Core Logic ---
-
-    // First, get the bone we want to animate using the CORRECT name from your log.
-    const waveBone = arm.getBone('UpperArm_R'); // Correct name is 'UpperArm_R'
+    // Get the bone we want to animate.
+    const waveBone = arm.getBone('UpperArm_R');
 
     if (!waveBone) {
         console.warn("Could not find bone named 'UpperArm_R'.");
         return;
     }
 
-    // Now, apply the specific animation based on the command
+    // Create a temporary THREE.Quaternion object to perform the rotation calculation.
+    const tempQuat = new THREE.Quaternion();
+
+    // Now, apply the specific animation based on the command.
     if (command === 'wave') {
         console.log("Executing 'wave' animation on UpperArm_R.");
-        
-        // Apply a rotation to the bone to make it wave.
-        // We set the rotation directly.
-        waveBone.rot.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+
+        // 1. Calculate the desired rotation on our temporary quaternion.
+        tempQuat.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+
+        // 2. Copy the resulting x, y, z, w values into the bone's 'rot' array.
+        waveBone.rot[0] = tempQuat.x;
+        waveBone.rot[1] = tempQuat.y;
+        waveBone.rot[2] = tempQuat.z;
+        waveBone.rot[3] = tempQuat.w;
 
     } else if (command === 'idle') {
         console.log("Executing 'idle' animation.");
-        
-        // To return to idle, we reset the bone's rotation to its default (identity).
-        waveBone.rot.identity();
+
+        // To return to idle, we set the bone's rotation to the identity quaternion (0, 0, 0, 1).
+        waveBone.rot[0] = 0;
+        waveBone.rot[1] = 0;
+        waveBone.rot[2] = 0;
+        waveBone.rot[3] = 1;
     }
-    
-    // That's it! The material should automatically use these new values.
-    // No need to call updateSkin() or resetPose().
 };
 
   
