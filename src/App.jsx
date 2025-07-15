@@ -176,7 +176,11 @@ const synthRef = useRef(null);
 const sttJustFinishedRef = useRef(false);
 const playedIntroForPersonalityRef = useRef(null);
 
-
+/**
+ * Animate the avatar based on a command.
+ * This final version uses the correct object path (bone.local.rot) to set the animation.
+ * @param {string} command - The animation command (e.g., 'wave' or 'idle').
+ */
 const handleAvatarAnimation = (command) => {
     if (!armRef.current) {
         console.warn("Armature not available to animate.");
@@ -189,39 +193,40 @@ const handleAvatarAnimation = (command) => {
     const boneIndex = arm.names.get('UpperArm_R');
 
     if (boneIndex === undefined) {
-        console.error("DEBUG: Could not find index for bone 'UpperArm_R'.");
+        console.warn("Could not find index for bone named 'UpperArm_R'.");
         return;
     }
-    console.log(`DEBUG: Found index for 'UpperArm_R': ${boneIndex}`);
 
-    // 2. Try to get the bone object from the 'bones' array.
+    // 2. Use the index to get the bone object from the 'bones' array.
     const waveBone = arm.bones[boneIndex];
 
-    // 3. Log the result and PAUSE EXECUTION.
-    console.log("--- PLEASE EXPAND THE OBJECT BELOW IN THE CONSOLE ---");
-    console.log("Inspecting the 'waveBone' object:", waveBone);
-    debugger; // This will pause your browser's code execution.
-
-    // The rest of the code is commented out for this test.
-    /*
-    if (!waveBone) {
-        console.error("Cannot proceed, waveBone is undefined.");
+    if (!waveBone || !waveBone.local) {
+        console.error("Bone object or its 'local' property is undefined. Cannot animate.");
         return;
     }
+
+    // 3. Create a temporary THREE.Quaternion to do the math.
     const tempQuat = new THREE.Quaternion();
+
+    // 4. Apply the animation by modifying the 'rot' array inside the 'local' property.
     if (command === 'wave') {
+        console.log("Executing 'wave' animation on UpperArm_R.");
         tempQuat.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
-        waveBone.rot[0] = tempQuat.x;
-        waveBone.rot[1] = tempQuat.y;
-        waveBone.rot[2] = tempQuat.z;
-        waveBone.rot[3] = tempQuat.w;
+
+        // This is the key: Accessing '.local.rot'
+        waveBone.local.rot[0] = tempQuat.x;
+        waveBone.local.rot[1] = tempQuat.y;
+        waveBone.local.rot[2] = tempQuat.z;
+        waveBone.local.rot[3] = tempQuat.w;
+
     } else if (command === 'idle') {
-        waveBone.rot[0] = 0;
-        waveBone.rot[1] = 0;
-        waveBone.rot[2] = 0;
-        waveBone.rot[3] = 1;
+        console.log("Executing 'idle' animation.");
+        // Reset the rotation to its default state (0, 0, 0, 1).
+        waveBone.local.rot[0] = 0;
+        waveBone.local.rot[1] = 0;
+        waveBone.local.rot[2] = 0;
+        waveBone.local.rot[3] = 1;
     }
-    */
 };
   
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
