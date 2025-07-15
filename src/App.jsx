@@ -627,50 +627,38 @@ if (isSelfConversationMode) {
     const personaB = { name: "Ben", voice: "am_adam" };
     const CONVERSATION_TURNS = 2; // This will result in 4 total messages
     let historyForLLM = `This is a short dialogue between ${personaA.name} and ${personaB.name} about "${prompt}". Keep responses to one sentence.\n`;
-
-    try {
-        // --- Kickstart the conversation: Generate the very first line ---
-        setStatusMessage(`${personaA.name} is thinking...`);
-        let nextPrompt = `${historyForLLM}\n${personaA.name}:`;
-        let nextOutput = await generator(nextPrompt, { max_new_tokens: 64, no_repeat_ngram_size: 2 });
-        let nextText = nextOutput[0].generated_text.replace(nextPrompt, "").trim();
-
-        for (let i = 0; i < CONVERSATION_TURNS; i++) {
-            // --- Persona A's Turn ---
-            let textA = nextText;
-            setConversationHistory(prev => [...prev, { speaker: personaA.name, text: textA }]);
-            const ttsPromiseA = speakForPersona(textA, personaA.voice); // 1. Start speaking
-            historyForLLM += `${personaA.name}: ${textA}\n`;
-
-            // 2. While Persona A is speaking, generate Persona B's response
-            setStatusMessage(`${personaB.name} is thinking...`);
-            nextPrompt = `${historyForLLM}\n${personaB.name}:`;
-            nextOutput = await generator(nextPrompt, { max_new_tokens: 64, no_repeat_ngram_size: 2 });
-            nextText = nextOutput[0].generated_text.replace(nextPrompt, "").trim();
-            
-            await ttsPromiseA; // 3. Wait for Persona A to finish before B starts talking
-
-            // --- Persona B's Turn ---
-            let textB = nextText;
-            setConversationHistory(prev => [...prev, { speaker: personaB.name, text: textB }]);
-            const ttsPromiseB = speakForPersona(textB, personaB.voice); // 1. Start speaking
-            historyForLLM += `${personaB.name}: ${textB}\n`;
-
-            // 2. While B is speaking, generate A's *next* response (if not the last turn)
-            if (i < CONVERSATION_TURNS - 1) {
+  const generationArgs = {
+            max_new_tokens: 64,
+            temperature: 0.8,
+            top_k: 50,
+            repetition_penalty: 1.2,
+            no_repeat_ngram_size: 2, // Prevents repeating short phrases
+        };
+      try {
+            for (let i = 0; i < CONVERSATION_TURNS; i++) {
+                // Persona A's Turn
                 setStatusMessage(`${personaA.name} is thinking...`);
-                nextPrompt = `${historyForLLM}\n${personaA.name}:`;
-                nextOutput = await generator(nextPrompt, { max_new_tokens: 64, no_repeat_ngram_size: 2 });
-                nextText = nextOutput[0].generated_text.replace(nextPrompt, "").trim();
+                let promptA = `${historyForLLM}\n${personaA.name}:`;
+                let outputA_raw = await generator(promptA, generationArgs); // Use new args
+                let textA = outputA_raw[0].generated_text.replace(promptA, "").trim();
+                setConversationHistory(prev => [...prev, { speaker: personaA.name, text: textA }]);
+                await speakForPersona(textA, personaA.voice);
+                historyForLLM += `${personaA.name}: ${textA}\n`;
+
+                // Persona B's Turn
+                setStatusMessage(`${personaB.name} is thinking...`);
+                let promptB = `${historyForLLM}\n${personaB.name}:`;
+                let outputB_raw = await generator(promptB, generationArgs); // Use new args
+                let textB = outputB_raw[0].generated_text.replace(promptB, "").trim();
+                setConversationHistory(prev => [...prev, { speaker: personaB.name, text: textB }]);
+                await speakForPersona(textB, personaB.voice);
+                historyForLLM += `${personaB.name}: ${textB}\n`;
             }
-            
-            await ttsPromiseB; // 3. Wait for B to finish before the loop continues
+            setStatusMessage("Self-conversation finished.");
+        } catch (error) {
+            console.error("Error during self-conversation:", error);
+            setStatusMessage(`Error: ${error.message}`);
         }
-        setStatusMessage("Self-conversation finished.");
-    } catch (error) {
-        console.error("Error during self-conversation:", error);
-        setStatusMessage(`Error: ${error.message}`);
-    }
     } else { // --- NORMAL MODE LOGIC ---
         setStatusMessage("AI is thinking...");
         try {
