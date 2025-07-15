@@ -534,7 +534,6 @@ const toggleListen = () => {
         }
     }
 };
-
 const handleGenerateText = useCallback(async () => {
     if (!generator) {
         alert("The text generation model is not loaded yet. Please wait.");
@@ -542,56 +541,51 @@ const handleGenerateText = useCallback(async () => {
     }
     let textToProcess = prompt.trim();
     if (!textToProcess) {
-        alert("Please enter some text or use speech-to-text to provide a prompt.");
+        alert("Please enter a prompt.");
         return;
     }
     setIsGenerating(true);
     setGeneratedOutput("Generating, please wait...");
-    setStatusMessage("Generating image prompt with personality: " + (currentProfile?.displayName || 'Default'));
+    setStatusMessage("Generating with personality: " + (currentProfile?.displayName || 'Default'));
+
     try {
+        // Ensure we are using the clean prompt structure from the personality profile
         const systemInstruction = currentProfile.systemPrompt;
         const fullPromptForLLM = `${systemInstruction}\n\nUser: ${textToProcess}\nAI:`;
-        console.log("Sending to LLM:", fullPromptForLLM);
-    const outputs = await generator(fullPromptForLLM, {
+
+        console.log("--- Sending this exact prompt to LLM ---");
+        console.log(fullPromptForLLM);
+
+        const outputs = await generator(fullPromptForLLM, {
             max_new_tokens: 128,
             min_new_tokens: 32,
-            // Add parameters to stop it from repeating the prompt
-            repetition_penalty: 1.2, 
-            no_repeat_ngram_size: 3,
         });
-      if (outputs && outputs.length > 0 && outputs[0].generated_text) {
-            // *** FIX STARTS HERE ***
 
-            // 1. Get the raw text from the model's output
-            const rawOutput = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
+        console.log("--- Full raw output object from LLM ---", outputs);
 
-            // 2. Parse for the animation command
-            const commandMatch = rawOutput.match(/CMD:\s*\(\['([^']*)'\]/);
-            const animationCommand = commandMatch ? commandMatch[1] : null;
+        if (outputs && outputs.length > 0 && outputs[0].generated_text) {
+            // For debugging, get the EXACT text the model generated after our prompt
+            const rawGeneratedText = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
 
-            // 3. Clean the dialogue for display and state update
-            const dialogue = rawOutput.split('CMD:')[0].trim();
-            setGeneratedOutput(dialogue); // Update the UI with just the text
+            console.log("--- Cleaned Generated Text (what the model actually wrote) ---");
+            console.log(`'${rawGeneratedText}'`); // Log with quotes to clearly see whitespace
 
-            // 4. Trigger the avatar animation if a command was found
-            if (animationCommand) {
-                console.log(`Animation command received: ${animationCommand}`);
-                handleAvatarAnimation(animationCommand);
-            }
-          
-            setStatusMessage("Image prompt generated successfully.");
+            // Display the raw output directly in the UI for debugging
+            setGeneratedOutput(`DEBUG MODE\n\nModel replied with:\n'${rawGeneratedText}'`);
+            
+            // We are disabling the animation for this test
+            // handleAvatarAnimation(...); 
+
         } else {
-            setGeneratedOutput("No text was generated or output format was unexpected.");
-            setStatusMessage("Text generation failed to produce output.");
+            setGeneratedOutput("DEBUG MODE: No text was generated, or the output format was unexpected.");
         }
     } catch (error) {
         console.error("Error during text generation:", error);
         setGeneratedOutput(`Error: ${error.message}`);
-        setStatusMessage(`Error in processing: ${error.message}`);
     } finally {
         setIsGenerating(false);
     }
-}, [generator, prompt, currentProfile]);
+}, [generator, prompt, currentProfile]); 
 
 const handleWebSpeechSpeakButton = () => {
 speakWithWebAPI(webSpeechApiInput);
