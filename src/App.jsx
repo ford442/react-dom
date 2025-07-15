@@ -572,40 +572,33 @@ const handleGenerateText = useCallback(async () => {
         return;
     }
 
-    // Clear previous outputs
     setGeneratedOutput('');
     setConversationHistory([]);
     setIsGenerating(true);
 
-    // --- SELF-CONVERSATION MODE LOGIC ---
     if (isSelfConversationMode) {
         setStatusMessage("Starting self-conversation...");
-
         const personaA = { name: "Alex", voice: "en_sam" };
         const personaB = { name: "Ben", voice: "en_david" };
-        const CONVERSATION_TURNS = 2; // Each turn includes A and B, so this makes 4 total messages
+        const CONVERSATION_TURNS = 2;
         let currentDialogue = `The topic is: "${textToProcess}".`;
         let historyForLLM = `This is a dialogue between two friends, ${personaA.name} and ${personaB.name}.\n\n`;
 
         try {
             for (let i = 0; i < CONVERSATION_TURNS; i++) {
-                // --- Persona A's Turn ---
                 setStatusMessage(`Turn ${i + 1}: ${personaA.name} is thinking...`);
                 let promptA = `${historyForLLM}${currentDialogue}\n\n${personaA.name}:`;
                 let outputA_raw = await generator(promptA, { max_new_tokens: 64, no_repeat_ngram_size: 2 });
                 let textA = outputA_raw[0].generated_text.replace(promptA, "").trim();
-
                 setConversationHistory(prev => [...prev, { speaker: personaA.name, text: textA }]);
                 await synthesizeWithKokoroAndPlay(textA, null, personaA.voice);
                 historyForLLM += `${currentDialogue}\n${personaA.name}: ${textA}\n`;
                 currentDialogue = `${personaA.name} just said: "${textA}".`;
 
-                // --- Persona B's Turn ---
                 setStatusMessage(`Turn ${i + 1}: ${personaB.name} is thinking...`);
                 let promptB = `${historyForLLM}\n${personaB.name}:`;
                 let outputB_raw = await generator(promptB, { max_new_tokens: 64, no_repeat_ngram_size: 2 });
                 let textB = outputB_raw[0].generated_text.replace(promptB, "").trim();
-
                 setConversationHistory(prev => [...prev, { speaker: personaB.name, text: textB }]);
                 await synthesizeWithKokoroAndPlay(textB, null, personaB.voice);
                 historyForLLM += `${personaB.name}: ${textB}\n`;
@@ -616,27 +609,33 @@ const handleGenerateText = useCallback(async () => {
             console.error("Error during self-conversation:", error);
             setStatusMessage(`Error: ${error.message}`);
         }
-
-    // --- NORMAL MODE LOGIC ---
-    } else {
+    } else { // --- NORMAL MODE LOGIC ---
         setStatusMessage("AI is thinking...");
-        // This is the single-response logic we had before
         try {
             const systemInstruction = currentProfile.systemPrompt;
             const fullPromptForLLM = `${systemInstruction}\n\nUser: ${textToProcess}\nAI:`;
             const outputs = await generator(fullPromptForLLM, { max_new_tokens: 128 });
             const dialogue = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
+            
             setGeneratedOutput(dialogue);
-            // ... (sentiment analysis and speaking logic remains the same here) ...
+
             if (dialogue && sentimentAnalyzer.current) {
                 const sentimentResult = sentimentAnalyzer.current.analyze(dialogue);
                 if (sentimentResult.score > 1) handleAvatarAnimation('wave');
                 else handleAvatarAnimation('idle');
             }
-            if (dialogue) {
-                 await synthesizeWithKokoroAndPlay(dialogue, currentPersonalityKey);
-            }
 
+            if (dialogue) {
+                // *** THIS IS THE FIX ***
+                // We now pass a default voiceId for the normal mode.
+                if (preferredTtsEngine === 'kokoro') {
+                    await synthesizeWithKokoroAndPlay(dialogue, currentPersonalityKey, 'en_sam');
+                } else if (preferredTtsEngine === 'webSpeechAPI') {
+                    speakWithWebAPI(dialogue);
+                } else if (preferredTtsEngine === 'speechT5') {
+                    await synthesizeAndPlayText(dialogue);
+                }
+            }
         } catch (error) {
             console.error("Error during text generation:", error);
             setGeneratedOutput(`Error: ${error.message}`);
@@ -645,9 +644,8 @@ const handleGenerateText = useCallback(async () => {
 
     setIsGenerating(false);
 }, [
-    // You'll need to add the new state variables to this dependency array
     generator, prompt, currentProfile, isSelfConversationMode, preferredTtsEngine, 
-    handleAvatarAnimation, synthesizeWithKokoroAndPlay, speakWithWebAPI
+    handleAvatarAnimation, synthesizeWithKokoroAndPlay, speakWithWebAPI, synthesizeAndPlayText, sentimentAnalyzer
 ]);
 
 const handleWebSpeechSpeakButton = () => {
