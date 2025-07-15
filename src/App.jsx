@@ -696,39 +696,57 @@ const handleImageSelection = (event) => {
 };
 
 const handleImageCaptioning = useCallback(async () => {
-  if (!imageCaptioner || !imageToCaption) {
-    setStatusMessage("Image captioner not ready or no image selected.");
-    return;
-  }
-
-  setIsCaptioning(true);
-  setGeneratedCaption("Generating caption...");
-  setStatusMessage("Captioning image...");
-
-  try {
-    // The imageToCaption could be a File object or a data URL string
-    // Transformers.js pipeline should handle both, but data URL is common for web
-    const imageSrc = typeof imageToCaption === 'string' ? imageToCaption : URL.createObjectURL(imageToCaption);
-
-    const captions = await imageCaptioner(imageSrc, {
-      max_new_tokens: 128, // Adjust as needed
-    });
-
-    if (captions && captions.length > 0 && captions[0].generated_text) {
-      setGeneratedCaption(captions[0].generated_text);
-      setStatusMessage("Image caption generated successfully.");
-    } else {
-      setGeneratedCaption("No caption generated or unexpected output format.");
-      setStatusMessage("Caption generation failed to produce output.");
+    if (!imageCaptioner || !imageToCaption) {
+        setStatusMessage("Image captioner not ready or no image selected.");
+        return;
     }
-  } catch (error) {
-    console.error("Error during image captioning:", error);
-    setGeneratedCaption(`Error: ${error.message}`);
-    setStatusMessage(`Image Captioning Error: ${error.message}`);
-  } finally {
-    setIsCaptioning(false);
-  }
-}, [imageCaptioner, imageToCaption, setStatusMessage, setGeneratedCaption, setIsCaptioning]);
+
+    setIsCaptioning(true);
+    setGeneratedCaption("Generating caption...");
+    setStatusMessage("Captioning image...");
+
+    try {
+        const imageSrc = typeof imageToCaption === 'string' ? imageToCaption : URL.createObjectURL(imageToCaption);
+        const captions = await imageCaptioner(imageSrc, { max_new_tokens: 128 });
+
+        if (captions && captions.length > 0 && captions[0].generated_text) {
+            const newCaption = captions[0].generated_text;
+            setGeneratedCaption(newCaption);
+            setStatusMessage("Image caption generated successfully.");
+
+            // --- NEW AUTO-SPEAK LOGIC ---
+            // After setting the caption, automatically speak it.
+            if (newCaption) {
+                console.log(`Auto-speaking caption with ${preferredTtsEngine}: "${newCaption}"`);
+                if (preferredTtsEngine === 'webSpeechAPI') {
+                    speakWithWebAPI(newCaption);
+                } else if (preferredTtsEngine === 'speechT5') {
+                    await synthesizeAndPlayText(newCaption);
+                } else if (preferredTtsEngine === 'kokoro') {
+                    await synthesizeWithKokoroAndPlay(newCaption);
+                }
+            }
+            // --- END NEW LOGIC ---
+
+        } else {
+            setGeneratedCaption("No caption generated or unexpected output format.");
+            setStatusMessage("Caption generation failed to produce output.");
+        }
+    } catch (error) {
+        console.error("Error during image captioning:", error);
+        setGeneratedCaption(`Error: ${error.message}`);
+        setStatusMessage(`Image Captioning Error: ${error.message}`);
+    } finally {
+        setIsCaptioning(false);
+    }
+}, [
+    imageCaptioner,
+    imageToCaption,
+    preferredTtsEngine, // Added dependency
+    speakWithWebAPI,      // Added dependency
+    synthesizeAndPlayText,  // Added dependency
+    synthesizeWithKokoroAndPlay // Added dependency
+]);
 
 useEffect(() => {
 synthRef.current = window.speechSynthesis;
