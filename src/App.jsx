@@ -625,59 +625,64 @@ if (isSelfConversationMode) {
     setStatusMessage("Starting self-conversation...");
     const personaA = { name: "Alex", voice: "af_alloy" };
     const personaB = { name: "Ben", voice: "am_adam" };
-    const CONVERSATION_TURNS = 2; // This will result in 4 total messages
-        let historyForLLM = `The following is a conversation between two friends, ${personaA.name} and ${personaB.name}, about the user's topic: "${prompt}".\n`;
-  const generationArgs = {
-            max_new_tokens: 64,
-            temperature: 0.8,
-            top_k: 50,
-            repetition_penalty: 1.2,
-            no_repeat_ngram_size: 2, // Prevents repeating short phrases
-        };
-      const generateAndClean = async (promptText) => {
-            const output = await generator(promptText, generationArgs);
-            return output[0].generated_text.replace(promptText, "").trim();
-        };
+    const CONVERSATION_TURNS = 2; // Results in 4 total messages
 
-      try {
-            // --- Kickstart the conversation with Persona A ---
-            let currentPrompt = `${historyForLLM}\n${personaA.name}:`;
-            let nextText = await generateAndClean(currentPrompt);
+    const generationArgs = {
+        max_new_tokens: 64,
+        temperature: 0.8,
+        top_k: 50,
+        repetition_penalty: 1.3, // Slightly increased penalty
+        no_repeat_ngram_size: 3,
+    };
+    
+    const generateAndClean = async (promptText) => {
+        const output = await generator(promptText, generationArgs);
+        // Clean up potential artifacts and extra persona names from the output
+        let cleanedText = output[0].generated_text.replace(promptText, "").trim();
+        cleanedText = cleanedText.split('\n')[0]; // Take only the first line of the response
+        return cleanedText;
+    };
 
-            for (let i = 0; i < CONVERSATION_TURNS; i++) {
-                // --- Persona A's Turn ---
-                let textA = nextText;
-                setConversationHistory(prev => [...prev, { speaker: personaA.name, text: textA }]);
-                const ttsPromiseA = speakForPersona(textA, personaA.voice);
-                historyForLLM += `${personaA.name}: ${textA}\n`;
+    try {
+        let lastResponse = ""; // This will hold the most recent line of dialogue
 
-                // While A is speaking, generate B's response with a specific prompt
-                setStatusMessage(`${personaB.name} is thinking...`);
-                currentPrompt = `${historyForLLM}\n${personaB.name}:`; // Prompt for B is the full history so far
-                nextText = await generateAndClean(currentPrompt);
-                
-                await ttsPromiseA; // Wait for A to finish talking
+        // --- Kickstart the conversation with Persona A ---
+        let kickoffPrompt = `You are ${personaA.name}. Start a short, one-sentence conversation with ${personaB.name} about: "${prompt}".\n${personaA.name}:`;
+        let textA = await generateAndClean(kickoffPrompt);
+        lastResponse = textA;
+        
+        for (let i = 0; i < CONVERSATION_TURNS; i++) {
+            // --- Persona A's Turn ---
+            setConversationHistory(prev => [...prev, { speaker: personaA.name, text: textA }]);
+            const ttsPromiseA = speakForPersona(textA, personaA.voice);
 
-                // --- Persona B's Turn ---
-                let textB = nextText;
-                setConversationHistory(prev => [...prev, { speaker: personaB.name, text: textB }]);
-                const ttsPromiseB = speakForPersona(textB, personaB.voice);
-                historyForLLM += `${personaB.name}: ${textB}\n`;
+            // While A is speaking, generate B's response
+            setStatusMessage(`${personaB.name} is thinking...`);
+            let promptB = `You are ${personaB.name}. Your friend ${personaA.name} just said: "${lastResponse}". Reply to them in one short, natural sentence.\n${personaB.name}:`;
+            let textB = await generateAndClean(promptB);
+            lastResponse = textB;
+            
+            await ttsPromiseA; // Wait for A to finish talking
 
-                // While B is speaking, generate A's *next* response (if not the last turn)
-                if (i < CONVERSATION_TURNS - 1) {
-                    setStatusMessage(`${personaA.name} is thinking...`);
-                    currentPrompt = `${historyForLLM}\n${personaA.name}:`; // Prompt for A is the full history so far
-                    nextText = await generateAndClean(currentPrompt);
-                }
-                
-                await ttsPromiseB; // Wait for B to finish
+            // --- Persona B's Turn ---
+            setConversationHistory(prev => [...prev, { speaker: personaB.name, text: textB }]);
+            const ttsPromiseB = speakForPersona(textB, personaB.voice);
+
+            // While B is speaking, generate A's *next* response (if not the last turn)
+            if (i < CONVERSATION_TURNS - 1) {
+                setStatusMessage(`${personaA.name} is thinking...`);
+                let promptA_next = `You are ${personaA.name}. Your friend ${personaB.name} just said: "${lastResponse}". Reply to them in one short, natural sentence.\n${personaA.name}:`;
+                textA = await generateAndClean(promptA_next);
+                lastResponse = textA;
             }
-            setStatusMessage("Self-conversation finished.");
-        } catch (error) {
-            console.error("Error during self-conversation:", error);
-            setStatusMessage(`Error: ${error.message}`);
+            
+            await ttsPromiseB; // Wait for B to finish
         }
+        setStatusMessage("Self-conversation finished.");
+    } catch (error) {
+        console.error("Error during self-conversation:", error);
+        setStatusMessage(`Error: ${error.message}`);
+    }
     } else { // --- NORMAL MODE LOGIC ---
         setStatusMessage("AI is thinking...");
         try {
