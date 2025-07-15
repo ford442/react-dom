@@ -822,7 +822,7 @@ setStatusMessage('Loading models, please wait...');
 
 async function loadModel() {
       try {
-        const pipelineInstance = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-248M', {
+        const pipelineInstance = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-783M', {
           // Xenova/LaMini-Flan-T5-783M
           // Xenova/LaMini-Flan-T5-248M
           // Xenova/LaMini-Flan-T5-77M
