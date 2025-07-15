@@ -573,8 +573,8 @@ const handleGenerateText = useCallback(async () => {
     setIsGenerating(true);
 if (isSelfConversationMode) {
     setStatusMessage("Starting self-conversation...");
-    const personaA = { name: "Alex", voice: "af_alloy" };
-    const personaB = { name: "Ben", voice: "am_adam" };
+    const personaA = { name: "Alex", voice: "af_nova" };
+    const personaB = { name: "Benjamin", voice: "bm_fable" };
     const CONVERSATION_TURNS = 2; // Results in 4 total messages
     const generationArgs = {
         max_new_tokens: 96,
@@ -600,12 +600,12 @@ const generateAndClean = async (promptText, personaName) => {
     return rawText.replace(/^"|"$/g, '');
 };
 
-try {
-        let lastResponse = ""; // This will hold the most recent line of dialogue
-
+   try {
+        let lastResponse = "";
         // --- Kickstart the conversation with Persona A ---
         let kickoffPrompt = `You are ${personaA.name}. Start a short, one-sentence conversation with ${personaB.name} about: "${prompt}".\n${personaA.name}:`;
-        let textA = await generateAndClean(kickoffPrompt);
+        // *** CHANGE: Pass personaA.name to the helper function ***
+        let textA = await generateAndClean(kickoffPrompt, personaA.name);
         lastResponse = textA;
         
         for (let i = 0; i < CONVERSATION_TURNS; i++) {
@@ -615,25 +615,29 @@ try {
 
             // While A is speaking, generate B's response
             setStatusMessage(`${personaB.name} is thinking...`);
-            let promptB = `You are ${personaB.name}. Your friend ${personaA.name} just said: "${lastResponse}". Reply to them in one short, natural sentence.\n${personaB.name}:`;
-            let textB = await generateAndClean(promptB);
+            let promptB = `You are ${personaB.name}. Your friend ${personaA.name} just said: "${lastResponse}". Reply in one short, natural sentence.\n${personaB.name}:`;
+
+            // *** CHANGE: Pass personaB.name to the helper function ***
+            let textB = await generateAndClean(promptB, personaB.name);
             lastResponse = textB;
             
-            await ttsPromiseA; // Wait for A to finish talking
+            await ttsPromiseA;
 
             // --- Persona B's Turn ---
             setConversationHistory(prev => [...prev, { speaker: personaB.name, text: textB }]);
             const ttsPromiseB = speakForPersona(textB, personaB.voice);
 
-            // While B is speaking, generate A's *next* response (if not the last turn)
+            // While B is speaking, generate A's next response
             if (i < CONVERSATION_TURNS - 1) {
                 setStatusMessage(`${personaA.name} is thinking...`);
-                let promptA_next = `You are ${personaA.name}. Your friend ${personaB.name} just said: "${lastResponse}". Reply to them in one short, natural sentence.\n${personaA.name}:`;
-                textA = await generateAndClean(promptA_next);
+                let promptA_next = `You are ${personaA.name}. Your friend ${personaB.name} just said: "${lastResponse}". Reply in one short, natural sentence.\n${personaA.name}:`;
+                
+                // *** CHANGE: Pass personaA.name to the helper function ***
+                textA = await generateAndClean(promptA_next, personaA.name);
                 lastResponse = textA;
             }
             
-            await ttsPromiseB; // Wait for B to finish
+            await ttsPromiseB;
         }
         setStatusMessage("Self-conversation finished.");
     } catch (error) {
