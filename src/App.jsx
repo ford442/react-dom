@@ -577,20 +577,28 @@ if (isSelfConversationMode) {
     const personaB = { name: "Ben", voice: "am_adam" };
     const CONVERSATION_TURNS = 2; // Results in 4 total messages
     const generationArgs = {
-        max_new_tokens: 64,
-        temperature: 0.8,
-        top_k: 50,
-        repetition_penalty: 1.3, // Slightly increased penalty
-        no_repeat_ngram_size: 3,
+        max_new_tokens: 96,
+        temperature: 0.85,
+        top_k: 64,
+        repetition_penalty: 1.1, // Slightly increased penalty
+        no_repeat_ngram_size: 4,
     };
     
-const generateAndClean = async (promptText) => {
-        const output = await generator(promptText, generationArgs);
-        // Clean up potential artifacts and extra persona names from the output
-        let cleanedText = output[0].generated_text.replace(promptText, "").trim();
-        cleanedText = cleanedText.split('\n')[0]; // Take only the first line of the response
-        return cleanedText;
-    };
+const generateAndClean = async (promptText, personaName) => {
+    const output = await generator(promptText, generationArgs);
+    let rawText = output[0].generated_text.replace(promptText, "").trim();
+    // 1. Take only the first line of the response to prevent run-on sentences.
+    rawText = rawText.split('\n')[0];
+    // 2. Find the last time the current speaker's name appears (e.g., "Alex: ...").
+    // This handles cases where the model generates "Ben: ... Alex: ..." in one line.
+    const lastInstanceIndex = rawText.lastIndexOf(`${personaName}:`);
+    if (lastInstanceIndex !== -1) {
+        // If found, take only the text *after* "Alex: "
+        rawText = rawText.substring(lastInstanceIndex + personaName.length + 1).trim();
+    }
+    // 3. Remove any quotation marks from the start and end of the string.
+    return rawText.replace(/^"|"$/g, '');
+};
 
 try {
         let lastResponse = ""; // This will hold the most recent line of dialogue
