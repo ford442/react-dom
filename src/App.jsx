@@ -1208,17 +1208,6 @@ max={2.0}
                         ))}
                     </select>
                 </div>
-              <div className="input-group">
-    <label htmlFor="self-convo-checkbox" className="radio-group"> {/* Using radio-group style for alignment */}
-        <input
-            id="self-convo-checkbox"
-            type="checkbox"
-            checked={isSelfConversationMode}
-            onChange={(e) => setIsSelfConversationMode(e.target.checked)}
-        />
-        Self-Conversation Mode
-    </label>
-</div>
                 <div className="input-group">
                     <label>Auto-Speak Engine (for intros):</label>
                     <div className="radio-group">
@@ -1285,20 +1274,12 @@ max={2.0}
 
     {sttError && <p className="stt-error">{sttError}</p>}
 
-<div className="input-group">
-    <label>AI Response:</label>
-    <div className='generated-output-display'>
-        {isSelfConversationMode ? (
-            // In self-conversation mode, render the history
-            conversationHistory.map((msg, index) => (
-                <p key={index}><strong>{msg.speaker}:</strong> {msg.text}</p>
-            ))
-        ) : (
-            // In normal mode, show the single output
-            generatedOutput
-        )}
+    <div className="input-group">
+        <label>AI Response:</label> {/* Changed label */}
+        <div className='generated-output-display'>{generatedOutput}</div>
     </div>
 </div>
+        </div>
 
         {/* Column 2: Other Tools */}
         <div className="panel-column">
