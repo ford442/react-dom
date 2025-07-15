@@ -927,7 +927,7 @@ async function loadModel() {
             const message = `Loading: ${progress.file} - ${progress.status} (${percentage}%)`;
             console.log(message);
             setStatusMessage(message);
-          },dtype: "q8"
+          },quantized: true
   },
   { device: "webnn" }
         );
