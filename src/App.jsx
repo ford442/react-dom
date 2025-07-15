@@ -692,11 +692,10 @@ if (isSelfConversationMode) {
         }
     }
 
-   setIsGenerating(false);
+    setIsGenerating(false);
 }, [
-    // Update dependency array
-    generator, prompt, currentProfile, isSelfConversationMode, preferredTtsEngine, 
-    handleAvatarAnimation, synthesizeWithKokoroAndPlay, speakWithWebAPI, synthesizeAndPlayText, sentimentAnalyzer
+    generator, prompt, currentProfile, isSelfConversationMode,
+    synthesizeWithKokoroAndPlay, speakForPersona // Note: dependencies simplified
 ]);
 
 const handleWebSpeechSpeakButton = () => {
