@@ -506,40 +506,50 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
     return true;
   }, [kokoroTtsInstance, initializeAudioContext, playAudio, currentPersonalityKey]);
 
-  const speakForPersona = async (text, voiceId) => {
-    if (!kokoroTtsInstance || !text || !text.trim()) return;
-    
-    // Simple, direct audio playback without the main effects pipeline
-    const audioCtx = initializeAudioContext();
-    if (audioCtx.state === 'suspended') {
-        await audioCtx.resume();
-    }
-    if (audioCtx.state !== 'running') {
-        console.error("AudioContext not running, cannot speak for persona.");
-        return;
-    }
+const speakForPersona = (text, voiceId) => {
+    // This function now returns a Promise
+    return new Promise(async (resolve, reject) => {
+        if (!kokoroTtsInstance || !text || !text.trim()) {
+            reject("TTS instance not ready or no text provided.");
+            return;
+        }
+        
+        const audioCtx = initializeAudioContext();
+        if (audioCtx.state === 'suspended') {
+            await audioCtx.resume();
+        }
+        if (audioCtx.state !== 'running') {
+            reject("AudioContext not running.");
+            return;
+        }
 
-    try {
-        setIsSpeaking(true);
-        setStatusMessage(`Synthesizing (${voiceId})...`);
-        const output = await kokoroTtsInstance.generate(text.trim(), { voice: voiceId });
+        try {
+            setIsSpeaking(true);
+            setStatusMessage(`Synthesizing (${voiceId})...`);
+            const output = await kokoroTtsInstance.generate(text.trim(), { voice: voiceId });
 
-        // A simplified playback logic
-        const audioData = output.audio instanceof Float32Array ? output.audio : new Float32Array(output.audio);
-        const buffer = audioCtx.createBuffer(1, audioData.length, output.sampling_rate);
-        buffer.copyToChannel(audioData, 0);
-        const source = audioCtx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioCtx.destination);
-        source.start();
-        // Set a timer to reset the speaking state when audio is finished
-        const audioDuration = buffer.duration * 1000;
-        setTimeout(() => setIsSpeaking(false), audioDuration);
+            const audioData = output.audio instanceof Float32Array ? output.audio : new Float32Array(output.audio);
+            const buffer = audioCtx.createBuffer(1, audioData.length, output.sampling_rate);
+            buffer.copyToChannel(audioData, 0);
+            
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(audioCtx.destination);
+            
+            // Resolve the promise when the audio finishes playing
+            source.onended = () => {
+                setIsSpeaking(false);
+                resolve(); 
+            };
+            
+            source.start();
 
-    } catch (error) {
-        console.error(`Error in speakForPersona with voice ${voiceId}:`, error);
-        setIsSpeaking(false);
-    }
+        } catch (error) {
+            console.error(`Error in speakForPersona with voice ${voiceId}:`, error);
+            setIsSpeaking(false);
+            reject(error);
+        }
+    });
 };
   
 const setupSpeechRecognition = useCallback(() => {
@@ -611,40 +621,56 @@ const handleGenerateText = useCallback(async () => {
     setGeneratedOutput('');
     setConversationHistory([]);
     setIsGenerating(true);
- if (isSelfConversationMode) {
-        setStatusMessage("Starting self-conversation...");
-        const personaA = { name: "Alex", voice: "en_sam" };
-        const personaB = { name: "Ben", voice: "en_david" };
-        const CONVERSATION_TURNS = 2;
-        let historyForLLM = `This is a dialogue between ${personaA.name} and ${personaB.name} about "${prompt}".\n`;
+if (isSelfConversationMode) {
+    setStatusMessage("Starting self-conversation...");
+    const personaA = { name: "Alex", voice: "af_alloy" };
+    const personaB = { name: "Ben", voice: "am_adam" };
+    const CONVERSATION_TURNS = 2; // This will result in 4 total messages
+    let historyForLLM = `This is a short dialogue between ${personaA.name} and ${personaB.name} about "${prompt}". Keep responses to one sentence.\n`;
 
-        try {
-            for (let i = 0; i < CONVERSATION_TURNS; i++) {
-                // Persona A's Turn
+    try {
+        // --- Kickstart the conversation: Generate the very first line ---
+        setStatusMessage(`${personaA.name} is thinking...`);
+        let nextPrompt = `${historyForLLM}\n${personaA.name}:`;
+        let nextOutput = await generator(nextPrompt, { max_new_tokens: 64, no_repeat_ngram_size: 2 });
+        let nextText = nextOutput[0].generated_text.replace(nextPrompt, "").trim();
+
+        for (let i = 0; i < CONVERSATION_TURNS; i++) {
+            // --- Persona A's Turn ---
+            let textA = nextText;
+            setConversationHistory(prev => [...prev, { speaker: personaA.name, text: textA }]);
+            const ttsPromiseA = speakForPersona(textA, personaA.voice); // 1. Start speaking
+            historyForLLM += `${personaA.name}: ${textA}\n`;
+
+            // 2. While Persona A is speaking, generate Persona B's response
+            setStatusMessage(`${personaB.name} is thinking...`);
+            nextPrompt = `${historyForLLM}\n${personaB.name}:`;
+            nextOutput = await generator(nextPrompt, { max_new_tokens: 64, no_repeat_ngram_size: 2 });
+            nextText = nextOutput[0].generated_text.replace(nextPrompt, "").trim();
+            
+            await ttsPromiseA; // 3. Wait for Persona A to finish before B starts talking
+
+            // --- Persona B's Turn ---
+            let textB = nextText;
+            setConversationHistory(prev => [...prev, { speaker: personaB.name, text: textB }]);
+            const ttsPromiseB = speakForPersona(textB, personaB.voice); // 1. Start speaking
+            historyForLLM += `${personaB.name}: ${textB}\n`;
+
+            // 2. While B is speaking, generate A's *next* response (if not the last turn)
+            if (i < CONVERSATION_TURNS - 1) {
                 setStatusMessage(`${personaA.name} is thinking...`);
-                let promptA = `${historyForLLM}\n${personaA.name}:`;
-                let outputA_raw = await generator(promptA, { max_new_tokens: 64 });
-                let textA = outputA_raw[0].generated_text.replace(promptA, "").trim();
-
-                setConversationHistory(prev => [...prev, { speaker: personaA.name, text: textA }]);
-                await speakForPersona(textA, personaA.voice); // <-- USE NEW FUNCTION
-                historyForLLM += `${personaA.name}: ${textA}\n`;
-
-                // Persona B's Turn
-                setStatusMessage(`${personaB.name} is thinking...`);
-                let promptB = `${historyForLLM}\n${personaB.name}:`;
-                let outputB_raw = await generator(promptB, { max_new_tokens: 64 });
-                let textB = outputB_raw[0].generated_text.replace(promptB, "").trim();
-
-                setConversationHistory(prev => [...prev, { speaker: personaB.name, text: textB }]);
-                await speakForPersona(textB, personaB.voice); // <-- USE NEW FUNCTION
-                historyForLLM += `${personaB.name}: ${textB}\n`;
+                nextPrompt = `${historyForLLM}\n${personaA.name}:`;
+                nextOutput = await generator(nextPrompt, { max_new_tokens: 64, no_repeat_ngram_size: 2 });
+                nextText = nextOutput[0].generated_text.replace(nextPrompt, "").trim();
             }
-            setStatusMessage("Self-conversation finished.");
-        } catch (error) {
-            console.error("Error during self-conversation:", error);
-            setStatusMessage(`Error: ${error.message}`);
+            
+            await ttsPromiseB; // 3. Wait for B to finish before the loop continues
         }
+        setStatusMessage("Self-conversation finished.");
+    } catch (error) {
+        console.error("Error during self-conversation:", error);
+        setStatusMessage(`Error: ${error.message}`);
+    }
     } else { // --- NORMAL MODE LOGIC ---
         setStatusMessage("AI is thinking...");
         try {
