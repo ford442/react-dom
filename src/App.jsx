@@ -575,11 +575,11 @@ if (isSelfConversationMode) {
     setStatusMessage("Starting self-conversation...");
     const personaA = { name: "Alex", voice: "af_nova" };
     const personaB = { name: "Benjamin", voice: "bm_fable" };
-    const CONVERSATION_TURNS = 2; // Results in 4 total messages
+    const CONVERSATION_TURNS = 3; // Results in 4 total messages
     const generationArgs = {
-        max_new_tokens: 96,
-        temperature: 0.85,
-        top_k: 64,
+        max_new_tokens: 128,
+        temperature: 0.9,
+        top_k: 96,
         repetition_penalty: 1.1, // Slightly increased penalty
         no_repeat_ngram_size: 4,
     };
