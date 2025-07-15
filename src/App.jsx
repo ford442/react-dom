@@ -1,15 +1,15 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 // import { pipeline, env, Tensor } from '@huggingface/transformers';
 import { pipeline, env, Tensor } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.6.0";
-import Box from '@mui/material/Box'; // Assuming you still use these
-import Slider from '@mui/material/Slider'; // Assuming you still use these
+import Box from '@mui/material/Box';
+import Slider from '@mui/material/Slider';
 import './App.css';
 import { KokoroTTS } from 'kokoro-js';
 import { Gltf2, Armature, SkinMTX } from "./lib/ossos/ossos.ts";
 import SkinMTXMaterial from '../../ossos/examples/threejs/_lib/SkinMTXMaterial.js';
 import { UtilGltf2 } from '../../ossos/examples/threejs/_lib/UtilGltf2.js';
 import Starter from '../../ossos/examples/threejs/_lib/Starter.js'; 
-import Sentiment from 'sentiment'; // <-- ADD THIS IMPORT
+import Sentiment from 'sentiment';
 
 import * as THREE from 'three';
 
@@ -81,7 +81,6 @@ const mountRef = useRef(null); // Ref for the DOM element where the canvas will 
 const appRef = useRef(null);   // Ref to hold the Three.js Starter instance
   
 useEffect(() => {
-        // 1. Initialize the Three.js Starter class
         const container = mountRef.current;
         const app = new Starter({
                 container: container ,
@@ -92,7 +91,6 @@ useEffect(() => {
             });
         appRef.current = app;
         app.render();
-        // 2. Define helper functions inside the effect
         const armature_from_gltf = (gltf, defaultBoneLen = 0.07) => {
             const arm = new Armature();
             for (let j of gltf.getSkin().joints) {
@@ -101,11 +99,11 @@ useEffect(() => {
             arm.bind(SkinMTX, defaultBoneLen);
             return arm;
         };
-          app.setSize(container.clientHeight,container.clientHeight);
+app.setSize(container.clientHeight,container.clientHeight);
 document.querySelector('canvas[data-engine="three.js r138"]').id='tvi';
 document.querySelector('div[class="three-container"]').id='tti';
 
-        const setupCharacter = async () => {
+const setupCharacter = async () => {
             try {
                 setStatusMessage("Loading avatar...");
                 const gltf = await Gltf2.fetch('https://glsl.1ink.us/gltf/nabba.gltf');
@@ -124,9 +122,9 @@ document.querySelector('div[class="three-container"]').id='tti';
                 console.error("Failed to set up character:", error);
                 setStatusMessage("Error loading avatar.");
             }
-        };
+};
   
-        setupCharacter();
+setupCharacter();
 }, []); // The empty dependency array [] is crucial. It makes the effect run only ONCE.
   
 const [generator, setGenerator] = useState(null);
@@ -145,18 +143,13 @@ const [webSpeechText, setWebSpeechText] = useState("Hello from the browser's bui
 const [availableVoices, setAvailableVoices] = useState([]);
 const [selectedVoiceURI, setSelectedVoiceURI] = useState('');
 const [isWebSpeaking, setIsWebSpeaking] = useState(false);
-const [preferredTtsEngine, setPreferredTtsEngine] = useState('kokoro'); // Default to 'webSpeechAPI' or 'transformersJS'
+const [preferredTtsEngine, setPreferredTtsEngine] = useState('kokoro');
 const [finalSttTranscript, setFinalSttTranscript] = useState(null);
 const [webSpeechApiDedicatedInput, setWebSpeechApiDedicatedInput] = useState("Hello from browser TTS!");
 const [currentPersonalityKey, setCurrentPersonalityKey] = useState('default');
 const [currentProfile, setCurrentProfile] = useState(personalityProfiles.default); // Store the whole profile
-
-const [activeTtsEngine, setActiveTtsEngine] = useState('kokoro'); // Default: 'webSpeechAPI', 'speechT5', 'kokoro'
-
-// NEW: State to hold the loaded Kokoro TTS model instance.
+const [activeTtsEngine, setActiveTtsEngine] = useState('kokoro');
 const [kokoroTtsInstance, setKokoroTtsInstance] = useState(null);
-
-// NEW: State for Image Captioning
 const [imageCaptioner, setImageCaptioner] = useState(null);
 const [imageToCaption, setImageToCaption] = useState(null); // Will store URL or File object
 const [generatedCaption, setGeneratedCaption] = useState('');
@@ -179,17 +172,14 @@ const synthRef = useRef(null);
 const sttJustFinishedRef = useRef(false);
 const playedIntroForPersonalityRef = useRef(null);
 
-
-  useEffect(() => {
+useEffect(() => {
     // The main animation loop function
     const animate = () => {
         // Schedule the next frame
         requestAnimationFrame(animate);
-
         // Get the elapsed time since the animation started
         const elapsedTime = clock.current.getElapsedTime() * 1000;
         const animProgress = (elapsedTime - animationState.current.startTime) / animationState.current.duration;
-
         const arm = armRef.current;
         if (arm && animationState.current.action === 'wave') {
             const waveBone = arm.bones[arm.names.get('UpperArm_R')];
@@ -197,7 +187,6 @@ const playedIntroForPersonalityRef = useRef(null);
                 // Use a "ping-pong" effect for the wave
                 // Math.sin creates a smooth back-and-forth motion from 0 -> 1 -> 0
                 const waveAngle = (Math.PI / 2) * Math.sin(animProgress * Math.PI);
-
                 // Apply the calculated angle
                 const tempQuat = new THREE.Quaternion();
                 tempQuat.setFromAxisAngle(new THREE.Vector3(0, 0, 1), waveAngle);
@@ -205,7 +194,6 @@ const playedIntroForPersonalityRef = useRef(null);
                 waveBone.local.rot[1] = tempQuat.y;
                 waveBone.local.rot[2] = tempQuat.z;
                 waveBone.local.rot[3] = tempQuat.w;
-
                 // When the animation is done, reset to idle
                 if (animProgress >= 1) {
                     animationState.current.action = 'idle';
@@ -216,14 +204,11 @@ const playedIntroForPersonalityRef = useRef(null);
                 }
             }
         }
-        
-        // Render the scene
+                // Render the scene
         if (appRef.current) {
             appRef.current.render();
         }
     };
-
-    // Start the animation loop
     animate();
 }, []); // The empty array ensures this runs only once
   
@@ -234,7 +219,6 @@ const playedIntroForPersonalityRef = useRef(null);
  */
 const handleAvatarAnimation = (command) => {
     if (!armRef.current) return;
-
     // If a new command comes in, start its animation timer
     if (command === 'wave') {
         console.log("Triggering 'wave' animation.");
@@ -425,10 +409,7 @@ const synthesizeAndPlayText = useCallback(async (text) => {
   setIsSpeaking
 ]);
 
-// NEW: Synthesis function for the Kokoro TTS model.
 const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => {
-    // Synthesizes text to speech using the Kokoro TTS model and plays it.
-    // Similar to SpeechT5, handles AudioContext and errors.
     if (!kokoroTtsInstance) {
         setStatusMessage("Kokoro TTS model not loaded yet.");
         return false;
@@ -437,7 +418,6 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
         setStatusMessage("No text provided for Kokoro to synthesize.");
         return false;
     }
-
     const audioCtx = initializeAudioContext();
     if (!audioCtx) { /* TODO: handle error with UI notification */ setIsSpeaking(false); return false; }
     if (audioCtx.state === 'suspended') { // Ensure AudioContext is running
@@ -445,24 +425,14 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
         catch (resumeError) { /* TODO: handle error */ setIsSpeaking(false); return false; }
     }
     if (audioCtx.state !== 'running') { /* TODO: handle error */ setIsSpeaking(false); return false; }
-
     setIsSpeaking(true);
     setStatusMessage(`Synthesizing with Kokoro: "${text.substring(0, 30)}..."`);
-
     try {
         const output = await kokoroTtsInstance.generate(text.trim(),{voice: "af_heart"});
-
-        // Store the result of generate()
         const kokoroAudioOutput = output; // Assuming 'output' is the variable holding the result of generate()
-
-        // Log the entire object to help with debugging if property names are wrong
         console.log("Kokoro TTS output object:", kokoroAudioOutput);
-
-        // Attempt to access audio data and sample rate using common property names
         let audioData = kokoroAudioOutput.audio;
         let sampleRate = kokoroAudioOutput.sampling_rate;
-
-        // Check if data and sample_rate were found
         if (audioData === undefined) {
             console.error("Audio data not found on Kokoro output object using key 'audio'. Available keys:", Object.keys(kokoroAudioOutput));
             throw new Error("Audio data property 'audio' not found on Kokoro output.");
@@ -471,12 +441,9 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
             console.error("Sample rate not found on Kokoro output object using key 'sampling_rate'. Available keys:", Object.keys(kokoroAudioOutput));
             throw new Error("Sample rate property 'sampling_rate' not found on Kokoro output.");
         }
-
-        // Proceed with conversion if necessary (similar to before)
         if (!(audioData instanceof Float32Array)) {
           console.warn("Kokoro TTS audio data was not Float32Array, attempting conversion from Int16Array.");
           const rawData = audioData instanceof ArrayBuffer ? new Int16Array(audioData) : (Array.isArray(audioData) ? Int16Array.from(audioData) : audioData);
-
           if (rawData instanceof Int16Array) {
              const float32Data = new Float32Array(rawData.length);
              for (let i = 0; i < rawData.length; i++) {
@@ -489,8 +456,6 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
              throw new Error("Unsupported audio data type from Kokoro TTS after attempting extraction.");
           }
         }
-
-        // Call playAudio with the (potentially converted) audioData and sampleRate
         if (audioData && typeof sampleRate === 'number' && sampleRate > 0) {
             playAudio(audioData, sampleRate, personalityKey || currentPersonalityKey);
             setStatusMessage("Speech synthesized and playing (Kokoro).");
@@ -507,13 +472,11 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
   }, [kokoroTtsInstance, initializeAudioContext, playAudio, currentPersonalityKey]);
 
 const speakForPersona = (text, voiceId) => {
-    // This function now returns a Promise
     return new Promise(async (resolve, reject) => {
         if (!kokoroTtsInstance || !text || !text.trim()) {
             reject("TTS instance not ready or no text provided.");
             return;
         }
-        
         const audioCtx = initializeAudioContext();
         if (audioCtx.state === 'suspended') {
             await audioCtx.resume();
@@ -522,28 +485,21 @@ const speakForPersona = (text, voiceId) => {
             reject("AudioContext not running.");
             return;
         }
-
         try {
             setIsSpeaking(true);
             setStatusMessage(`Synthesizing (${voiceId})...`);
             const output = await kokoroTtsInstance.generate(text.trim(), { voice: voiceId });
-
             const audioData = output.audio instanceof Float32Array ? output.audio : new Float32Array(output.audio);
             const buffer = audioCtx.createBuffer(1, audioData.length, output.sampling_rate);
             buffer.copyToChannel(audioData, 0);
-            
             const source = audioCtx.createBufferSource();
             source.buffer = buffer;
             source.connect(audioCtx.destination);
-            
-            // Resolve the promise when the audio finishes playing
             source.onended = () => {
                 setIsSpeaking(false);
                 resolve(); 
             };
-            
             source.start();
-
         } catch (error) {
             console.error(`Error in speakForPersona with voice ${voiceId}:`, error);
             setIsSpeaking(false);
@@ -563,7 +519,6 @@ const setupSpeechRecognition = useCallback(() => {
     recognitionInstance.continuous = true; // Always on
     recognitionInstance.interimResults = true; // Get results as they come
     recognitionInstance.lang = 'en-US';
-
        recognitionInstance.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         console.log('Speech recognized:', transcript);
@@ -571,18 +526,14 @@ const setupSpeechRecognition = useCallback(() => {
         setIsListening(false); // We are done listening
         setStatusMessage("Speech recognized. Click 'Send to AI' to proceed.");
     };
-
-    // Handle the end of listening
     recognitionInstance.onend = () => {
         setIsListening(false);
     };
-  
       recognitionInstance.onerror = (event) => {
         console.error('Speech recognition error:', event.error, event.message);
         setSttError(`Speech Error: ${event.error}`);
         setIsListening(false);
     };
-  
     recognitionRef.current = recognitionInstance;
 }, [setPrompt, setStatusMessage, setSttError, setIsListening, isListening, isListeningForWakeWord]);
 
@@ -617,7 +568,6 @@ const handleGenerateText = useCallback(async () => {
         alert("Please enter a prompt.");
         return;
     }
-
     setGeneratedOutput('');
     setConversationHistory([]);
     setIsGenerating(true);
@@ -626,7 +576,6 @@ if (isSelfConversationMode) {
     const personaA = { name: "Alex", voice: "af_alloy" };
     const personaB = { name: "Ben", voice: "am_adam" };
     const CONVERSATION_TURNS = 2; // Results in 4 total messages
-
     const generationArgs = {
         max_new_tokens: 64,
         temperature: 0.8,
@@ -635,7 +584,7 @@ if (isSelfConversationMode) {
         no_repeat_ngram_size: 3,
     };
     
-    const generateAndClean = async (promptText) => {
+const generateAndClean = async (promptText) => {
         const output = await generator(promptText, generationArgs);
         // Clean up potential artifacts and extra persona names from the output
         let cleanedText = output[0].generated_text.replace(promptText, "").trim();
@@ -643,7 +592,7 @@ if (isSelfConversationMode) {
         return cleanedText;
     };
 
-    try {
+try {
         let lastResponse = ""; // This will hold the most recent line of dialogue
 
         // --- Kickstart the conversation with Persona A ---
@@ -683,22 +632,19 @@ if (isSelfConversationMode) {
         console.error("Error during self-conversation:", error);
         setStatusMessage(`Error: ${error.message}`);
     }
-    } else { // --- NORMAL MODE LOGIC ---
+} else { // --- NORMAL MODE LOGIC ---
         setStatusMessage("AI is thinking...");
         try {
             const systemInstruction = currentProfile.systemPrompt;
             const fullPromptForLLM = `${systemInstruction}\n\nUser: ${textToProcess}\nAI:`;
             const outputs = await generator(fullPromptForLLM, { max_new_tokens: 256 });
             const dialogue = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
-            
             setGeneratedOutput(dialogue);
-
             if (dialogue && sentimentAnalyzer.current) {
                 const sentimentResult = sentimentAnalyzer.current.analyze(dialogue);
                 if (sentimentResult.score > 1) handleAvatarAnimation('wave');
                 else handleAvatarAnimation('idle');
             }
-
             if (dialogue) {
                 // *** THIS IS THE FIX ***
                 // We now pass a default voiceId for the normal mode.
@@ -715,8 +661,7 @@ if (isSelfConversationMode) {
             setGeneratedOutput(`Error: ${error.message}`);
         }
     }
-
-    setIsGenerating(false);
+setIsGenerating(false);
 }, [
     generator, prompt, currentProfile, isSelfConversationMode,
     synthesizeWithKokoroAndPlay, speakForPersona // Note: dependencies simplified
@@ -765,7 +710,6 @@ const profile = personalityProfiles[currentPersonalityKey] || personalityProfile
             ttsReady = true;
           }
         }
-        // MODIFIED: Check for 'kokoro' and the corresponding instance.
         else if (preferredTtsEngine === 'kokoro') {
           if (kokoroTtsInstance) {
             ttsFunctionToCall = () => synthesizeWithKokoroAndPlay(profile.introPhrase, currentPersonalityKey);
@@ -799,10 +743,6 @@ const profile = personalityProfiles[currentPersonalityKey] || personalityProfile
 const handleImageSelection = (event) => {
   const file = event.target.files[0];
   if (file) {
-    // For immediate display, we can create an object URL
-    // Or, if the pipeline prefers a data URL, convert it here.
-    // For now, let's store the File object, as pipeline might handle it.
-    // And use object URL for preview.
     setImageToCaption(file);
     setGeneratedCaption(''); // Clear previous caption
   } else {
@@ -815,20 +755,16 @@ const handleImageCaptioning = useCallback(async () => {
         setStatusMessage("Image captioner not ready or no image selected.");
         return;
     }
-
     setIsCaptioning(true);
     setGeneratedCaption("Generating caption...");
     setStatusMessage("Captioning image...");
-
     try {
         const imageSrc = typeof imageToCaption === 'string' ? imageToCaption : URL.createObjectURL(imageToCaption);
         const captions = await imageCaptioner(imageSrc, { max_new_tokens: 256 });
-
         if (captions && captions.length > 0 && captions[0].generated_text) {
             const newCaption = captions[0].generated_text;
             setGeneratedCaption(newCaption);
             setStatusMessage("Image caption generated successfully.");
-
             if (newCaption) {
                 if (preferredTtsEngine === 'kokoro') {
                     // *** FIX: Added the default 'en_sam' voiceId ***
@@ -839,7 +775,6 @@ const handleImageCaptioning = useCallback(async () => {
                     await synthesizeAndPlayText(newCaption);
                 }
             }
-
         } else {
             setGeneratedCaption("No caption generated or unexpected output format.");
         }
@@ -874,6 +809,7 @@ const populateVoices = () => {
       }
     }
   };
+  
 populateVoices();
   if (synthRef.current && synthRef.current.onvoiceschanged !== undefined) {
     synthRef.current.onvoiceschanged = populateVoices;
@@ -971,21 +907,11 @@ async function loadModel() {
         console.error("Failed to load TTS pipeline or speaker embeddings:", error);
         setStatusMessage(prev => `${prev} TTS Error: ${error.message}.`);
       }
-
-    // REMOVED: Logic for loading the Bark TTS model.
-    // try { ... } catch (error) { ... }
-
-    // NEW: Logic for loading the Kokoro TTS model.
     try {
         setStatusMessage(prev => `${prev} Loading TTS model (Kokoro)...`);
-
-        // This single line downloads and initializes the Kokoro TTS model.
         const kokoroInstance = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {dtype: "fp32", device: "webgpu", });
-
         setKokoroTtsInstance(() => kokoroInstance);
         console.log("Kokoro TTS pipeline loaded successfully.");
-
-        // Update the overall status message after all models are loaded.
         if (generator && ttsPipelineInstance && speakerEmbeddings && kokoroInstance) {
             setStatusMessage("All models loaded! Ready.");
         } else {
@@ -995,7 +921,6 @@ async function loadModel() {
         console.error("Failed to load Kokoro TTS pipeline:", error);
         setStatusMessage(prev => `${prev} Kokoro TTS Error: ${error.message}.`);
     }
-
     try {
       setStatusMessage(prev => `${prev} Loading Image Captioning model...`);
       const captionerInstance = await pipeline('image-to-text', 'Xenova/vit-gpt2-image-captioning', {
@@ -1026,8 +951,7 @@ document.getElementById("startBtn5").addEventListener('click', function() {
     xhr.open('GET', xhrPath, true);
     xhr.responseType = 'arraybuffer';
     console.log(`Requesting external script from: ${xhrPath}`);
-
-    function decodeUTF32(uint8Array, isLittleEndian = true) {
+function decodeUTF32(uint8Array, isLittleEndian = true) {
         const dataView = new DataView(uint8Array.buffer);
         let result = "";
         for (let i = 0; i < uint8Array.length; i += 4) {
@@ -1036,38 +960,25 @@ document.getElementById("startBtn5").addEventListener('click', function() {
         }
         return result;
     }
-
     xhr.onerror = function() {
         console.error("XHR request failed. Check the network path and CORS policy.");
     };
-
     xhr.onload = function() {
         try {
             if (xhr.status === 200) {
                 console.log("Script content loaded. Decoding...");
                 const jsCode = decodeUTF32(new Uint8Array(xhr.response), true);
                 console.log("Decoding complete. Executing in a controlled scope...");
-
-                // --- THE FINAL FIX ---
-                // We create a new function that contains the library's code.
-                // After the library code runs, it will have created a 'libload' variable
-                // within its scope. We then return that variable.
                 const runAndGetModule = new Function(`
                     ${jsCode}
                     return libload;
                 `);
-                
-                // Now, we execute the function and get the returned module.
                 const ModuleFactory = runAndGetModule();
-
                 if (typeof ModuleFactory !== 'function') {
                     throw new Error("The executed script did not return a function named 'libload'.");
                 }
-                
-                // The returned value is the 'libload' function itself.
                 console.log("SUCCESS: 'libload' has been captured. Initializing module...");
                 const Module = ModuleFactory(); // Call the factory to get the final module object.
-
                 if (Module && typeof Module.onRuntimeInitialized === 'function') {
                     Module.onRuntimeInitialized = function() {
                         console.log('Module runtime initialized. Calling main...');
@@ -1086,11 +997,9 @@ document.getElementById("startBtn5").addEventListener('click', function() {
             console.error("A critical error occurred while executing the dynamic script:", error);
         }
     };
-
     xhr.send();
 });
 loadModel();
-
 }, []);
 
 return (
