@@ -187,12 +187,15 @@ const handleAvatarAnimation = (command) => {
         return;
     }
 
+  
+   console.log("Inspecting the armature object:", armRef.current);
+    debugger; 
     const arm = armRef.current;
 
     // FIX: Replaced the incorrect 'updatePose()' with 'resetPose()'.
     // This function resets all bones to their original positions and rotations
     // before we apply the new animation command.
-    arm.resetPose();
+  //  arm.resetPose();
 
     // Now, apply the specific animation command
     if (command === 'wave') {
