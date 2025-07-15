@@ -447,10 +447,10 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
     if (audioCtx.state !== 'running') { /* TODO: handle error */ setIsSpeaking(false); return false; }
 
     setIsSpeaking(true);
-    setStatusMessage(`Synthesizing with Kokoro (${voiceId}): "${text.substring(0, 20)}..."`);
+    setStatusMessage(`Synthesizing with Kokoro: "${text.substring(0, 30)}..."`);
 
     try {
-        const output = await kokoroTtsInstance.generate(text.trim(), { voice: voiceId });
+        const output = await kokoroTtsInstance.generate(text.trim(),{voice: "af_heart"});
 
         // Store the result of generate()
         const kokoroAudioOutput = output; // Assuming 'output' is the variable holding the result of generate()
@@ -506,6 +506,42 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
     return true;
   }, [kokoroTtsInstance, initializeAudioContext, playAudio, currentPersonalityKey]);
 
+  const speakForPersona = async (text, voiceId) => {
+    if (!kokoroTtsInstance || !text || !text.trim()) return;
+    
+    // Simple, direct audio playback without the main effects pipeline
+    const audioCtx = initializeAudioContext();
+    if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+    }
+    if (audioCtx.state !== 'running') {
+        console.error("AudioContext not running, cannot speak for persona.");
+        return;
+    }
+
+    try {
+        setIsSpeaking(true);
+        setStatusMessage(`Synthesizing (${voiceId})...`);
+        const output = await kokoroTtsInstance.generate(text.trim(), { voice: voiceId });
+
+        // A simplified playback logic
+        const audioData = output.audio instanceof Float32Array ? output.audio : new Float32Array(output.audio);
+        const buffer = audioCtx.createBuffer(1, audioData.length, output.sampling_rate);
+        buffer.copyToChannel(audioData, 0);
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioCtx.destination);
+        source.start();
+        // Set a timer to reset the speaking state when audio is finished
+        const audioDuration = buffer.duration * 1000;
+        setTimeout(() => setIsSpeaking(false), audioDuration);
+
+    } catch (error) {
+        console.error(`Error in speakForPersona with voice ${voiceId}:`, error);
+        setIsSpeaking(false);
+    }
+};
+  
 const setupSpeechRecognition = useCallback(() => {
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognitionAPI) {
@@ -575,34 +611,34 @@ const handleGenerateText = useCallback(async () => {
     setGeneratedOutput('');
     setConversationHistory([]);
     setIsGenerating(true);
-
-    if (isSelfConversationMode) {
+ if (isSelfConversationMode) {
         setStatusMessage("Starting self-conversation...");
         const personaA = { name: "Alex", voice: "en_sam" };
         const personaB = { name: "Ben", voice: "en_david" };
         const CONVERSATION_TURNS = 2;
-        let currentDialogue = `The topic is: "${textToProcess}".`;
-        let historyForLLM = `This is a dialogue between two friends, ${personaA.name} and ${personaB.name}.\n\n`;
+        let historyForLLM = `This is a dialogue between ${personaA.name} and ${personaB.name} about "${prompt}".\n`;
 
         try {
             for (let i = 0; i < CONVERSATION_TURNS; i++) {
-                setStatusMessage(`Turn ${i + 1}: ${personaA.name} is thinking...`);
-                let promptA = `${historyForLLM}${currentDialogue}\n\n${personaA.name}:`;
-                let outputA_raw = await generator(promptA, { max_new_tokens: 64, no_repeat_ngram_size: 2 });
+                // Persona A's Turn
+                setStatusMessage(`${personaA.name} is thinking...`);
+                let promptA = `${historyForLLM}\n${personaA.name}:`;
+                let outputA_raw = await generator(promptA, { max_new_tokens: 64 });
                 let textA = outputA_raw[0].generated_text.replace(promptA, "").trim();
-                setConversationHistory(prev => [...prev, { speaker: personaA.name, text: textA }]);
-                await synthesizeWithKokoroAndPlay(textA, null, personaA.voice);
-                historyForLLM += `${currentDialogue}\n${personaA.name}: ${textA}\n`;
-                currentDialogue = `${personaA.name} just said: "${textA}".`;
 
-                setStatusMessage(`Turn ${i + 1}: ${personaB.name} is thinking...`);
+                setConversationHistory(prev => [...prev, { speaker: personaA.name, text: textA }]);
+                await speakForPersona(textA, personaA.voice); // <-- USE NEW FUNCTION
+                historyForLLM += `${personaA.name}: ${textA}\n`;
+
+                // Persona B's Turn
+                setStatusMessage(`${personaB.name} is thinking...`);
                 let promptB = `${historyForLLM}\n${personaB.name}:`;
-                let outputB_raw = await generator(promptB, { max_new_tokens: 64, no_repeat_ngram_size: 2 });
+                let outputB_raw = await generator(promptB, { max_new_tokens: 64 });
                 let textB = outputB_raw[0].generated_text.replace(promptB, "").trim();
+
                 setConversationHistory(prev => [...prev, { speaker: personaB.name, text: textB }]);
-                await synthesizeWithKokoroAndPlay(textB, null, personaB.voice);
+                await speakForPersona(textB, personaB.voice); // <-- USE NEW FUNCTION
                 historyForLLM += `${personaB.name}: ${textB}\n`;
-                currentDialogue = `${personaB.name} just said: "${textB}".`;
             }
             setStatusMessage("Self-conversation finished.");
         } catch (error) {
