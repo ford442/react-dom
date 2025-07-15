@@ -678,8 +678,9 @@ const handleGenerateText = useCallback(async () => {
         }
     }
 
-    setIsGenerating(false);
+   setIsGenerating(false);
 }, [
+    // Update dependency array
     generator, prompt, currentProfile, isSelfConversationMode, preferredTtsEngine, 
     handleAvatarAnimation, synthesizeWithKokoroAndPlay, speakWithWebAPI, synthesizeAndPlayText, sentimentAnalyzer
 ]);
