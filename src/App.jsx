@@ -1170,39 +1170,41 @@ max={2.0}
             </div>
 
             <div className="panel-section">
-               <h3>Interaction</h3> {/* Changed title from "Image Prompt Generation" */}
-    <div className="input-group">
-        <label htmlFor="prompt-textarea">Your Message:</label> {/* Changed label */}
-        <textarea
-            id="prompt-textarea"
-            ref={promptTextareaRef}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Type your message or use the Listen button..."
-            rows={3}
-            disabled={!generator || isGenerating}
-        />
-    </div>
-        {/* This is the group of buttons for sending the prompt */}
-    <div className="button-group" style={{ display: 'flex', gap: '10px' }}>
-        <button
-            onClick={handleGenerateText}
-            disabled={!generator || isGenerating || !prompt.trim()}
-        >
-            {isGenerating ? 'Sending...' : 'Send to AI'} {/* Changed text */}
-        </button>
-        <button onClick={toggleListen} disabled={!recognitionRef.current}>
-            {isListening ? 'Listening...' : 'Listen'} {/* Changed text */}
-        </button>
-    </div>
-
-    {sttError && <p className="stt-error">{sttError}</p>}
-
-    <div className="input-group">
-        <label>AI Response:</label> {/* Changed label */}
-        <div className='generated-output-display'>{generatedOutput}</div>
-    </div>
-</div>
+                <h3>Image Prompt Generation</h3>
+                <div className="input-group">
+                    <label htmlFor="prompt-textarea">Your Idea:</label>
+                    <textarea
+                        id="prompt-textarea"
+                        ref={promptTextareaRef}
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder="Enter an idea or use Speech-to-Text..."
+                        rows={3}
+                        disabled={!generator || isGenerating}
+                    />
+                </div>
+                <button
+                    onClick={handleGenerateText}
+                    disabled={!generator || isGenerating}
+                >
+                    {isGenerating ? 'Expanding Idea...' : 'Expand Idea to Image Prompt'}
+                </button>
+                <div className="stt-controls">
+                    <button onClick={toggleListen} disabled={!recognitionRef.current} className="auto-width">
+                        {isListening || isListeningForWakeWord ? 'Stop Listening' : 'Listen for "Hey AI"'}
+                    </button>
+                    <div className="stt-status">
+                        {isListening && <p><i>Listening for prompt...</i></p>}
+                        {isListeningForWakeWord && <p><i>Listening for wake word...</i></p>}
+                        {sttError && <p className="stt-error">{sttError}</p>}
+                    </div>
+                </div>
+                <div className="input-group">
+                    <label>Generated Image Prompt:</label>
+                    <div className='generated-output-display'>{generatedOutput}</div>
+                </div>
+            </div>
+        </div>
 
         {/* Column 2: Other Tools */}
         <div className="panel-column">
