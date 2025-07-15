@@ -534,7 +534,8 @@ const toggleListen = () => {
         }
     }
 };
-const handleGenerateText = useCallback(async () => {
+
+  const handleGenerateText = useCallback(async () => {
     if (!generator) {
         alert("The text generation model is not loaded yet. Please wait.");
         return;
@@ -545,47 +546,66 @@ const handleGenerateText = useCallback(async () => {
         return;
     }
     setIsGenerating(true);
-    setGeneratedOutput("Generating, please wait...");
-    setStatusMessage("Generating with personality: " + (currentProfile?.displayName || 'Default'));
+    setGeneratedOutput("Generating...");
+    setStatusMessage("AI is thinking...");
 
     try {
-        // Ensure we are using the clean prompt structure from the personality profile
         const systemInstruction = currentProfile.systemPrompt;
         const fullPromptForLLM = `${systemInstruction}\n\nUser: ${textToProcess}\nAI:`;
-
-        console.log("--- Sending this exact prompt to LLM ---");
-        console.log(fullPromptForLLM);
 
         const outputs = await generator(fullPromptForLLM, {
             max_new_tokens: 128,
             min_new_tokens: 32,
         });
 
-        console.log("--- Full raw output object from LLM ---", outputs);
-
         if (outputs && outputs.length > 0 && outputs[0].generated_text) {
-            // For debugging, get the EXACT text the model generated after our prompt
-            const rawGeneratedText = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
+            const rawOutput = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
 
-            console.log("--- Cleaned Generated Text (what the model actually wrote) ---");
-            console.log(`'${rawGeneratedText}'`); // Log with quotes to clearly see whitespace
+            // 1. Parse the response for dialogue and animation command
+            const commandMatch = rawOutput.match(/CMD:\s*\(\['([^']*)'\]/);
+            const animationCommand = commandMatch ? commandMatch[1] : 'idle'; // Default to 'idle' if no command is found
+            const dialogue = rawOutput.split('CMD:')[0].trim();
 
-            // Display the raw output directly in the UI for debugging
-            setGeneratedOutput(`DEBUG MODE\n\nModel replied with:\n'${rawGeneratedText}'`);
-            
-            // We are disabling the animation for this test
-            // handleAvatarAnimation(...); 
+            // 2. Update the UI with the dialogue
+            setGeneratedOutput(dialogue);
 
+            // 3. Animate the avatar
+            handleAvatarAnimation(animationCommand);
+
+            // 4. Automatically speak the dialogue using the preferred engine
+            if (dialogue) {
+                setStatusMessage("Speaking...");
+                if (preferredTtsEngine === 'webSpeechAPI') {
+                    speakWithWebAPI(dialogue);
+                } else if (preferredTtsEngine === 'speechT5') {
+                    await synthesizeAndPlayText(dialogue);
+                } else if (preferredTtsEngine === 'kokoro') {
+                    await synthesizeWithKokoroAndPlay(dialogue);
+                }
+            } else {
+                 setStatusMessage("Generation complete (no dialogue).");
+            }
         } else {
-            setGeneratedOutput("DEBUG MODE: No text was generated, or the output format was unexpected.");
+            setGeneratedOutput("No text was generated or output was unexpected.");
+            setStatusMessage("Generation failed.");
         }
     } catch (error) {
         console.error("Error during text generation:", error);
         setGeneratedOutput(`Error: ${error.message}`);
+        setStatusMessage("An error occurred.");
     } finally {
         setIsGenerating(false);
     }
-}, [generator, prompt, currentProfile]); 
+}, [
+    generator,
+    prompt,
+    currentProfile,
+    handleAvatarAnimation,
+    preferredTtsEngine,
+    speakWithWebAPI,
+    synthesizeAndPlayText,
+    synthesizeWithKokoroAndPlay
+]);
 
 const handleWebSpeechSpeakButton = () => {
 speakWithWebAPI(webSpeechApiInput);
