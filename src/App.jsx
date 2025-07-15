@@ -492,52 +492,25 @@ const setupSpeechRecognition = useCallback(() => {
     recognitionInstance.interimResults = true; // Get results as they come
     recognitionInstance.lang = 'en-US';
 
-    recognitionInstance.onresult = (event) => {
-        let final_transcript = '';
-        let interim_transcript = '';
-
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-                final_transcript += event.results[i][0].transcript;
-            } else {
-                interim_transcript += event.results[i][0].transcript;
-            }
-        }
-
-        const fullTranscript = (final_transcript || interim_transcript).toLowerCase().trim();
-
-        if (isListeningForWakeWord && fullTranscript.includes(WAKE_WORD)) {
-            console.log("Wake word detected!");
-            setIsListeningForWakeWord(false);
-            setIsListening(true);
-            setStatusMessage("Wake word detected, now listening for prompt...");
-            // recognitionInstance.stop(); // Stop and restart to clear the wake word from the buffer
-            // setTimeout(() => recognitionInstance.start(), 100);
-        } else if (isListening && final_transcript) {
-            console.log('Speech recognized by onresult:', final_transcript);
-            setPrompt(final_transcript);
-            sttJustFinishedRef.current = true;
-            setIsListening(false);
-            setIsListeningForWakeWord(true); // Go back to listening for the wake word
-        }
+       recognitionInstance.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        console.log('Speech recognized:', transcript);
+        setPrompt(transcript); // Put the text in the prompt box
+        setIsListening(false); // We are done listening
+        setStatusMessage("Speech recognized. Click 'Send to AI' to proceed.");
     };
 
-    recognitionInstance.onerror = (event) => {
-        console.error('Speech recognition error:', event.error, event.message);
-        setSttError(`Speech Error: ${event.error} - ${event.message || 'Unknown error'}`);
-        setIsListening(false);
-        setIsListeningForWakeWord(false);
-        sttJustFinishedRef.current = false;
-    };
-
+    // Handle the end of listening
     recognitionInstance.onend = () => {
-        if (isListening || isListeningForWakeWord) {
-            console.log('Speech recognition ended, restarting...');
-            recognitionInstance.start(); // Keep it running
-        } else {
-            console.log('Speech recognition ended.');
-        }
+        setIsListening(false);
     };
+  
+      recognitionInstance.onerror = (event) => {
+        console.error('Speech recognition error:', event.error, event.message);
+        setSttError(`Speech Error: ${event.error}`);
+        setIsListening(false);
+    };
+  
     recognitionRef.current = recognitionInstance;
 }, [setPrompt, setStatusMessage, setSttError, setIsListening, isListening, isListeningForWakeWord]);
 
@@ -546,23 +519,18 @@ const toggleListen = () => {
         setSttError("Speech recognition not initialized.");
         return;
     }
-    if (isListening || isListeningForWakeWord) {
+  if (isListening) {
         recognitionRef.current.stop();
         setIsListening(false);
-        setIsListeningForWakeWord(false);
-        setStatusMessage("Listening stopped.");
     } else {
+        setPrompt(''); // Clear the prompt before listening
         try {
-            setPrompt('');
-            sttJustFinishedRef.current = false;
-            setIsListeningForWakeWord(true);
             recognitionRef.current.start();
+            setIsListening(true);
+            setStatusMessage("Listening...");
             setSttError('');
-            setStatusMessage("Listening for wake word...");
         } catch (e) {
-            console.error("Error starting recognition (already started?):", e);
-            setIsListening(false);
-            setIsListeningForWakeWord(false);
+            console.error("Error starting recognition:", e);
         }
     }
 };
@@ -581,7 +549,7 @@ const handleGenerateText = useCallback(async () => {
     setGeneratedOutput("Generating, please wait...");
     setStatusMessage("Generating image prompt with personality: " + (currentProfile?.displayName || 'Default'));
     try {
-        const systemInstruction = currentProfile.systemPrompt; // Using the updated prompt
+        const systemInstruction = currentProfile.systemPrompt;
         const fullPromptForLLM = `${systemInstruction}\n\nUser: ${textToProcess}\nAI:`;
         console.log("Sending to LLM:", fullPromptForLLM);
     const outputs = await generator(fullPromptForLLM, {
@@ -1202,41 +1170,39 @@ max={2.0}
             </div>
 
             <div className="panel-section">
-                <h3>Image Prompt Generation</h3>
-                <div className="input-group">
-                    <label htmlFor="prompt-textarea">Your Idea:</label>
-                    <textarea
-                        id="prompt-textarea"
-                        ref={promptTextareaRef}
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Enter an idea or use Speech-to-Text..."
-                        rows={3}
-                        disabled={!generator || isGenerating}
-                    />
-                </div>
-                <button
-                    onClick={handleGenerateText}
-                    disabled={!generator || isGenerating}
-                >
-                    {isGenerating ? 'Expanding Idea...' : 'Expand Idea to Image Prompt'}
-                </button>
-                <div className="stt-controls">
-                    <button onClick={toggleListen} disabled={!recognitionRef.current} className="auto-width">
-                        {isListening || isListeningForWakeWord ? 'Stop Listening' : 'Listen for "Hey AI"'}
-                    </button>
-                    <div className="stt-status">
-                        {isListening && <p><i>Listening for prompt...</i></p>}
-                        {isListeningForWakeWord && <p><i>Listening for wake word...</i></p>}
-                        {sttError && <p className="stt-error">{sttError}</p>}
-                    </div>
-                </div>
-                <div className="input-group">
-                    <label>Generated Image Prompt:</label>
-                    <div className='generated-output-display'>{generatedOutput}</div>
-                </div>
-            </div>
-        </div>
+               <h3>Interaction</h3> {/* Changed title from "Image Prompt Generation" */}
+    <div className="input-group">
+        <label htmlFor="prompt-textarea">Your Message:</label> {/* Changed label */}
+        <textarea
+            id="prompt-textarea"
+            ref={promptTextareaRef}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Type your message or use the Listen button..."
+            rows={3}
+            disabled={!generator || isGenerating}
+        />
+    </div>
+        {/* This is the group of buttons for sending the prompt */}
+    <div className="button-group" style={{ display: 'flex', gap: '10px' }}>
+        <button
+            onClick={handleGenerateText}
+            disabled={!generator || isGenerating || !prompt.trim()}
+        >
+            {isGenerating ? 'Sending...' : 'Send to AI'} {/* Changed text */}
+        </button>
+        <button onClick={toggleListen} disabled={!recognitionRef.current}>
+            {isListening ? 'Listening...' : 'Listen'} {/* Changed text */}
+        </button>
+    </div>
+
+    {sttError && <p className="stt-error">{sttError}</p>}
+
+    <div className="input-group">
+        <label>AI Response:</label> {/* Changed label */}
+        <div className='generated-output-display'>{generatedOutput}</div>
+    </div>
+</div>
 
         {/* Column 2: Other Tools */}
         <div className="panel-column">
