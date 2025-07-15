@@ -15,8 +15,17 @@ import * as THREE from 'three';
 const personalityProfiles = {
   default: {
     displayName: "Default Assistant",
-    systemPrompt: "",
-    avatar: "/avatars/default.png", // Ensure these assets are in your public/avatars folder
+    systemPrompt: `You are a helpful and expressive AI assistant controlling a 3D avatar. 
+Respond to the user's query. After your response, you MUST include a command on a new line.
+The command format is: CMD: (['animation'])
+Available animations: 'wave', 'idle'.
+
+Example:
+User: Hello there!
+AI:
+Hello! It's great to see you today.
+CMD: (['wave'])`,
+    avatar: "/avatars/default.png", 
     introVideo: null,
     introPhrase: "Hello! How can I assist you today?",
     themeColors: {
@@ -104,6 +113,9 @@ document.querySelector('div[class="three-container"]').id='tti';
                 setStatusMessage("Loading avatar...");
                 const gltf = await Gltf2.fetch('https://glsl.1ink.us/gltf/nabba.gltf');
                 const arm = armature_from_gltf(gltf);
+
+                      armRef.current = arm; // Store the armature in the ref
+
                 const mat = SkinMTXMaterial('cyan', arm.getSkinOffsets()[0]);
                 const mesh = UtilGltf2.loadMesh(gltf, null, mat);
                 // Use the Starter instance from the ref to add the mesh
@@ -152,6 +164,7 @@ const [imageCaptioner, setImageCaptioner] = useState(null);
 const [imageToCaption, setImageToCaption] = useState(null); // Will store URL or File object
 const [generatedCaption, setGeneratedCaption] = useState('');
 const [isCaptioning, setIsCaptioning] = useState(false);
+const armRef = useRef(null);
 
 const [isListeningForWakeWord, setIsListeningForWakeWord] = useState(false);
 const WAKE_WORD = "hey ai";
@@ -163,6 +176,42 @@ const synthRef = useRef(null);
 const sttJustFinishedRef = useRef(false);
 const playedIntroForPersonalityRef = useRef(null);
 
+
+  /**
+ * Animate the avatar based on a command.
+ * @param {string} command - The animation command (e.g., 'wave').
+ */
+const handleAvatarAnimation = (command) => {
+    if (!armRef.current) {
+        console.warn("Armature not available to animate.");
+        return;
+    }
+
+    const arm = armRef.current;
+    
+    // Reset all bone rotations to their initial pose first
+    arm.updatePose(); // Resets to the base pose
+
+    if (command === 'wave') {
+        // NOTE: You will likely need to change 'upper_arm.R' to the actual name 
+        // of the right upper arm bone in your nabba.gltf model.
+        const waveBone = arm.getBone('upper_arm.R'); 
+        
+        if (waveBone) {
+            console.log("Executing 'wave' animation.");
+            // Apply a rotation to make the arm wave.
+            // This rotates the bone on its Z-axis. You may need to adjust the axis and angle.
+            waveBone.rot.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+        } else {
+            console.warn("Could not find bone 'upper_arm.R' to perform wave animation.");
+        }
+    }
+    
+    // After changing any bone, you must update the armature's skinning matrices
+    arm.updateSkin();
+};
+
+  
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
   if (!synthRef.current || !textToSay || !textToSay.trim()) { /* ... */ return; }
   if (synthRef.current.speaking) { synthRef.current.cancel(); }
@@ -524,16 +573,33 @@ const handleGenerateText = useCallback(async () => {
     setGeneratedOutput("Generating, please wait...");
     setStatusMessage("Generating image prompt with personality: " + (currentProfile?.displayName || 'Default'));
     try {
-        const systemInstruction = currentProfile.systemPrompt ? `${currentProfile.systemPrompt}\n\nExpand the following idea into a detailed scene description for a text-to-image AI:` : "Expand the following idea into a detailed scene description for a text-to-image AI:";
-        const fullPromptForLLM = `${systemInstruction}\n\n${textToProcess}`;
+        const systemInstruction = currentProfile.systemPrompt; // Using the updated prompt
+        const fullPromptForLLM = `${systemInstruction}\n\nUser: ${textToProcess}\nAI:`;
         console.log("Sending to LLM:", fullPromptForLLM);
-        const outputs = await generator(fullPromptForLLM, {
+    const outputs = await generator(fullPromptForLLM, {
             max_new_tokens: 128,
             min_new_tokens: 32,
+            // Add parameters to stop it from repeating the prompt
+            repetition_penalty: 1.2, 
+            no_repeat_ngram_size: 3,
         });
         if (outputs && outputs.length > 0 && outputs[0].generated_text) {
             const newLLMText = outputs[0].generated_text.replace(fullPromptForLLM, "").trim();
             setGeneratedOutput(newLLMText);
+          
+           // 1. Parse for commands
+            const commandMatch = rawOutput.match(/CMD:\s*\(\['([^']*)'\]/);
+            const animationCommand = commandMatch ? commandMatch[1] : null;
+
+            // 2. Clean the dialogue for display
+            const dialogue = rawOutput.split('CMD:')[0].trim();
+            setGeneratedOutput(dialogue);
+
+            // 3. Trigger the animation
+            if (animationCommand) {
+                handleAvatarAnimation(animationCommand);
+            }
+          
             setStatusMessage("Image prompt generated successfully.");
         } else {
             setGeneratedOutput("No text was generated or output format was unexpected.");
