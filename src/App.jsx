@@ -573,38 +573,51 @@ const handleGenerateText = useCallback(async () => {
     setIsGenerating(true);
 if (isSelfConversationMode) {
     setStatusMessage("Starting self-conversation...");
-    const personaA = { name: "Alex", voice: "af_nova" };
-    const personaB = { name: "Benjamin", voice: "bm_fable" };
-    const CONVERSATION_TURNS = 3; // Results in 4 total messages
+
+    // --- NEW: Define detailed personas with motivations ---
+    const personaA = {
+        name: "Alex",
+        voice: "af_nova",
+        personality: "You are Alex, a curious and enthusiastic science enthusiast. You are fascinated by new ideas and always try to find the positive and exciting angle."
+    };
+    const personaB = {
+        name: "Benjamin", // Using a different name to avoid confusion
+        voice: "bm_fable",
+        personality: "You are Benjamin, a witty and cautious skeptic. You often play devil's advocate, questioning the practicalities of new ideas with a touch of dry humor."
+    };
+
+    const CONVERSATION_TURNS = 4; // Results in 4 total messages
     const generationArgs = {
-        max_new_tokens: 128,
-        temperature: 0.9,
+        max_new_tokens: 96,
+        temperature: 0.85, // Slightly higher for more creativity
         top_k: 96,
-        repetition_penalty: 1.1, // Slightly increased penalty
-        no_repeat_ngram_size: 4,
+        repetition_penalty: 1.2,
+        no_repeat_ngram_size: 3,
     };
     
-const generateAndClean = async (promptText, personaName) => {
-    const output = await generator(promptText, generationArgs);
-    let rawText = output[0].generated_text.replace(promptText, "").trim();
-    // 1. Take only the first line of the response to prevent run-on sentences.
-    rawText = rawText.split('\n')[0];
-    // 2. Find the last time the current speaker's name appears (e.g., "Alex: ...").
-    // This handles cases where the model generates "Ben: ... Alex: ..." in one line.
-    const lastInstanceIndex = rawText.lastIndexOf(`${personaName}:`);
-    if (lastInstanceIndex !== -1) {
-        // If found, take only the text *after* "Alex: "
-        rawText = rawText.substring(lastInstanceIndex + personaName.length + 1).trim();
-    }
-    // 3. Remove any quotation marks from the start and end of the string.
-    return rawText.replace(/^"|"$/g, '');
-};
+    const generateAndClean = async (promptText, personaName) => {
+        const output = await generator(promptText, generationArgs);
+        let rawText = output[0].generated_text.replace(promptText, "").trim();
+        rawText = rawText.split('\n')[0];
+        const lastInstanceIndex = rawText.lastIndexOf(`${personaName}:`);
+        if (lastInstanceIndex !== -1) {
+            rawText = rawText.substring(lastInstanceIndex + personaName.length + 1).trim();
+        }
+        return rawText.replace(/^"|"$/g, '');
+    };
 
-   try {
+    try {
         let lastResponse = "";
+
         // --- Kickstart the conversation with Persona A ---
-        let kickoffPrompt = `You are ${personaA.name}. Start a short, one-sentence conversation with ${personaB.name} about: "${prompt}".\n${personaA.name}:`;
-        // *** CHANGE: Pass personaA.name to the helper function ***
+        let kickoffPrompt = `This is a scene from a TV show.
+Characters:
+- ${personaA.personality}
+- ${personaB.personality}
+The topic of discussion is "${prompt}".
+It's your turn to act as ${personaA.name}. Write their opening line.
+${personaA.name}:`;
+        
         let textA = await generateAndClean(kickoffPrompt, personaA.name);
         lastResponse = textA;
         
@@ -614,25 +627,28 @@ const generateAndClean = async (promptText, personaName) => {
             const ttsPromiseA = speakForPersona(textA, personaA.voice);
 
             // While A is speaking, generate B's response
-            setStatusMessage(`${personaB.name} is thinking...`);
-            let promptB = `You are ${personaB.name}. Your friend ${personaA.name} just said: "${lastResponse}". Reply in one short, natural sentence.\n${personaB.name}:`;
-
-            // *** CHANGE: Pass personaB.name to the helper function ***
+            let promptB = `This is a scene from a TV show.
+Characters:
+- ${personaA.personality}
+- ${personaB.personality}
+The last line was spoken by ${personaA.name}: "${lastResponse}"
+Now, it's your turn to act as ${personaB.name}. Write their reply in character.
+${personaB.name}:`;
             let textB = await generateAndClean(promptB, personaB.name);
             lastResponse = textB;
-            
             await ttsPromiseA;
-
             // --- Persona B's Turn ---
             setConversationHistory(prev => [...prev, { speaker: personaB.name, text: textB }]);
             const ttsPromiseB = speakForPersona(textB, personaB.voice);
-
             // While B is speaking, generate A's next response
             if (i < CONVERSATION_TURNS - 1) {
-                setStatusMessage(`${personaA.name} is thinking...`);
-                let promptA_next = `You are ${personaA.name}. Your friend ${personaB.name} just said: "${lastResponse}". Reply in one short, natural sentence.\n${personaA.name}:`;
-                
-                // *** CHANGE: Pass personaA.name to the helper function ***
+                let promptA_next = `This is a scene from a TV show.
+Characters:
+- ${personaA.personality}
+- ${personaB.personality}
+The last line was spoken by ${personaB.name}: "${lastResponse}"
+Now, it's your turn to act as ${personaA.name}. Write their reply in character.
+${personaA.name}:`;
                 textA = await generateAndClean(promptA_next, personaA.name);
                 lastResponse = textA;
             }
