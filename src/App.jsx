@@ -1221,6 +1221,7 @@ max={2.0}
 <div ref={mountRef} className="three-container" style={{ position: 'absolute',display:'block', top: '0', width: '100vh', height: '100vh', zIndex: 3301, pointerEvents: 'auto' }} />
 </div>
 
+
 {/* =================================================================== */}
 {/* NEW, CLEANED-UP UI PANEL - REPLACES ALL THE OVERLAPPING DIVS */}
 {/* =================================================================== */}
@@ -1238,50 +1239,6 @@ max={2.0}
         </div>
         <div className='status-display'>{statusMessage}</div>
     </div>
-      <h3>Creative Mode</h3>
-    <div className="input-group">
-        <label htmlFor="prompt-textarea">Dialogue Topic:</label>
-        <textarea
-            id="prompt-textarea"
-            ref={promptTextareaRef}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="e.g., The future of space travel"
-            rows={2}
-        />
-    </div>
-     {/* Display Area for Generated Scene */}
-    {sceneDescription && (
-        <div className="scene-display">
-            <strong>Setting:</strong> {sceneDescription}
-        </div>
-    )}
-    {/* Display Area for Generated Characters */}
-    {generatedPersonas.length > 0 && (
-        <div className="personas-display">
-            <strong>Characters:</strong>
-            <ul>
-                {generatedPersonas.map((p, i) => <li key={i}>{p.name}</li>)}
-            </ul>
-        </div>
-    )}
-    {/* Buttons for the new workflow */}
-    <div className="button-group" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        <button onClick={handleGenerateScene} disabled={isGenerating}>
-            1. Create Scene
-        </button>
-        <button onClick={handleAddCharacter} disabled={isGenerating || !sceneDescription || generatedPersonas.length >= 2}>
-            2. Add Character ({generatedPersonas.length}/2)
-        </button>
-        <button
-            onClick={handleGenerateText}
-            disabled={isGenerating || generatedPersonas.length < 2}
-        >
-            3. Start Dialogue
-        </button>
-    </div>
-</div>
-</div>
 <div className="input-group">
     <label htmlFor="self-convo-checkbox" className="radio-group"> {/* Using radio-group style for alignment */}
         <input
