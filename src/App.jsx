@@ -27,19 +27,6 @@ const personalityProfiles = {
       '--ai-bubble-bg': '#E8F0FE',
     }
   },
-  sceneCreator: {
-    displayName: "Scene Creator",
-    systemPrompt: "You are a helpful assistant that expands a user's idea into a detailed scene for a text-to-image generator.",
-    avatar: "/avatars/default.png",
-    introVideo: null,
-    introPhrase: "Hello! How can I assist you today?",
-    themeColors: {
-        '--ai-primary-color': '#4A90E2',
-        '--ai-secondary-color': '#F5F5F5',
-        '--ai-text-color': '#333333',
-        '--ai-bubble-bg': '#E8F0FE',
-    }
-  },
   captainPlayful: {
     displayName: "Captain Playful",
     systemPrompt: "You are Captain Playful, a friendly, shiny red toy robot...",
@@ -94,8 +81,6 @@ DESC: [A short personality description, starting with "You are..."]`,
         }
     },
 };
-
-
 
 function App() {
   
@@ -1226,6 +1211,7 @@ max={2.0}
 {/* NEW, CLEANED-UP UI PANEL - REPLACES ALL THE OVERLAPPING DIVS */}
 {/* =================================================================== */}
 <div className="floating-control-panel">
+  
     <div className="panel-header">
         <div className="personality-header">
             {currentProfile.avatar && (
@@ -1254,6 +1240,55 @@ max={2.0}
         {/* Column 1: Main Controls */}
         <div className="panel-column">
             <div className="panel-section">
+
+              <div className="panel-section">
+    <h3>Creative Mode</h3>
+    <div className="input-group">
+        <label htmlFor="prompt-textarea">Dialogue Topic:</label>
+        <textarea
+            id="prompt-textarea"
+            ref={promptTextareaRef}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="e.g., The future of space travel"
+            rows={2}
+        />
+    </div>
+
+    {/* Display Area for Generated Scene */}
+    {sceneDescription && (
+        <div className="scene-display">
+            <strong>Setting:</strong> {sceneDescription}
+        </div>
+    )}
+
+    {/* Display Area for Generated Characters */}
+    {generatedPersonas.length > 0 && (
+        <div className="personas-display">
+            <strong>Characters:</strong>
+            <ul>
+                {generatedPersonas.map((p, i) => <li key={i}>{p.name}</li>)}
+            </ul>
+        </div>
+    )}
+
+    {/* Buttons for the new workflow */}
+    <div className="button-group" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <button onClick={handleGenerateScene} disabled={isGenerating}>
+            1. Create Scene
+        </button>
+        <button onClick={handleAddCharacter} disabled={isGenerating || !sceneDescription || generatedPersonas.length >= 2}>
+            2. Add Character ({generatedPersonas.length}/2)
+        </button>
+        <button
+            onClick={handleGenerateText}
+            disabled={isGenerating || generatedPersonas.length < 2}
+        >
+            3. Start Dialogue
+        </button>
+    </div>
+</div>
+              
                 <h3>AI Configuration</h3>
                 <div className="input-group">
                     <label htmlFor="personality-select">AI Personality:</label>
