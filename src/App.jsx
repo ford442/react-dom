@@ -66,8 +66,35 @@ const personalityProfiles = {
       '--ai-bubble-bg': '#E8F5E9',
     }
   },
-  // Add more personalities as needed
+ sceneCreator: { // We can repurpose your existing sceneCreator
+        displayName: "Scene Creator",
+        systemPrompt: "You are a screenwriter. Based on the user's topic, write a single, evocative sentence describing a setting for a conversation.",
+        avatar: "/avatars/default.png", // Use a unique avatar
+        introPhrase: "Give me a topic, and I'll set the stage.",
+        themeColors: {
+            '--ai-primary-color': '#00796B', // A professional teal
+            '--ai-secondary-color': '#E0F2F1',
+            '--ai-text-color': '#333333',
+            '--ai-bubble-bg': '#B2DFDB',
+        }
+    },
+    characterCreator: { // Add this new personality
+        displayName: "Character Creator",
+        systemPrompt: `You are a character designer for a TV show. Your job is to create one single, interesting character who can discuss a given topic in a specific setting.
+You MUST reply in the following format, and nothing else:
+NAME: [A unique first name for the character]
+DESC: [A short personality description, starting with "You are..."]`,
+        avatar: "/avatars/default.png", // Use a unique avatar
+        introPhrase: "Let's create a character for your scene.",
+        themeColors: {
+            '--ai-primary-color': '#C2185B', // A creative magenta
+            '--ai-secondary-color': '#FCE4EC',
+            '--ai-text-color': '#333333',
+            '--ai-bubble-bg': '#F8BBD0',
+        }
+    },
 };
+
 
 
 function App() {
@@ -99,6 +126,7 @@ useEffect(() => {
             arm.bind(SkinMTX, defaultBoneLen);
             return arm;
         };
+  
 app.setSize(container.clientHeight,container.clientHeight);
 document.querySelector('canvas[data-engine="three.js r138"]').id='tvi';
 document.querySelector('div[class="three-container"]').id='tti';
@@ -126,6 +154,73 @@ const setupCharacter = async () => {
   
 setupCharacter();
 }, []); // The empty dependency array [] is crucial. It makes the effect run only ONCE.
+
+  const handleGenerateScene = useCallback(async () => {
+    const topic = prompt.trim();
+    if (!generator || !topic) {
+        alert("Please enter a topic for the scene.");
+        return;
+    }
+    
+    setIsGenerating(true);
+    setStatusMessage("Creating scene...");
+    // Reset previous work
+    setSceneDescription('');
+    setGeneratedPersonas([]);
+    setConversationHistory([]);
+
+    const sceneProfile = personalityProfiles.sceneCreator;
+    const fullPrompt = `${sceneProfile.systemPrompt}\n\nTopic: "${topic}"`;
+
+    try {
+        const outputs = await generator(fullPrompt, { max_new_tokens: 64 });
+        const sceneText = outputs[0].generated_text.replace(fullPrompt, "").trim();
+        setSceneDescription(sceneText);
+        setStatusMessage("Scene created! Now, add some characters.");
+    } catch (error) { /* ... */ }
+    
+    setIsGenerating(false);
+}, [generator, prompt]);
+
+
+const handleAddCharacter = useCallback(async () => {
+    const topic = prompt.trim();
+    if (!generator || !sceneDescription) {
+        alert("Please generate a scene before adding a character.");
+        return;
+    }
+
+    setIsGenerating(true);
+    setStatusMessage("Creating a new character...");
+
+    const charProfile = personalityProfiles.characterCreator;
+    const fullPrompt = `${charProfile.systemPrompt}\n\nTopic: "${topic}"\nSetting: "${sceneDescription}"`;
+    
+    try {
+        const outputs = await generator(fullPrompt, { max_new_tokens: 128 });
+        const charOutput = outputs[0].generated_text.replace(fullPrompt, "").trim();
+
+        // Parse the NAME and DESC from the output
+        const charName = charOutput.match(/NAME: (.*)/)?.[1];
+        const charDesc = charOutput.match(/DESC: (.*)/)?.[1];
+
+        if (charName && charDesc) {
+            const newPersona = {
+                name: charName,
+                // Assign voices alternately
+                voice: generatedPersonas.length % 2 === 0 ? 'af_alloy' : 'am_adam',
+                personality: charDesc,
+            };
+            setGeneratedPersonas(prev => [...prev, newPersona]);
+            setStatusMessage(`Character "${charName}" created!`);
+        } else {
+            setStatusMessage("Failed to create a valid character. Please try again.");
+            console.error("Failed to parse character output:", charOutput);
+        }
+    } catch (error) { /* ... */ }
+
+    setIsGenerating(false);
+}, [generator, prompt, sceneDescription, generatedPersonas]);
   
 const [generator, setGenerator] = useState(null);
 const [statusMessage, setStatusMessage] = useState('Initializing...');
@@ -573,18 +668,13 @@ const handleGenerateText = useCallback(async () => {
     setIsGenerating(true);
 if (isSelfConversationMode) {
     setStatusMessage("Starting self-conversation...");
-
-    // --- NEW: Define detailed personas with motivations ---
-    const personaA = {
-        name: "Alex",
-        voice: "af_nova",
-        personality: "A curious and enthusiastic science enthusiast."
-    };
-    const personaB = {
-        name: "Benjamin", // Using a different name to avoid confusion
-        voice: "bm_fable",
-        personality: "A cautious and witty skeptic."
-    };
+   if (generatedPersonas.length < 2) {
+        alert("Please create at least two characters before starting the dialogue.");
+        setIsGenerating(false);
+        return;
+    }
+  
+    const [personaA, personaB] = generatedPersonas;
 
     const CONVERSATION_TURNS = 4; // Results in 4 total messages
     const generationArgs = {
@@ -1131,7 +1221,6 @@ max={2.0}
 <div ref={mountRef} className="three-container" style={{ position: 'absolute',display:'block', top: '0', width: '100vh', height: '100vh', zIndex: 3301, pointerEvents: 'auto' }} />
 </div>
 
-
 {/* =================================================================== */}
 {/* NEW, CLEANED-UP UI PANEL - REPLACES ALL THE OVERLAPPING DIVS */}
 {/* =================================================================== */}
@@ -1149,6 +1238,49 @@ max={2.0}
         </div>
         <div className='status-display'>{statusMessage}</div>
     </div>
+      <h3>Creative Mode</h3>
+    <div className="input-group">
+        <label htmlFor="prompt-textarea">Dialogue Topic:</label>
+        <textarea
+            id="prompt-textarea"
+            ref={promptTextareaRef}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="e.g., The future of space travel"
+            rows={2}
+        />
+    </div>
+     {/* Display Area for Generated Scene */}
+    {sceneDescription && (
+        <div className="scene-display">
+            <strong>Setting:</strong> {sceneDescription}
+        </div>
+    )}
+    {/* Display Area for Generated Characters */}
+    {generatedPersonas.length > 0 && (
+        <div className="personas-display">
+            <strong>Characters:</strong>
+            <ul>
+                {generatedPersonas.map((p, i) => <li key={i}>{p.name}</li>)}
+            </ul>
+        </div>
+    )}
+    {/* Buttons for the new workflow */}
+    <div className="button-group" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <button onClick={handleGenerateScene} disabled={isGenerating}>
+            1. Create Scene
+        </button>
+        <button onClick={handleAddCharacter} disabled={isGenerating || !sceneDescription || generatedPersonas.length >= 2}>
+            2. Add Character ({generatedPersonas.length}/2)
+        </button>
+        <button
+            onClick={handleGenerateText}
+            disabled={isGenerating || generatedPersonas.length < 2}
+        >
+            3. Start Dialogue
+        </button>
+    </div>
+</div>
 <div className="input-group">
     <label htmlFor="self-convo-checkbox" className="radio-group"> {/* Using radio-group style for alignment */}
         <input
