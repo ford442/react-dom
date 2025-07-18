@@ -1281,6 +1281,7 @@ max={2.0}
         </button>
     </div>
 </div>
+</div>
 <div className="input-group">
     <label htmlFor="self-convo-checkbox" className="radio-group"> {/* Using radio-group style for alignment */}
         <input
