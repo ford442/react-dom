@@ -91,31 +91,9 @@ const sentimentAnalyzer = useRef(new Sentiment());
 
 const mountRef = useRef(null); // Ref for the DOM element where the canvas will live
 const appRef = useRef(null);   // Ref to hold the Three.js Starter instance
-  
-useEffect(() => {
-        const container = mountRef.current;
-        const app = new Starter({
-                container: container ,
-                width: container.clientHeight,
-                height: container.clientHeight,
-                webgl2: true,
-                grid: true,
-            });
-        appRef.current = app;
-        app.render();
-        const armature_from_gltf = (gltf, defaultBoneLen = 0.07) => {
-            const arm = new Armature();
-            for (let j of gltf.getSkin().joints) {
-                arm.addBone(j.name, j.parentIndex, j.rotation, j.position, j.scale);
-            }
-            arm.bind(SkinMTX, defaultBoneLen);
-            return arm;
-        };
-  
-app.setSize(container.clientHeight,container.clientHeight);
-document.querySelector('canvas[data-engine="three.js r138"]').id='tvi';
-document.querySelector('div[class="three-container"]').id='tti';
 
+
+  
 const setupCharacter = async () => {
             try {
                 setStatusMessage("Loading avatar...");
@@ -206,7 +184,32 @@ const handleAddCharacter = useCallback(async () => {
 
     setIsGenerating(false);
 }, [generator, prompt, sceneDescription, generatedPersonas]);
+
+
+useEffect(() => {
+        const container = mountRef.current;
+        const app = new Starter({
+                container: container ,
+                width: container.clientHeight,
+                height: container.clientHeight,
+                webgl2: true,
+                grid: true,
+            });
+        appRef.current = app;
+        app.render();
+        const armature_from_gltf = (gltf, defaultBoneLen = 0.07) => {
+            const arm = new Armature();
+            for (let j of gltf.getSkin().joints) {
+                arm.addBone(j.name, j.parentIndex, j.rotation, j.position, j.scale);
+            }
+            arm.bind(SkinMTX, defaultBoneLen);
+            return arm;
+        };
   
+app.setSize(container.clientHeight,container.clientHeight);
+document.querySelector('canvas[data-engine="three.js r138"]').id='tvi';
+document.querySelector('div[class="three-container"]').id='tti';
+
 const [generator, setGenerator] = useState(null);
 const [statusMessage, setStatusMessage] = useState('Initializing...');
 const [prompt, setPrompt] = useState('');
