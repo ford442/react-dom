@@ -218,16 +218,41 @@ useEffect(() => {
  * @param {string} command - The animation command (e.g., 'wave' or 'idle').
  */
 const handleAvatarAnimation = (command) => {
-    if (!armRef.current) return;
-    // If a new command comes in, start its animation timer
-    if (command === 'wave') {
-        console.log("Triggering 'wave' animation.");
-        animationState.current.action = 'wave';
-        animationState.current.startTime = clock.current.getElapsedTime() * 1000;
-    } else {
-        // For 'idle', we simply set the action. The loop will handle resting position.
-        animationState.current.action = 'idle';
+    // This is a special function for debugging the avatar's movement.
+    if (!armRef.current) {
+        console.error("TEST FAILED: The armRef (armature) is not available.");
+        return;
     }
+    // --- Step 1: Confirm the function is being called ---
+    console.log(`
+    *****************************************
+    * AVATAR ANIMATION TEST TRIGGERED!      *
+    * Command: ${command}                   *
+    *****************************************
+    `);
+    if (command === 'wave') {
+        const arm = armRef.current;
+        const boneIndex = arm.names.get('UpperArm_R');
+        if (boneIndex === undefined) {
+            console.error("TEST FAILED: Could not find the bone index for 'UpperArm_R'.");
+            return;
+        }
+        const waveBone = arm.bones[boneIndex];
+        if (!waveBone || !waveBone.local) {
+            console.error("TEST FAILED: The bone object or its 'local' property is undefined.");
+            return;
+        }
+        // --- Step 2: Apply a PERMANENT pose ---
+        // Instead of a temporary animation, we are forcing the arm to stick straight out.
+        console.log("Applying a static 'WAVE' pose. The arm should now be raised.");
+        const tempQuat = new THREE.Quaternion();
+        tempQuat.setFromAxisAngle(new THREE.Vector3(0, 0, 1), 1.57); // 90 degrees on Z-axis
+        waveBone.local.rot[0] = tempQuat.x;
+        waveBone.local.rot[1] = tempQuat.y;
+        waveBone.local.rot[2] = tempQuat.z;
+        waveBone.local.rot[3] = tempQuat.w;
+    }
+    // We are intentionally NOT resetting the pose to idle.
 };
   
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
