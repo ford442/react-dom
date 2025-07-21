@@ -1012,6 +1012,32 @@ function decodeUTF32(uint8Array, isLittleEndian = true) {
 loadModel();
 }, []);
 
+let mainAction = {
+    text: "Send to AI",
+    handler: handleGenerateText,
+    disabled: isGenerating || !prompt.trim(),
+};
+
+if (currentPersonalityKey === 'sceneCreator') {
+    mainAction = {
+        text: "1. Create Scene",
+        handler: handleGenerateScene,
+        disabled: isGenerating || !prompt.trim(),
+    };
+} else if (currentPersonalityKey === 'characterCreator') {
+    mainAction = {
+        text: "2. Add Character",
+        handler: handleAddCharacter,
+        disabled: isGenerating || !sceneDescription || generatedPersonas.length >= 2,
+    };
+} else if (isSelfConversationMode) {
+    mainAction = {
+        text: "3. Start Dialogue",
+        handler: handleGenerateText, // This correctly calls the self-convo logic
+        disabled: isGenerating || generatedPersonas.length < 2,
+    };
+}
+  
 return (
 <>
 <link charset={"utf-8"} crossorigin rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
@@ -1254,7 +1280,17 @@ max={2.0}
             disabled={!generator || isGenerating}
         />
                 </div>
-
+    <div className="button-group" style={{ display: 'flex', gap: '10px' }}>
+        {/* The Smart Action Button */}
+        <button onClick={mainAction.handler} disabled={mainAction.disabled}>
+            {mainAction.text}
+        </button>
+        
+        {/* The Listen button remains the same */}
+        <button onClick={toggleListen} disabled={isGenerating}>
+            {isListening ? 'Listening...' : 'Listen'}
+        </button>
+    </div>
                  {/* This is the group of buttons for sending the prompt */}
     <div className="button-group" style={{ display: 'flex', gap: '10px' }}>
         <button
