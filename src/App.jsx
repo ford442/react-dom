@@ -1038,6 +1038,16 @@ if (currentPersonalityKey === 'sceneCreator') {
     };
 }
   
+  const testClickHandler = () => {
+    console.log(`
+    ========================================
+    | BUTTON CLICK REGISTERED!             |
+    | Time: ${new Date().toLocaleTimeString()}      |
+    ========================================
+    `);
+    alert("Button click was successful! Check the console.");
+};
+  
 return (
 <>
 <link charset={"utf-8"} crossorigin rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
@@ -1266,43 +1276,20 @@ max={2.0}
                 </div>
             </div>
 
-            <div className="panel-section">
-    <h3>Interaction</h3> {/* Changed title from "Image Prompt Generation" */}
-                <div className="input-group">
-        <label htmlFor="prompt-textarea">Your Message:</label> {/* Changed label */}
-     <textarea
-            id="prompt-textarea"
-            ref={promptTextareaRef}
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Type your message or use the Listen button..."
-            rows={3}
-            disabled={!generator || isGenerating}
-        />
-                </div>
-    <div className="button-group" style={{ display: 'flex', gap: '10px' }}>
-        {/* The Smart Action Button */}
-        <button onClick={mainAction.handler} disabled={mainAction.disabled}>
-            {mainAction.text}
-        </button>
-        
-        {/* The Listen button remains the same */}
-        <button onClick={toggleListen} disabled={isGenerating}>
-            {isListening ? 'Listening...' : 'Listen'}
-        </button>
-    </div>
-                 {/* This is the group of buttons for sending the prompt */}
-    <div className="button-group" style={{ display: 'flex', gap: '10px' }}>
-        <button
-            onClick={handleGenerateText}
-            disabled={!generator || isGenerating || !prompt.trim()}
-        >
-            {isGenerating ? 'Sending...' : 'Send to AI'} {/* Changed text */}
-        </button>
-        <button onClick={toggleListen} disabled={!recognitionRef.current}>
-            {isListening ? 'Listening...' : 'Listen'} {/* Changed text */}
-        </button>
-    </div>
+<div className="button-group" style={{ display: 'flex', gap: '10px' }}>
+    {/* The Smart Action Button - MODIFIED FOR TESTING */}
+    <button
+        onClick={testClickHandler}
+        // The disabled attribute is temporarily removed for this test
+    >
+        Run Test Click
+    </button>
+    
+    {/* The Listen button remains the same */}
+    <button onClick={toggleListen} disabled={isGenerating}>
+        {isListening ? 'Listening...' : 'Listen'}
+    </button>
+</div>
 
     {sttError && <p className="stt-error">{sttError}</p>}
 <div className="input-group">
