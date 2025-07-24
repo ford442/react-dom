@@ -301,7 +301,7 @@ const synthesizeWithKokoroAndPlay = useCallback(async (text, personalityKey) => 
     setStatusMessage(`Synthesizing with Kokoro: "${text.substring(0, 30)}..."`);
 
     try {
-        const output = await kokoroTtsInstance.generate(text.trim(),{voice: "af_heart"});
+        const output = await kokoroTtsInstance.generate(text.trim(),{voice: "af_nova"});
         
         // Store the result of generate()
         const kokoroAudioOutput = output; // Assuming 'output' is the variable holding the result of generate()
@@ -682,7 +682,7 @@ setStatusMessage('Loading models, please wait...');
 
 async function loadModel() {
       try {
-        const pipelineInstance = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-77M', {
+        const pipelineInstance = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-248M', {
           // Xenova/LaMini-Flan-T5-783M
           // Xenova/LaMini-Flan-T5-248M
           // Xenova/LaMini-Flan-T5-77M
@@ -691,7 +691,7 @@ async function loadModel() {
             const message = `Loading: ${progress.file} - ${progress.status} (${percentage}%)`;
             console.log(message);
             setStatusMessage(message);
-          },dtype: "q8"
+          }, // dtype: "q8"
   },
   { device: "webnn" }
         );
