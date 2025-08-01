@@ -4,6 +4,8 @@
 import { env } from '@xenova/transformers';
 env.backends.onnx.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
 // --- END: Environment Configuration ---
+env.remoteHost = 'https://huggingface.co/';
+env.allowLocalModels = false; // Ensure it doesn't try to look for local cached copies
 
 
 import { pipeline, Pipeline } from '@xenova/transformers';
