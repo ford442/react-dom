@@ -1,21 +1,29 @@
 {
-  "name": "material-ui-vite",
-  "version": "5.0.0",
-  "private": true,
+  "name": "client-side-llm-multimodal",
+  "version": "1.0.0",
+  "description": "A web application that runs client-side LLMs for text and music generation.",
+  "main": "src/main.ts",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "serve": "vite preview"
+    "start": "parcel index.html",
+    "build": "parcel build index.html",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@emotion/react": "latest",
-    "@emotion/styled": "latest",
-    "@mui/material": "next",
-    "react": "latest",
-    "react-dom": "latest"
+    "@xenova/transformers": "^2.9.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "latest",
-    "vite": "latest"
-  }
+    "parcel": "^2.11.0",
+    "typescript": "^5.4.0"
+  },
+  "keywords": [
+    "llm",
+    "musicgen",
+    "symbolic music",
+    "xm",
+    "transformers.js",
+    "typescript",
+    "client-side"
+  ],
+  "author": "Your Name",
+  "license": "ISC"
 }
