@@ -2,7 +2,7 @@
 // This is the crucial fix. We tell transformers.js to load its WebAssembly backend
 // directly from the CDN, avoiding local file-path issues with Parcel.
 import { env } from '@xenova/transformers';
-env.backends.onnx.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
+env.backends.onnx.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/';
 // --- END: Environment Configuration ---
 env.remoteHost = 'https://huggingface.co/';
 env.allowLocalModels = false; // Ensure it doesn't try to look for local cached copies
