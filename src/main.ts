@@ -56,9 +56,9 @@ async function initializeApp() {
 
 async function loadTextPipeline() {
     try {
-        symbolicStatus.textContent = 'Loading text model (distilgpt2)...';
-        textStatus.textContent = 'Loading text model (distilgpt2)...';
-        textPipe = await pipeline('text-generation', 'Xenova/distilgpt2');
+        symbolicStatus.textContent = 'Loading text model (Xenova/LaMini-Flan-T5-248M)...';
+        textStatus.textContent = 'Loading text model (Xenova/LaMini-Flan-T5-248M)...';
+        textPipe = await pipeline('text-generation', 'Xenova/LaMini-Flan-T5-248M');
         textStatus.textContent = 'Text model loaded.';
         symbolicStatus.textContent = 'Model loaded. Ready to generate notes.';
         textGenerateButton.disabled = false;
