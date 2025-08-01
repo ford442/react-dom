@@ -1,3 +1,10 @@
+// --- START: Environment Configuration ---
+// This is the crucial fix. We tell transformers.js to load its WebAssembly backend
+// directly from the CDN, avoiding local file-path issues with Parcel.
+import { env } from '@xenova/transformers';
+env.backends.onnx.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/';
+// --- END: Environment Configuration ---
+
 import { pipeline, Pipeline } from '@xenova/transformers';
 
 // --- TYPE DEFINITIONS ---
