@@ -218,41 +218,16 @@ useEffect(() => {
  * @param {string} command - The animation command (e.g., 'wave' or 'idle').
  */
 const handleAvatarAnimation = (command) => {
-    // This is a special function for debugging the avatar's movement.
-    if (!armRef.current) {
-        console.error("TEST FAILED: The armRef (armature) is not available.");
-        return;
-    }
-    // --- Step 1: Confirm the function is being called ---
-    console.log(`
-    *****************************************
-    * AVATAR ANIMATION TEST TRIGGERED!      *
-    * Command: ${command}                   *
-    *****************************************
-    `);
+    if (!armRef.current) return;
+    // If a new command comes in, start its animation timer
     if (command === 'wave') {
-        const arm = armRef.current;
-        const boneIndex = arm.names.get('UpperArm_R');
-        if (boneIndex === undefined) {
-            console.error("TEST FAILED: Could not find the bone index for 'UpperArm_R'.");
-            return;
-        }
-        const waveBone = arm.bones[boneIndex];
-        if (!waveBone || !waveBone.local) {
-            console.error("TEST FAILED: The bone object or its 'local' property is undefined.");
-            return;
-        }
-        // --- Step 2: Apply a PERMANENT pose ---
-        // Instead of a temporary animation, we are forcing the arm to stick straight out.
-        console.log("Applying a static 'WAVE' pose. The arm should now be raised.");
-        const tempQuat = new THREE.Quaternion();
-        tempQuat.setFromAxisAngle(new THREE.Vector3(0, 0, 1), 1.57); // 90 degrees on Z-axis
-        waveBone.local.rot[0] = tempQuat.x;
-        waveBone.local.rot[1] = tempQuat.y;
-        waveBone.local.rot[2] = tempQuat.z;
-        waveBone.local.rot[3] = tempQuat.w;
+        console.log("Triggering 'wave' animation.");
+        animationState.current.action = 'wave';
+        animationState.current.startTime = clock.current.getElapsedTime() * 1000;
+    } else {
+        // For 'idle', we simply set the action. The loop will handle resting position.
+        animationState.current.action = 'idle';
     }
-    // We are intentionally NOT resetting the pose to idle.
 };
   
 const speakWithWebSpeechAPI = useCallback((textToSay) => {
@@ -1012,42 +987,6 @@ function decodeUTF32(uint8Array, isLittleEndian = true) {
 loadModel();
 }, []);
 
-let mainAction = {
-    text: "Send to AI",
-    handler: handleGenerateText,
-    disabled: isGenerating || !prompt.trim(),
-};
-
-if (currentPersonalityKey === 'sceneCreator') {
-    mainAction = {
-        text: "1. Create Scene",
-        handler: handleGenerateScene,
-        disabled: isGenerating || !prompt.trim(),
-    };
-} else if (currentPersonalityKey === 'characterCreator') {
-    mainAction = {
-        text: "2. Add Character",
-        handler: handleAddCharacter,
-        disabled: isGenerating || !sceneDescription || generatedPersonas.length >= 2,
-    };
-} else if (isSelfConversationMode) {
-    mainAction = {
-        text: "3. Start Dialogue",
-        handler: handleGenerateText, // This correctly calls the self-convo logic
-        disabled: isGenerating || generatedPersonas.length < 2,
-    };
-}
-  
-  const testClickHandler = () => {
-    console.log(`
-    ========================================
-    | BUTTON CLICK REGISTERED!             |
-    | Time: ${new Date().toLocaleTimeString()}      |
-    ========================================
-    `);
-    alert("Button click was successful! Check the console.");
-};
-  
 return (
 <>
 <link charset={"utf-8"} crossorigin rel='stylesheet' href='https://css.1ink.us/sh1.1iss'/>
@@ -1276,20 +1215,33 @@ max={2.0}
                 </div>
             </div>
 
-<div className="button-group" style={{ display: 'flex', gap: '10px' }}>
-    {/* The Smart Action Button - MODIFIED FOR TESTING */}
-    <button
-        onClick={testClickHandler}
-        // The disabled attribute is temporarily removed for this test
-    >
-        Run Test Click
-    </button>
-    
-    {/* The Listen button remains the same */}
-    <button onClick={toggleListen} disabled={isGenerating}>
-        {isListening ? 'Listening...' : 'Listen'}
-    </button>
-</div>
+            <div className="panel-section">
+    <h3>Interaction</h3> {/* Changed title from "Image Prompt Generation" */}
+                <div className="input-group">
+        <label htmlFor="prompt-textarea">Your Message:</label> {/* Changed label */}
+     <textarea
+            id="prompt-textarea"
+            ref={promptTextareaRef}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Type your message or use the Listen button..."
+            rows={3}
+            disabled={!generator || isGenerating}
+        />
+                </div>
+
+                 {/* This is the group of buttons for sending the prompt */}
+    <div className="button-group" style={{ display: 'flex', gap: '10px' }}>
+        <button
+            onClick={handleGenerateText}
+            disabled={!generator || isGenerating || !prompt.trim()}
+        >
+            {isGenerating ? 'Sending...' : 'Send to AI'} {/* Changed text */}
+        </button>
+        <button onClick={toggleListen} disabled={!recognitionRef.current}>
+            {isListening ? 'Listening...' : 'Listen'} {/* Changed text */}
+        </button>
+    </div>
 
     {sttError && <p className="stt-error">{sttError}</p>}
 <div className="input-group">
