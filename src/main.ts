@@ -73,7 +73,7 @@ async function loadTextPipeline() {
 async function loadMusicPipeline() {
     try {
         musicStatus.textContent = 'Loading music model (musicgen-small). This is a large file (~500MB)...';
-        musicPipe = await pipeline('text-to-audio', 'Xenova/musicgen-small');
+     //   musicPipe = await pipeline('text-to-audio', 'Xenova/musicgen-small');
         musicStatus.textContent = 'Music model loaded. Ready.';
         musicGenerateButton.disabled = false;
     } catch (error) {
