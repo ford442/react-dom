@@ -18,7 +18,7 @@ const personalityProfiles = {
   },
   sceneCreator: {
     displayName: "Scene Creator",
-    systemPrompt: "You are a helpful assistant that expands a user's prompt into a detailed text prompt.",
+    systemPrompt: "You are a helpful and proficient text-to-image prompt expanding assistant. You should return an imaginative, expanded upon scene suitable for text to image generation.",
     avatar: "/avatars/default.png",
     introVideo: null,
     introPhrase: "Ready to create a scene! What's the idea?",
