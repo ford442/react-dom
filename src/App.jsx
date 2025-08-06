@@ -151,6 +151,7 @@ function App() {
         );
         console.log("Pipeline loaded successfully.");
         setStatusMessage("Model loaded! Ready to generate.");
+        
         setGenerator(() => pipelineInstance);
       } catch (error) {
         console.error("Failed to load pipeline:", error);
@@ -169,7 +170,6 @@ function App() {
       <main id={'panel'}>
         <div id={'wrap'}>
           <div id={'contain1'}>
-            <canvas className='emscripten' id={'scanvas'} style={{pointerEvents:'auto',display:'block',position:'absolute',zIndex:3000,backgroundColor:'rgba(233,233,233,1.0)',top:'0',height:'100vh',width:'100vh',imageRendering:'auto',transform:'scaleY(1.0)'}}></canvas>
             <div className="floating-control-panel">
               <div className="panel-header">
                 <div className="personality-header">
