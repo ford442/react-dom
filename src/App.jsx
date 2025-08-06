@@ -55,6 +55,19 @@ const personalityProfiles = {
       '--ai-bubble-bg': '#E8F5E9',
     }
   },
+    spriteDrawing: {
+    displayName: "Create a pixelated image",
+    systemPrompt: "You can draw the input as a 32 by 32 grid of pixels. You can say [RED], [GREEN] or [BLUE] to output the image.",
+    avatar: "/avatars/default.png",
+    introVideo: null,
+    introPhrase: "Tell me the image to draw.",
+    themeColors: {
+      '--ai-primary-color': '#228B22',
+      '--ai-secondary-color': '#F5DEB3',
+      '--ai-text-color': '#5D4037',
+      '--ai-bubble-bg': '#E8F5E9',
+    }
+  },
 };
 
 function App() {
