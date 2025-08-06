@@ -154,6 +154,7 @@ function App() {
         document.querySelector('#splash2').style.display='none';
          setTimeout(function() {
         document.querySelector('#splash1').style.display='none';
+           document.querySelector('#contain1').style.pointerEvents='auto';
          }, 1500);
         setGenerator(() => pipelineInstance);
       } catch (error) {
