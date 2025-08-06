@@ -89,8 +89,8 @@ function App() {
 
       console.log("Sending to LLM:", fullPromptForLLM);
       const outputs = await generator(fullPromptForLLM, {
-        max_new_tokens: 128,
-        min_new_tokens: 32,
+        max_new_tokens: 192,
+        min_new_tokens: 96,
       });
 
       if (outputs && outputs.length > 0 && outputs[0].generated_text) {
