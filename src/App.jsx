@@ -151,7 +151,10 @@ function App() {
         );
         console.log("Pipeline loaded successfully.");
         setStatusMessage("Model loaded! Ready to generate.");
-        
+        document.querySelector('#splash2').style.display='none';
+         setTimeout(function() {
+        document.querySelector('#splash1').style.display='none';
+         }, 1500);
         setGenerator(() => pipelineInstance);
       } catch (error) {
         console.error("Failed to load pipeline:", error);
