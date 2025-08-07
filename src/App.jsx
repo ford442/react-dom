@@ -770,8 +770,14 @@ async function loadModel() {
       // Update the overall status message
       if (generator && ttsPipelineInstance && speakerEmbeddings && kokoroInstance && captionerInstance) {
         setStatusMessage("All models loaded! Ready.");
+                document.querySelector('#splash2').style.display='none';
+         setTimeout(function() {
+        document.querySelector('#splash1').style.display='none';
+           document.querySelector('#contain1').style.pointerEvents='auto';
+         }, 1500);
       } else {
         setStatusMessage(prev => `${prev} Image Captioner loaded.`);
+        
       }
     } catch (error) {
       console.error("Failed to load Image Captioning model:", error);
