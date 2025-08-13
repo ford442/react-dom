@@ -5,8 +5,6 @@ import './App.css';
 
 function App() {
 
-  }, []);
-
   return (
     <>
       <link charset={"utf-8"} crossorigin rel='stylesheet' href='https://css.1ink.us/birdsong.1iss'/>
