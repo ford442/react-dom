@@ -103,7 +103,7 @@ function App() {
       console.log("Sending to LLM:", fullPromptForLLM);
       const outputs = await generator(fullPromptForLLM, {
         max_new_tokens: 192,
-        min_new_tokens: 96,
+        min_new_tokens: 128,
       });
 
       if (outputs && outputs.length > 0 && outputs[0].generated_text) {
@@ -158,7 +158,7 @@ function App() {
             const message = `Loading: ${progress.file} - ${progress.status} (${percentage}%)`;
             console.log(message);
             setStatusMessage(message);
-          }, dtype: "q8"
+          }, // dtype: "q8"
         },
           { device: "webnn" }
         );
