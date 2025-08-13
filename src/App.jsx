@@ -160,7 +160,7 @@ function App() {
             setStatusMessage(message);
           }, // dtype: "q8"
         },
-          { device: "webnn" }
+          { device: "webgpu" }
         );
         console.log("Pipeline loaded successfully.");
         setStatusMessage("Model loaded! Ready to generate.");
