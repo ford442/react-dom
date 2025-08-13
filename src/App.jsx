@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
-import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.6.0";
+import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.1";
 import './App.css';
 
 const personalityProfiles = {
