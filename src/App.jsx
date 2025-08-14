@@ -611,9 +611,9 @@ function App() {
     speakWithWebSpeechAPI(webSpeechText);
   };
 
-  useEffect(() => {
-    setupSpeechRecognition();
-  }, [setupSpeechRecognition]);
+useEffect(() => {
+  setupSpeechRecognition();
+}, [setupSpeechRecognition, addToSequence]);
 
   useEffect(() => {
     if (generator && ttsPipelineInstance && promptTextareaRef.current) {
