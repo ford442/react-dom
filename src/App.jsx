@@ -645,8 +645,8 @@ useEffect(() => {
     env.localFilesOnly = false;
     env.allowLocalModels = false;
     env.useBrowserCache = true;
-    env.remoteHost = 'https://huggingface.co';
-    env.remotePathTemplate = '/resolve/main/';
+    // env.remoteHost = 'https://huggingface.co';
+    // env.remotePathTemplate = '/resolve/main/';
 
     setStatusMessage('Loading models, please wait...');
 
