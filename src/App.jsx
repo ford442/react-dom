@@ -72,6 +72,7 @@ function App() {
   const [currentProfile, setCurrentProfile] = useState(personalityProfiles.default); // Store the whole profile
 
   const [activeTtsEngine, setActiveTtsEngine] = useState('kokoro'); // Default: 'webSpeechAPI', 'speechT5', 'kokoro'
+  const [sttTranscriptToProcess, setSttTranscriptToProcess] = useState(null);
 
   // NEW: State to hold the loaded Kokoro TTS model instance.
   const [kokoroTtsInstance, setKokoroTtsInstance] = useState(null);
@@ -341,6 +342,8 @@ function App() {
       const last = event.results.length - 1;
       const transcript = event.results[last][0].transcript.trim();
       console.log('Speech recognized by onresult:', transcript);
+      setSttTranscriptToProcess(transcript); // Set the new state variable
+
       setPrompt(transcript); // Set the prompt for general text generation
       // NEW: If we want to add this directly to the sequence:
       addToSequence({ type: 'text', content: transcript, timestamp: new Date().toISOString() });
@@ -357,7 +360,7 @@ function App() {
       console.log('Speech recognition ended.');
     };
     recognitionRef.current = recognitionInstance;
-  }, [setPrompt, setStatusMessage, setSttError, setIsListening, addToSequence]); // Added addToSequence dependency
+}, [setPrompt, setStatusMessage, setSttError, setIsListening, setSttTranscriptToProcess]);
 
   const toggleListen = () => {
     if (!recognitionRef.current) {
@@ -525,7 +528,13 @@ function App() {
     }
   }, [currentPersonalityKey, preferredTtsEngine, speakWithWebSpeechAPI, synthesizeAndPlayText, synthesizeWithKokoroAndPlay, ttsPipelineInstance, speakerEmbeddings, kokoroTtsInstance, isSpeaking, synthRef]);
 
-
+useEffect(() => {
+  if (sttTranscriptToProcess) {
+    addToSequence({ type: 'text', content: sttTranscriptToProcess, timestamp: new Date().toISOString() });
+    setSttTranscriptToProcess(null); // Clear the state so it doesn't trigger again
+  }
+}, [sttTranscriptToProcess, addToSequence]);
+  
   // NEW: Handler for image captioning
   const handleImageCaptioning = useCallback(async () => {
     if (!imageCaptioner || !imageToCaption) {
