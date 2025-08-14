@@ -731,47 +731,6 @@ useEffect(() => {
       }
     }
 
-    // Script loading part (keep as is)
-    const xhrPath = document.querySelector('#loadPath').innerHTML;
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', xhrPath, true);
-    xhr.responseType = 'arraybuffer';
-    console.log('Preparing to load external script...');
-    function decodeUTF32(uint8Array, isLittleEndian = true) {
-      const dataView = new DataView(uint8Array.buffer);
-      let result = "";
-      for (let i = 0; i < uint8Array.length; i += 4) {
-        let codePoint;
-        if (isLittleEndian) codePoint = dataView.getUint32(i, true);
-        else codePoint = dataView.getUint32(i, false);
-        result += String.fromCodePoint(codePoint);
-      }
-      return result;
-    }
-    xhr.onload = function() {
-      console.log('External script loaded. Executing...');
-      if (xhr.status === 200) {
-        const utf32Data = xhr.response;
-        const jsCode = decodeUTF32(new Uint8Array(utf32Data), true);
-        const scr = document.createElement('script');
-        scr.type = 'module';
-        scr.text = jsCode;
-        document.body.appendChild(scr);
-        var Module = {};
-        setTimeout(function() {
-          Module = libload();
-          Module.onRuntimeInitialized = function() {
-            console.log('Runtime initialized. Calling main loader.');
-            Module.callMain();
-          };
-        }, 2500);
-      } else {
-        console.error("Failed to load external script:", xhr.statusText);
-      }
-    };
-    xhr.onerror = function() { console.error("Network error while loading external script."); };
-    xhr.send();
-
     loadModels();
   }, []);
 
