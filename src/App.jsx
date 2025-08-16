@@ -653,7 +653,11 @@ lockBtn.addEventListener('click', () => {
 document.querySelector('#tvi').requestPointerLock(); 
 });
 
-  
+document.querySelector('#splash2').style.display='none';
+setTimeout(function() {
+document.querySelector('#splash1').style.display='none';
+document.querySelector('#contain1').style.pointerEvents='auto';
+}, 1500);
 
   return (
     <>
@@ -692,7 +696,9 @@ document.querySelector('#tvi').requestPointerLock();
           <div id={'contain2'}>
             <canvas id={'bcanvas'} hidden style={{ pointerEvents: 'none', display: 'none', zIndex: 2100, position: 'absolute', height: '100vh', width: '100vh', marginLeft: 'auto', marginRight: 'auto', backgroundColor: 'rgba(0,255,0,1.0)', top: '0', imageRendering: 'auto' }}></canvas>
             <img id={'resultImage'} src={''} alt="" ></img>
+			  <div id={'status'}></div>
           </div>
+			
         </div>
       </main>
 
