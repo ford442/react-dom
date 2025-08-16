@@ -22,8 +22,8 @@ function App() {
 
   
 env.allowLocalModels = false;
-env.backends.onnx.wasm.proxy = false;
-env.backends.onnx.wasm.numThreads = 2;
+env.backends.onnx.wasm.proxy = true;
+env.backends.onnx.wasm.numThreads = 4;
 env.backends.onnx.wasm.simd = true;
 
 const DEFAULT_SCALE = 0.3513;
