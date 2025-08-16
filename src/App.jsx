@@ -1,5 +1,6 @@
 "use client"
 import './App.css';
+import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -20,7 +21,8 @@ import { LoopSubdivision } from 'three-subdivide';
 function App() {
 
 
-  
+    useEffect(() => {
+
 env.allowLocalModels = false;
 env.backends.onnx.wasm.proxy = true;
 env.backends.onnx.wasm.numThreads = 4;
@@ -658,7 +660,8 @@ setTimeout(function() {
 document.querySelector('#splash1').style.display='none';
 document.querySelector('#contain1').style.pointerEvents='auto';
 }, 1500);
-
+  }, []);
+	
   return (
     <>
       <link charset={"utf-8"} crossorigin rel='stylesheet' href='https://css.1ink.us/1ink.1iss'/>
