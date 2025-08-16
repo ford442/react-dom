@@ -725,7 +725,6 @@ document.querySelector('#contain1').style.pointerEvents='auto';
         borderRadius: '5px',
         zIndex: 9999, // Very high zIndex to be on top
       }}>
-        {statusMessage}
       </div>
     </>
   );
