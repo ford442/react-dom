@@ -33,7 +33,7 @@ function App() {
         env.backends.onnx.wasm.numThreads = 2;
         env.backends.onnx.wasm.simd = true;
 
-        const depth_estimator = await pipeline('depth-estimation', 'Xenova/depth-anything-large-hf', { dtype: 'fp16', device: 'webgpu', executionProviders: ['webgpu'] });
+        const depth_estimator = await pipeline('depth-estimation', 'Xenova/depth-anything-base-hf', { device: 'webgpu', executionProviders: ['webgpu'] });
         depthEstimatorRef.current = depth_estimator;
         setPipelineReady(true);
         status.textContent = 'Ready';
