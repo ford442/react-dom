@@ -13,7 +13,7 @@
     "camera-controls": "^2.9.0",
     "html-to-image": "1.11.11",
     "onnxruntime-web": "^1.19.0",
-    "three": "^0.170.0"
+    "three": "^0.170.0",
     "@emotion/react": "latest",
     "@emotion/styled": "latest",
     "@mui/material": "latest",
