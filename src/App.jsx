@@ -6,6 +6,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { pipeline, env, RawImage } from '@xenova/transformers';
+import { useState, useEffect, useRef } from 'react';
 // import { pipeline, env, RawImage } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0-alpha.14';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 // import { FlyControls } from 'three/addons/controls/FlyControls.js';
@@ -18,28 +19,44 @@ import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { LoopSubdivision } from 'three-subdivide';
 
 function App() {
+  const [pipelineReady, setPipelineReady] = useState(false);
+  const depthEstimatorRef = useRef(null);
 
+  useEffect(() => {
+    const status = document.getElementById('status');
+    status.textContent = 'Loading model...';
 
-  
-env.allowLocalModels = false;
-env.backends.onnx.wasm.proxy = true;
-env.backends.onnx.wasm.numThreads = 2;
-env.backends.onnx.wasm.simd = true;
+    const initializePipeline = async () => {
+      try {
+        env.allowLocalModels = false;
+        env.backends.onnx.wasm.proxy = true;
+        env.backends.onnx.wasm.numThreads = 2;
+        env.backends.onnx.wasm.simd = true;
+
+        const depth_estimator = await pipeline('depth-estimation', 'Xenova/depth-anything-large-hf', { dtype: 'fp16', device: 'webgpu', executionProviders: ['webgpu'] });
+        depthEstimatorRef.current = depth_estimator;
+        setPipelineReady(true);
+        status.textContent = 'Ready';
+        document.querySelector('#splash2').style.display = 'none';
+        setTimeout(function () {
+          document.querySelector('#splash1').style.display = 'none';
+          document.querySelector('#contain1').style.pointerEvents = 'auto';
+        }, 1500);
+      } catch (error) {
+        console.error(error);
+        status.textContent = 'Failed to load model.';
+      }
+    };
+
+    initializePipeline();
+  }, []);
+
 
 const DEFAULT_SCALE = 0.3513;
 
-const status = document.getElementById('status');
 const fileUpload = document.getElementById('upload');
 const imageContainer = document.getElementById('container');
 const example = document.getElementById('example');
-status.textContent = 'Loading model...';
-
-// const depth_estimator = await pipeline('depth-estimation', 'onnx-community/depth-anything-v2-large', { dtype: 'fp32', device: 'webgpu' });
-const depth_estimator = pipeline('depth-estimation', 'Xenova/depth-anything-large-hf', { dtype: 'fp16', device: 'webgpu',executionProviders: ['webgpu'] });
-// const depth_estimator = await pipeline('depth-estimation', 'Xenova/depth-anything-base-hf', { dtype: 'fp16', device: 'webgpu' });
-// const depth_estimator = await pipeline('depth-estimation', 'Xenova/depth-anything-small-hf',{dtype:'fp32',device:'webgpu',executionProviders: ['webgpu']});
-
-status.textContent = 'Ready';
 const channel = new BroadcastChannel('imageChannel');
 const loaderChannel = new BroadcastChannel('loaderChannel');
 let onSliderChange;
@@ -204,6 +221,11 @@ document.querySelector('#tvi').style.position = 'absolute';
 document.querySelector('#tvi').style.zIndex = 3100;
 document.querySelector('#tvi').style.pointerEvents = 'auto';
 
+const depth_estimator = depthEstimatorRef.current;
+if (!depth_estimator) {
+  status.textContent = 'Pipeline not ready.';
+  return;
+}
 const { depth } = await depth_estimator(image);
 status.textContent = 'Analysing...';
 setDisplacementMap(depth.toCanvas());
@@ -652,12 +674,6 @@ const lockBtn=document.querySelector('#lockButton');
 lockBtn.addEventListener('click', () => {
 document.querySelector('#tvi').requestPointerLock(); 
 });
-
-document.querySelector('#splash2').style.display='none';
-setTimeout(function() {
-document.querySelector('#splash1').style.display='none';
-document.querySelector('#contain1').style.pointerEvents='auto';
-}, 1500);
 
   return (
     <>
