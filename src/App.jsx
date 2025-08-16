@@ -22,7 +22,7 @@ function App() {
 
   
 env.allowLocalModels = false;
-env.backends.onnx.wasm.proxy = false;
+env.backends.onnx.wasm.proxy = true;
 env.backends.onnx.wasm.numThreads = 2;
 env.backends.onnx.wasm.simd = true;
 
