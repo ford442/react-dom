@@ -21,6 +21,8 @@
     "react-dom": "latest"
   },
   "devDependencies": {
+    "apng-handler": "^0.1.4",
+    "three-subdivide": "^1.1.5",
     "@vitejs/plugin-react": "latest",
     "vite": "latest"
   }
