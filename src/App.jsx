@@ -18,15 +18,6 @@ function App() {
   useEffect(() => {
 
       
-    async function load() {
-              document.querySelector('#splash2').style.display='none';
-         setTimeout(function() {
-        document.querySelector('#splash1').style.display='none';
-           document.querySelector('#contain1').style.pointerEvents='auto';
-         }, 1500);
-    }
-    load();
-      
     const loadModel = async () => {
       try {
         const newModel = new mm.ArbitraryStyleTransferNetwork();
