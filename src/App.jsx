@@ -49,16 +49,8 @@ function App() {
     }
   };
 
-  const stylizeImage = async () => {
-    // --- Guard Clauses & Initial Logging ---
-    console.log("--- Starting Stylization ---");
-    if (!model) {
-      console.error("Stylize blocked: Model is not loaded.");
-      setStatus('Error: Model not loaded.');
-      return;
-    }
-    if (!contentImg || !styleImg) {
-      console.error("Stylize blocked: Content or Style image is missing.");
+const stylizeImage = async () => {
+    if (!model || !contentImg || !styleImg) {
       setStatus('Please select both a content and a style image.');
       return;
     }
@@ -68,7 +60,6 @@ function App() {
 
     try {
       // 1. Load images into memory
-      console.log("Step 1: Loading images into memory.");
       const contentImageElement = new Image();
       const styleImageElement = new Image();
 
@@ -85,21 +76,14 @@ function App() {
       });
 
       const [loadedContentImg, loadedStyleImg] = await Promise.all([contentPromise, stylePromise]);
-      console.log("Step 1 Complete: Images loaded.", { loadedContentImg, loadedStyleImg });
 
-      // 2. Resize images
-      setStatus('Images loaded. Resizing for GPU compatibility...');
-      console.log("Step 2: Resizing images.");
+      // 2. Resize images to prevent GPU errors
+      setStatus('Images loaded. Resizing...');
       const MAX_DIMENSION = 1024;
       const resizeImageToCanvas = (image, maxDimension) => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         let { width, height } = image;
-
-        if (!width || !height) {
-            console.error("Cannot resize image with zero dimensions.", image);
-            return null; // Return null if the image is invalid
-        }
 
         if (width > maxDimension || height > maxDimension) {
           if (width > height) {
@@ -118,28 +102,22 @@ function App() {
 
       const contentCanvas = resizeImageToCanvas(loadedContentImg, MAX_DIMENSION);
       const styleCanvas = resizeImageToCanvas(loadedStyleImg, MAX_DIMENSION);
-      const resultCanvas = stylizedImgRef.current;
-      console.log("Step 2 Complete: Canvases prepared.", { contentCanvas, styleCanvas, resultCanvas });
-
-      // --- Pre-Stylize Sanity Checks ---
-      if (!contentCanvas || !styleCanvas || !resultCanvas) {
-          throw new Error("One of the required canvases (content, style, or result) is invalid.");
-      }
       
-      setStatus('Applying style...');
-      console.log("Step 3: Calling model.stylize()...");
+      // 3. THE FIX: Set the result canvas dimensions
+      const resultCanvas = stylizedImgRef.current;
+      resultCanvas.width = contentCanvas.width;
+      resultCanvas.height = contentCanvas.height;
 
-      // 3. Pass the resized canvases to the model
+      // 4. Stylize the image
+      setStatus('Applying style...');
       await model.stylize(contentCanvas, styleCanvas, resultCanvas);
-      console.log("Step 3 Complete: model.stylize() finished.");
 
       setStylizedImg(resultCanvas.toDataURL());
       setStatus('Stylization complete!');
-      console.log("--- Stylization Successful ---");
 
     } catch (error) {
         console.error("Error during stylization:", error);
-        setStatus('An error occurred. Check the console for details.');
+        setStatus('An error occurred during stylization. Please check the console for details.');
     } finally {
         setLoading(false);
     }
