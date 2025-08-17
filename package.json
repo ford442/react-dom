@@ -17,7 +17,8 @@
     "@mui/material": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "tslib": "^2.0.0"
+    "tslib": "^2.0.0",
+    "tone-js":"latest"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "latest",
