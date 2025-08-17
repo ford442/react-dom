@@ -18,7 +18,7 @@
     "react": "latest",
     "react-dom": "latest",
     "tslib": "1.14.1",
-    "tone":"latest"
+    "tone": "13.8.25"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "latest",
