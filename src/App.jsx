@@ -36,8 +36,12 @@ const example = document.getElementById('example');
 status.textContent = 'Loading model...';
 
 // const depth_estimator = await pipeline('depth-estimation', 'onnx-community/depth-anything-v2-large', {  device: 'webgpu' });
-// const depth_estimator = pipeline('depth-estimation', 'Xenova/depth-anything-base-hf', { device: 'webgpu',executionProviders: ['webgpu'] });
-const depth_estimator = pipeline('depth-estimation', 'Xenova/depth-anything-base-hf', { device: 'webnn'});
+	
+const depth_estimator = pipeline('depth-estimation', 'Xenova/depth-anything-base-hf', { device: 'webgpu',executionProviders: ['webgpu'] });
+// const depth_estimator = pipeline('depth-estimation', 'Xenova/depth-anything-large-hf', { dtype: 'uint8', device: 'webgpu',executionProviders: ['webgpu'] });
+
+	
+// const depth_estimator = pipeline('depth-estimation', 'Xenova/depth-anything-base-hf', { device: 'webnn'});
 // const depth_estimator = await pipeline('depth-estimation', 'Xenova/depth-anything-base-hf', { dtype: 'fp16', device: 'webgpu' });
 // const depth_estimator = await pipeline('depth-estimation', 'Xenova/depth-anything-small-hf',{dtype:'fp32',device:'webgpu',executionProviders: ['webgpu']});
 
