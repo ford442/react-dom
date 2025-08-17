@@ -53,7 +53,7 @@ function App() {
     }
   };
 
-  const stylizeImage = async () => {
+ const stylizeImage = async () => {
     if (!model || !contentImgRef.current || !styleImgRef.current) {
       setStatus('Please select both a content and a style image.');
       return;
@@ -63,14 +63,13 @@ function App() {
     setLoading(true);
 
     try {
-      // The model returns a tensor, not a direct image object
-      const stylizedTensor = await model.stylize(contentImgRef.current, styleImgRef.current);
-
       const canvas = stylizedImgRef.current;
-      // Use Magenta.js's toPixels utility to draw the tensor to the canvas
-      await mm.toPixels(stylizedTensor, canvas);
 
-      // Now get the data URL from the canvas to display in the <img> tag
+      // Pass the canvas as the third argument. The model will draw the
+      // stylized image directly onto it.
+      await model.stylize(contentImgRef.current, styleImgRef.current, canvas);
+
+      // Now that the image is drawn on the canvas, get its data URL for display.
       setStylizedImg(canvas.toDataURL());
       setStatus('Stylization complete!');
 
