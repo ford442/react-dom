@@ -10,6 +10,7 @@
   "dependencies": {
     "@huggingface/transformers": "3.6.0",
     "onnxruntime-web": "latest",
+    "@magenta/music": "latest",
     "kokoro-js": "latest",
     "@emotion/react": "latest",
     "@emotion/styled": "latest",
