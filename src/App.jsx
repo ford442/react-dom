@@ -1,11 +1,23 @@
-import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import './App.css';
 import * as mm from '@magenta/image';
 
 function App() {
+  const [model, setModel] = useState(null);
+  const [styleImg, setStyleImg] = useState(null);
+  const [contentImg, setContentImg] = useState(null);
+  const [stylizedImg, setStylizedImg] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState('Loading model...');
 
+  const contentImgRef = useRef(null);
+  const styleImgRef = useRef(null);
+  const stylizedImgRef = useRef(null);
 
+  // Load the model on component mount
+  useEffect(() => {
 
+      
     async function load() {
               document.querySelector('#splash2').style.display='none';
          setTimeout(function() {
@@ -14,18 +26,99 @@ function App() {
          }, 1500);
     }
     load();
+      
+    const loadModel = async () => {
+      try {
+        const newModel = new mm.ArbitraryStyleTransferNetwork();
+        await newModel.initialize();
+        setModel(newModel);
+        setLoading(false);
+        setStatus('Model loaded. Ready to stylize.');
+      } catch (error) {
+        console.error("Error loading model:", error);
+        setStatus('Error loading model. Please try refreshing.');
+      }
+    };
+    loadModel();
   }, []);
-  
+
+  const handleContentImage = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setContentImg(event.target.result);
+      }
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  };
+
+  const handleStyleImage = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setStyleImg(event.target.result);
+      }
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  };
+
+  const stylizeImage = async () => {
+    if (!model || !contentImgRef.current || !styleImgRef.current) {
+      setStatus('Please select both a content and a style image.');
+      return;
+    }
+
+    setStatus('Stylizing image...');
+    setLoading(true);
+
+    try {
+      const stylized = await model.stylize(contentImgRef.current, styleImgRef.current);
+      stylizedImgRef.current.getContext('2d').drawImage(stylized, 0, 0);
+      setStylizedImg(stylizedImgRef.current.toDataURL());
+       setStatus('Stylization complete!');
+    } catch (error) {
+        console.error("Error during stylization:", error);
+        setStatus('An error occurred during stylization.');
+    } finally {
+        setLoading(false);
+    }
+  };
+
   return (
-    <>
-      <link charset={"utf-8"} crossorigin rel='stylesheet' href='https://css.1ink.us/birdsong.1iss'/>
-      <img id={'splash1'} src={'./image/shroud.jpg'} style={{backgroundColor:'rgba(233,233,233,0.0)',display:'block',position:'absolute',height:'100vh',width:'100vw',zIndex:3590}}></img>
-      <img id={'splash2'} src={'./image/spinner.gif'} style={{backgroundColor:'rgba(47,47,47,1.0)',display:'block',top:'50%',left:'50%',transform:'translate(-50%,-50%)',position:'absolute',height:'20vh',width:'20vh',zIndex:3591}}></img>
-      <main id={'panel'}>
-        <div id={'wrap'}>
-          </div>
-      </main>
-    </>
+    <div className="floating-control-panel base-panel">
+      <div className="panel-section">
+        <h2>Magenta.js Image Style Transfer</h2>
+        <p className="status-display">{status}</p>
+
+        <div className="input-group">
+          <label htmlFor="content-img-input">Content Image:</label>
+          <input id="content-img-input" type="file" onChange={handleContentImage} accept="image/*" />
+          {contentImg && <img ref={contentImgRef} src={contentImg} alt="Content" width="200" />}
+        </div>
+
+        <div className="input-group">
+          <label htmlFor="style-img-input">Style Image:</label>
+          <input id="style-img-input" type="file" onChange={handleStyleImage} accept="image/*" />
+          {styleImg && <img ref={styleImgRef} src={styleImg} alt="Style" width="200" />}
+        </div>
+
+        <button onClick={stylizeImage} disabled={loading || !contentImg || !styleImg}>
+          {loading ? 'Processing...' : 'Stylize'}
+        </button>
+      </div>
+
+      <div className="panel-section">
+        <h3>Result</h3>
+        <div className="generated-output-display">
+            {stylizedImg ? (
+                <img src={stylizedImg} alt="Stylized" style={{maxWidth: '100%'}}/>
+            ) : (
+                <p>The stylized image will appear here.</p>
+            )}
+        </div>
+        <canvas ref={stylizedImgRef} style={{ display: 'none' }} />
+      </div>
+    </div>
   );
 }
 
