@@ -19,6 +19,7 @@ const [transcriptionResult, setTranscriptionResult] = useState(null);
 
         async function runTranscription(audioBuffer) {
   setStatusMessage('Running note detection...');
+            /*
   // Load the Onsets and Frames model
   const model = new mm.OnsetsAndFrames('https://storage.googleapis.com/magentadata/js/checkpoints/transcription/onsets_frames_uni');
   await model.initialize();
@@ -27,6 +28,7 @@ const [transcriptionResult, setTranscriptionResult] = useState(null);
   const result = await model.transcribeFromAudioBuffer(audioBuffer);
   setTranscriptionResult(result);
   setStatusMessage('Detection complete!');
+  */
 }
         
     async function load() {
