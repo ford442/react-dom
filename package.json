@@ -16,7 +16,8 @@
     "@emotion/styled": "latest",
     "@mui/material": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "tslib": "^2.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "latest",
