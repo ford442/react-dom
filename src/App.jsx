@@ -54,7 +54,7 @@ function App() {
   };
 
  const stylizeImage = async () => {
-    if (!model || !contentImgRef.current || !styleImgRef.current) {
+    if (!model || !contentImg || !styleImg) {
       setStatus('Please select both a content and a style image.');
       return;
     }
@@ -63,19 +63,38 @@ function App() {
     setLoading(true);
 
     try {
+      // Create new Image objects to guarantee they are fully loaded
+      const contentImageElement = new Image();
+      const styleImageElement = new Image();
+
+      // Create promises that will resolve once the images' src has been loaded
+      const contentPromise = new Promise((resolve, reject) => {
+        contentImageElement.onload = resolve;
+        contentImageElement.onerror = reject;
+        contentImageElement.src = contentImg;
+      });
+
+      const stylePromise = new Promise((resolve, reject) => {
+        styleImageElement.onload = resolve;
+        styleImageElement.onerror = reject;
+        styleImageElement.src = styleImg;
+      });
+
+      // Wait for both images to be fully loaded before proceeding
+      await Promise.all([contentPromise, stylePromise]);
+
+      setStatus('Images loaded. Applying style...');
       const canvas = stylizedImgRef.current;
 
-      // Pass the canvas as the third argument. The model will draw the
-      // stylized image directly onto it.
-      await model.stylize(contentImgRef.current, styleImgRef.current, canvas);
+      // Now we can safely pass the fully loaded image elements to the model
+      await model.stylize(contentImageElement, styleImageElement, canvas);
 
-      // Now that the image is drawn on the canvas, get its data URL for display.
       setStylizedImg(canvas.toDataURL());
       setStatus('Stylization complete!');
 
     } catch (error) {
         console.error("Error during stylization:", error);
-        setStatus('An error occurred during stylization.');
+        setStatus('An error occurred during stylization. Please check the console for details.');
     } finally {
         setLoading(false);
     }
