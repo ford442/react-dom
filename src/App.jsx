@@ -53,8 +53,8 @@ function App() {
     }
   };
 
- const stylizeImage = async () => {
-    if (!model || !contentImgRef.current || !styleImgRef.current) {
+  const stylizeImage = async () => {
+    if (!model || !contentImg || !styleImg) {
       setStatus('Please select both a content and a style image.');
       return;
     }
@@ -63,24 +63,58 @@ function App() {
     setLoading(true);
 
     try {
-      const canvas = stylizedImgRef.current;
+      // 1. Create Image elements in memory to ensure they are fully loaded
+      const contentImageElement = new Image();
+      const styleImageElement = new Image();
 
-      // Pass the canvas as the third argument. The model will draw the
-      // stylized image directly onto it.
-      await model.stylize(contentImgRef.current, styleImgRef.current, canvas);
+      const contentPromise = new Promise((resolve, reject) => {
+        contentImageElement.onload = () => resolve(contentImageElement);
+        contentImageElement.onerror = reject;
+        contentImageElement.src = contentImg;
+      });
 
-      // Now that the image is drawn on the canvas, get its data URL for display.
-      setStylizedImg(canvas.toDataURL());
+      const stylePromise = new Promise((resolve, reject) => {
+        styleImageElement.onload = () => resolve(styleImageElement);
+        styleImageElement.onerror = reject;
+        styleImageElement.src = styleImg;
+      });
+
+      const [loadedContentImg, loadedStyleImg] = await Promise.all([contentPromise, stylePromise]);
+
+      setStatus('Images loaded. Preparing data...');
+
+      // 2. Create in-memory canvases to draw the images onto
+      const contentCanvas = document.createElement('canvas');
+      const styleCanvas = document.createElement('canvas');
+      const contentCtx = contentCanvas.getContext('2d');
+      const styleCtx = styleCanvas.getContext('2d');
+
+      // 3. Set canvas dimensions and draw the loaded images
+      contentCanvas.width = loadedContentImg.width;
+      contentCanvas.height = loadedContentImg.height;
+      contentCtx.drawImage(loadedContentImg, 0, 0);
+
+      styleCanvas.width = loadedStyleImg.width;
+      styleCanvas.height = loadedStyleImg.height;
+      styleCtx.drawImage(loadedStyleImg, 0, 0);
+
+      const resultCanvas = stylizedImgRef.current;
+
+      setStatus('Applying style...');
+
+      // 4. Pass the CANVASES to the model instead of the image elements
+      await model.stylize(contentCanvas, styleCanvas, resultCanvas);
+
+      setStylizedImg(resultCanvas.toDataURL());
       setStatus('Stylization complete!');
 
     } catch (error) {
         console.error("Error during stylization:", error);
-        setStatus('An error occurred during stylization.');
+        setStatus('An error occurred during stylization. Please check the console for details.');
     } finally {
         setLoading(false);
     }
   };
-
   return (
     
     <div className="floating-control-panel base-panel">
