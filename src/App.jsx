@@ -63,10 +63,17 @@ function App() {
     setLoading(true);
 
     try {
-      const stylized = await model.stylize(contentImgRef.current, styleImgRef.current);
-      stylizedImgRef.current.getContext('2d').drawImage(stylized, 0, 0);
-      setStylizedImg(stylizedImgRef.current.toDataURL());
-       setStatus('Stylization complete!');
+      // The model returns a tensor, not a direct image object
+      const stylizedTensor = await model.stylize(contentImgRef.current, styleImgRef.current);
+
+      const canvas = stylizedImgRef.current;
+      // Use Magenta.js's toPixels utility to draw the tensor to the canvas
+      await mm.toPixels(stylizedTensor, canvas);
+
+      // Now get the data URL from the canvas to display in the <img> tag
+      setStylizedImg(canvas.toDataURL());
+      setStatus('Stylization complete!');
+
     } catch (error) {
         console.error("Error during stylization:", error);
         setStatus('An error occurred during stylization.');
