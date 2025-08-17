@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
-import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.1";
 import './App.css';
 import * as mm from '@magenta/music';
-
 
 function App() {
     
@@ -37,27 +35,6 @@ const [transcriptionResult, setTranscriptionResult] = useState(null);
         document.querySelector('#splash1').style.display='none';
            document.querySelector('#contain1').style.pointerEvents='auto';
          }, 1500);
-      /*
-      try {
-        const pipelineInstance = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-248M', {
-          progress_callback: (progress) => {
-            const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
-            const message = `Loading: ${progress.file} - ${progress.status} (${percentage}%)`;
-            console.log(message);
-            setStatusMessage(message);
-          }, // dtype: "q8"
-        },
-          { device: "webgpu" }
-        );
-        console.log("Pipeline loaded successfully.");
-        setStatusMessage("Model loaded! Ready to generate.");
-
-        setGenerator(() => pipelineInstance);
-      } catch (error) {
-        console.error("Failed to load pipeline:", error);
-        setStatusMessage(`Error loading model: ${error.message}`);
-      }
-      */
     }
     load();
   }, []);
