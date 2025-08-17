@@ -13,7 +13,7 @@
     "@mui/material": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "@magenta/image": "latest"
+    "@magenta/image": "1.1.8"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "latest",
