@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.1";
 import './App.css';
-
+import * as mm from '@magenta/music';
 
 function App() {
 
+const [toneTransferMode, setToneTransferMode] = useState(false);
+const [transcriptionResult, setTranscriptionResult] = useState(null);
+    
     useLayoutEffect(() => {
     console.log('Forcing remote settings and disabling cache for loading.');
     env.localFilesOnly = false;
