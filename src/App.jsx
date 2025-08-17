@@ -53,7 +53,7 @@ function App() {
     }
   };
 
-  const stylizeImage = async () => {
+   const stylizeImage = async () => {
     if (!model || !contentImg || !styleImg) {
       setStatus('Please select both a content and a style image.');
       return;
@@ -63,7 +63,7 @@ function App() {
     setLoading(true);
 
     try {
-      // 1. Create Image elements in memory to ensure they are fully loaded
+      // 1. Load images into memory
       const contentImageElement = new Image();
       const styleImageElement = new Image();
 
@@ -81,28 +81,38 @@ function App() {
 
       const [loadedContentImg, loadedStyleImg] = await Promise.all([contentPromise, stylePromise]);
 
-      setStatus('Images loaded. Preparing data...');
+      setStatus('Images loaded. Resizing for GPU compatibility...');
 
-      // 2. Create in-memory canvases to draw the images onto
-      const contentCanvas = document.createElement('canvas');
-      const styleCanvas = document.createElement('canvas');
-      const contentCtx = contentCanvas.getContext('2d');
-      const styleCtx = styleCanvas.getContext('2d');
+      // 2. NEW: Resize images if they are too large
+      const MAX_DIMENSION = 1024; // Set a reasonable max dimension
+      const resizeImageToCanvas = (image, maxDimension) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        let { width, height } = image;
 
-      // 3. Set canvas dimensions and draw the loaded images
-      contentCanvas.width = loadedContentImg.width;
-      contentCanvas.height = loadedContentImg.height;
-      contentCtx.drawImage(loadedContentImg, 0, 0);
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(image, 0, 0, width, height);
+        return canvas;
+      };
 
-      styleCanvas.width = loadedStyleImg.width;
-      styleCanvas.height = loadedStyleImg.height;
-      styleCtx.drawImage(loadedStyleImg, 0, 0);
-
+      // Create resized canvases
+      const contentCanvas = resizeImageToCanvas(loadedContentImg, MAX_DIMENSION);
+      const styleCanvas = resizeImageToCanvas(loadedStyleImg, MAX_DIMENSION);
       const resultCanvas = stylizedImgRef.current;
 
       setStatus('Applying style...');
 
-      // 4. Pass the CANVASES to the model instead of the image elements
+      // 3. Pass the resized canvases to the model
       await model.stylize(contentCanvas, styleCanvas, resultCanvas);
 
       setStylizedImg(resultCanvas.toDataURL());
