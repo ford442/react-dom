@@ -13,7 +13,6 @@ const loadScript = (src) => {
     });
 };
 
-
 function App() {
     const canvasRef = useRef(null);
     const infoRef = useRef(null);
@@ -24,11 +23,10 @@ function App() {
 
     // Effect to load external emulator scripts in order
     useEffect(() => {
-        const loadEmulatorScripts = async () => {
+        const loadScripts = async () => {
             try {
-                await loadScript("https://unpkg.com/es6-promise@4.2.8/dist/es6-promise.auto.min.js");
-                await loadScript("https://unpkg.com/browserfs@1.4.3/dist/browserfs.min.js");
-                await loadScript("https://cdn.jsdelivr.net/gh/db48x/emularity@master/loader.js");
+                await loadScript("https://sdk.scdn.co/spotify-player.js");
+                await loadScript("https://cdn.tailwindcss.com");
                 setScriptsLoaded(true);
             } catch (error) {
                 console.error("Failed to load emulator scripts:", error);
@@ -38,10 +36,9 @@ function App() {
             }
         };
 
-        loadEmulatorScripts();
-    }, []); // Empty dependency array ensures this runs only once
+        loadScripts();
+    }, []); 
 
-    // Effect to initialize the emulator after scripts are loaded
     useEffect(() => {
         if (scriptsLoaded && canvasRef.current) {
             const canvas = canvasRef.current;
@@ -49,30 +46,6 @@ function App() {
             const splash1 = splash1Ref.current;
             const splash2 = splash2Ref.current;
 
-            info.textContent = 'Loading Pac-Man...';
-
-            const loader = new window.MAMELoader(
-                window.MAMELoader.driver('pacman'),
-                window.MAMELoader.emulatorJS('https://js-dos.com/cdn/emulators/mamepacman.js'),
-                window.MAMELoader.mountFile(
-                    'pacman.zip',
-                    window.MAMELoader.fetchFile('Pac-Man ROM', 'https://js-dos.com/cdn/roms/pacman.zip')
-                ),
-                window.MAMELoader.mount(
-                    '/mame/nvram',
-                    'IDBFS'
-                )
-            );
-
-            const emu = new window.Emulator(canvas, () => {
-                // This callback runs after the emulator is ready
-                info.textContent = 'Emulator ready! Press 5 for coin, 1 for start.';
-                // Hide splash screen
-                if (splash1) splash1.style.display = 'none';
-                if (splash2) splash2.style.display = 'none';
-            }, loader);
-
-            emu.start();
         }
     }, [scriptsLoaded]); // This effect depends on scriptsLoaded state
 
@@ -85,8 +58,7 @@ function App() {
       <main id={'panel'}>
         <div id={'wrap'}>
           <div id={'contain1'}>
-                                      <canvas ref={canvasRef} id="canvas" width="224" height="288" style={{ border: '2px solid #555', imageRendering: 'pixelated' }}></canvas>
-                        <p ref={infoRef} style={{ color: '#f0f0f0', marginTop: '1rem' }}>Initializing...</p>
+
           </div>
         </div>
       </main>
