@@ -5,10 +5,73 @@ import * as mm from '@magenta/music';
 
 function App() {
 
-const [toneTransferMode, setToneTransferMode] = useState(false);
-const [transcriptionResult, setTranscriptionResult] = useState(null);
-    
-    useLayoutEffect(() => {
+  const [toneTransferMode, setToneTransferMode] = useState(false);
+  const [transcriptionResult, setTranscriptionResult] = useState(null);
+  const [statusMessage, setStatusMessage] = useState('Click "Record Birdsong" to start.');
+  const [model, setModel] = useState(null);
+
+
+  const runTranscription = async (audioBuffer) => {
+    setStatusMessage('Running note detection...');
+    if (!model) {
+        setStatusMessage('Model not loaded yet.');
+        return;
+    }
+    try {
+        const result = await model.transcribeFromAudioBuffer(audioBuffer);
+        setTranscriptionResult(result);
+        setStatusMessage('Detection complete!');
+    } catch (error) {
+        console.error("Transcription failed:", error);
+        setStatusMessage(`Transcription failed: ${error.message}`);
+    }
+  };
+
+  const captureAndTranscribe = async () => {
+    setStatusMessage('Waiting for microphone permission...');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(stream);
+      const recorder = new MediaRecorder(stream);
+      const audioChunks = [];
+
+      recorder.ondataavailable = event => {
+        audioChunks.push(event.data);
+      };
+
+      recorder.onstop = async () => {
+        source.disconnect();
+        stream.getTracks().forEach(track => track.stop());
+        // We don't close the initial audioContext to prevent issues on subsequent recordings.
+
+        setStatusMessage('Processing audio...');
+        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        
+        // Use a new AudioContext for decoding to avoid issues with a closed context.
+        const decodingAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await decodingAudioContext.decodeAudioData(arrayBuffer);
+        runTranscription(audioBuffer);
+      };
+
+      setStatusMessage('Recording for 5 seconds...');
+      recorder.start();
+      setTimeout(() => {
+        if (recorder.state === "recording") {
+            recorder.stop();
+            setStatusMessage('Recording finished.');
+        }
+      }, 5000);
+
+    } catch (error) {
+      console.error("Failed to capture audio:", error);
+      setStatusMessage(`Error: ${error.message}. Please grant microphone permission.`);
+    }
+  };
+
+
+  useLayoutEffect(() => {
     console.log('Forcing remote settings and disabling cache for loading.');
     env.localFilesOnly = false;
     env.allowLocalModels = false;
@@ -16,49 +79,29 @@ const [transcriptionResult, setTranscriptionResult] = useState(null);
     env.remoteHost = 'https://huggingface.co';
     env.remotePathTemplate = '{model}/resolve/main/';
 
-    setStatusMessage('Loading models, please wait...');
-
-        async function runTranscription(audioBuffer) {
-  setStatusMessage('Running note detection...');
-         
-  // Load the Onsets and Frames model
-  const model = new mm.OnsetsAndFrames('https://storage.googleapis.com/magentadata/js/checkpoints/transcription/onsets_frames_uni');
-  await model.initialize();
-
-  // Run the transcription
-  const result = await model.transcribeFromAudioBuffer(audioBuffer);
-  setTranscriptionResult(result);
-  setStatusMessage('Detection complete!');
+    const loadModel = async () => {
+        setStatusMessage('Loading models, please wait...');
+        try {
+            const loadedModel = new mm.OnsetsAndFrames('https://storage.googleapis.com/magentadata/js/checkpoints/transcription/onsets_frames_uni');
+            await loadedModel.initialize();
+            setModel(() => loadedModel);
+            setStatusMessage('Model loaded! Ready to record.');
+        } catch (error) {
+            console.error("Failed to load model:", error);
+            setStatusMessage(`Error loading model: ${error.message}`);
         }
+    };
+
+
     async function load() {
               document.querySelector('#splash2').style.display='none';
          setTimeout(function() {
         document.querySelector('#splash1').style.display='none';
            document.querySelector('#contain1').style.pointerEvents='auto';
          }, 1500);
-      /*
-      try {
-        const pipelineInstance = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-248M', {
-          progress_callback: (progress) => {
-            const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
-            const message = `Loading: ${progress.file} - ${progress.status} (${percentage}%)`;
-            console.log(message);
-            setStatusMessage(message);
-          }, // dtype: "q8"
-        },
-          { device: "webgpu" }
-        );
-        console.log("Pipeline loaded successfully.");
-        setStatusMessage("Model loaded! Ready to generate.");
-
-        setGenerator(() => pipelineInstance);
-      } catch (error) {
-        console.error("Failed to load pipeline:", error);
-        setStatusMessage(`Error loading model: ${error.message}`);
-      }
-      */
     }
     load();
+    loadModel();
   }, []);
   
   return (
@@ -80,8 +123,11 @@ const [transcriptionResult, setTranscriptionResult] = useState(null);
     Record Birdsong & Detect Notes
   </button>
 )}
+            <div style={{ position: 'absolute', top: 100, left: 20, zIndex: 4000, color: 'white', backgroundColor: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '5px' }}>
+                {statusMessage}
+            </div>
               {transcriptionResult && (
-  <div style={{ background: '#fff', padding: 10, borderRadius: 6, marginTop: 10 }}>
+  <div style={{ background: '#fff', padding: 10, borderRadius: 6, marginTop: 10, position: 'absolute', top: 140, left: 20, zIndex: 3999, color: 'black' }}>
     <h4>Detected Notes:</h4>
     <ul>
       {transcriptionResult.notes.map((note, i) => (
