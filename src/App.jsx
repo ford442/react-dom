@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import * as mm from '@magenta/music';
-import * as tf from '@tensorflow/tfjs';
 import './App.css';
 
 // URLs for the pre-trained Magenta models
@@ -16,9 +14,10 @@ function MagentaComposer() {
   const visualizerInstanceRef = useRef();
 
   // State to manage the UI
+  const [libsLoaded, setLibsLoaded] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('Click "Load Models" to begin.');
+  const [statusMessage, setStatusMessage] = useState('Loading libraries...');
   const [generatedSequence, setGeneratedSequence] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   
@@ -27,24 +26,36 @@ function MagentaComposer() {
   const [vaeTemperature, setVaeTemperature] = useState(1.0);
   const [rnnTemperature, setRnnTemperature] = useState(1.1);
 
-  // Effect to set the initial TF.js backend
+  // Effect to check for the global Magenta/TF objects.
   useEffect(() => {
-    tf.setBackend(backend).then(() => {
-      console.log(`TensorFlow.js backend set to: ${tf.getBackend()}`);
-      playerRef.current = new mm.Player(); // Initialize player once libs are ready
-    });
-  }, []); // Runs only once on mount
+    const checkLibsInterval = setInterval(() => {
+      if (window.mm && window.tf) {
+        setLibsLoaded(true);
+        setStatusMessage('Libraries loaded. Click "Load Models" to begin.');
+        clearInterval(checkLibsInterval);
+      }
+    }, 100);
+    return () => clearInterval(checkLibsInterval);
+  }, []);
 
   const handleBackendChange = async (newBackend) => {
-    if (tf.getBackend() === newBackend) return;
+    const { tf } = window;
+    if (!tf || tf.getBackend() === newBackend) return;
     setStatusMessage(`Switching backend to ${newBackend}...`);
     setBackend(newBackend);
     await tf.setBackend(newBackend);
     setStatusMessage(`Backend switched to ${tf.getBackend()}. Models need to be reloaded.`);
-    setModelsLoaded(false); // Force model reload on new backend
+    setModelsLoaded(false);
   };
 
   const loadModels = async () => {
+    const { mm, tf } = window;
+    if (!mm || !tf) {
+      setStatusMessage('Error: Libraries not yet available.');
+      return;
+    }
+    
+    playerRef.current = new mm.Player();
     setStatusMessage(`Loading models on ${tf.getBackend()} backend...`);
     
     try {
@@ -65,7 +76,8 @@ function MagentaComposer() {
   };
 
   const handleGenerateWithVAE = async () => {
-    if (!musicVaeRef.current) return;
+    const { tf } = window;
+    if (!musicVaeRef.current || !tf) return;
 
     const originalBackend = tf.getBackend();
     if (originalBackend === 'wasm') {
@@ -95,7 +107,8 @@ function MagentaComposer() {
   };
   
   const handleContinueWithRNN = async () => {
-    if (!musicRnnRef.current) return;
+    const { mm, tf } = window;
+    if (!musicRnnRef.current || !mm || !tf) return;
 
     const originalBackend = tf.getBackend();
     if (originalBackend === 'wasm') {
@@ -137,14 +150,20 @@ function MagentaComposer() {
   };
   
   useEffect(() => {
-    if (generatedSequence && visualizerRef.current) {
+    const { mm } = window;
+    if (generatedSequence && visualizerRef.current && mm) {
+      visualizerInstanceRef.current = null;
+      const ctx = visualizerRef.current.getContext('2d');
+      ctx.clearRect(0, 0, visualizerRef.current.width, visualizerRef.current.height);
+
       const unquantizedSeq = mm.sequences.unquantizeSequence(generatedSequence);
-      visualizerInstanceRef.current = new mm.Visualizer(unquantizedSeq, visualizerRef.current);
+      visualizerInstanceRef.current = new mm.PianoRollCanvasVisualizer(unquantizedSeq, visualizerRef.current);
     }
   }, [generatedSequence]);
 
   const handlePlay = () => {
-    if (!generatedSequence || !playerRef.current) return;
+    const { mm } = window;
+    if (!generatedSequence || !playerRef.current || !mm) return;
     const player = playerRef.current;
 
     if (isPlaying) {
@@ -158,7 +177,8 @@ function MagentaComposer() {
   };
 
   const handleDownload = () => {
-    if (!generatedSequence) return;
+    const { mm } = window;
+    if (!generatedSequence || !mm) return;
     const midiBlob = new Blob([mm.sequenceToMidi(generatedSequence)], { type: 'audio/midi' });
     const url = URL.createObjectURL(midiBlob);
     const link = document.createElement('a');
@@ -185,7 +205,7 @@ function MagentaComposer() {
       <div style={styles.settings}>
         <div style={styles.settingGroup}>
           <label>Backend:</label>
-          <select value={backend} onChange={(e) => handleBackendChange(e.target.value)} style={styles.select}>
+          <select value={backend} onChange={(e) => handleBackendChange(e.target.value)} style={styles.select} disabled={!libsLoaded}>
             <option value="webgl">WebGL</option>
             <option value="wasm">WASM</option>
             <option value="cpu">CPU</option>
@@ -202,6 +222,7 @@ function MagentaComposer() {
             value={vaeTemperature} 
             onChange={(e) => setVaeTemperature(parseFloat(e.target.value))}
             style={{width: '100%'}}
+            disabled={!libsLoaded}
           />
         </div>
         <div style={styles.settingGroup}>
@@ -215,18 +236,21 @@ function MagentaComposer() {
             value={rnnTemperature} 
             onChange={(e) => setRnnTemperature(parseFloat(e.target.value))}
             style={{width: '100%'}}
+            disabled={!libsLoaded}
           />
         </div>
       </div>
-      <small style={styles.note}>Note: VAE & RNN models may temporarily use WebGL if WASM is selected.</small>
+      <small style={styles.note}>Note: VAE & RNN models will temporarily use WebGL if WASM is selected.</small>
 
       <p style={styles.status}>{statusMessage}</p>
 
-      {!modelsLoaded ? (
+      {libsLoaded && !modelsLoaded ? (
         <button onClick={loadModels} style={styles.button}>
           Load Models
         </button>
-      ) : (
+      ) : null}
+
+      {modelsLoaded && (
         <div style={styles.controls}>
           <button onClick={handleGenerateWithVAE} disabled={isGenerating || isPlaying} style={styles.button}>
             {isGenerating ? 'Generating...' : 'Generate with MusicVAE'}
