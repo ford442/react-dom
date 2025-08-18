@@ -30,6 +30,8 @@ const MagentaSketch = () => {
           modelLoaded = true;
           restart();
           console.log('SketchRNN model loaded.');
+        }).catch((error) => {
+            console.error('Failed to initialize SketchRNN model:', error);
         });
       };
 
