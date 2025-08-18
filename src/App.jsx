@@ -72,12 +72,15 @@ function MagentaComposer() {
     // This is C4, D4, E4, F4.
     const seedSequence = {
       notes: [
-        { pitch: 60, startTime: 0.0, endTime: 0.5 },
-        { pitch: 62, startTime: 0.5, endTime: 1.0 },
-        { pitch: 64, startTime: 1.0, endTime: 1.5 },
-        { pitch: 65, startTime: 1.5, endTime: 2.0 }
+        { pitch: 60, startTime: 0.0, endTime: 0.5 },  // C4
+        { pitch: 60, startTime: 0.5, endTime: 1.0 },  // C4
+        { pitch: 67, startTime: 1.0, endTime: 1.5 },  // G4
+        { pitch: 67, startTime: 1.5, endTime: 2.0 },  // G4
+        { pitch: 69, startTime: 2.0, endTime: 2.5 },  // A4
+        { pitch: 69, startTime: 2.5, endTime: 3.0 },  // A4
+        { pitch: 67, startTime: 3.0, endTime: 4.0 },  // G4 (whole note)
       ],
-      totalTime: 2.0
+      totalTime: 4.0
     };
     
     // Quantize the sequence - a required step for many models.
