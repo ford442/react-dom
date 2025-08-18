@@ -12,8 +12,7 @@
     "@emotion/styled": "latest",
     "@mui/material": "latest",
     "react": "latest",
-    "react-dom": "latest",
-    "@magenta/music": "latest"
+    "react-dom": "latest"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "latest",
