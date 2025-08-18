@@ -1,20 +1,23 @@
 {
-  "name": "react-magenta-composer",
-  "version": "1.0.0",
+  "name": "material-ui-vite",
+  "version": "5.0.0",
   "private": true,
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "serve": "vite preview"
   },
   "dependencies": {
+    "@emotion/react": "latest",
+    "@emotion/styled": "latest",
+    "@mui/material": "latest",
+    "react": "latest",
+    "react-dom": "latest",
     "@magenta/music": "^1.23.1",
-    "@tensorflow/tfjs": "~1.7.4",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "@tensorflow/tfjs": "~1.7.4"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.0.3",
-    "vite": "^4.4.5"
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest"
   }
 }
