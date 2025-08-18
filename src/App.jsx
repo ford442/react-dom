@@ -23,9 +23,10 @@ function MagentaComposer() {
   const [generatedSequence, setGeneratedSequence] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   
-  // New state for backend and VAE temperature
+  // State for backend and model temperatures
   const [backend, setBackend] = useState('webgl');
   const [vaeTemperature, setVaeTemperature] = useState(1.0);
+  const [rnnTemperature, setRnnTemperature] = useState(1.1); // Add state for RNN temperature
 
   // Effect to set the initial TF.js backend
   useEffect(() => {
@@ -75,19 +76,16 @@ function MagentaComposer() {
     if (!musicVaeRef.current) return;
 
     const originalBackend = tf.getBackend();
-    // The WASM backend in this TFJS version doesn't support the 'split' op needed by MusicVAE.
-    // Temporarily switch to WebGL if WASM is active to avoid the error.
     if (originalBackend === 'wasm') {
       setStatusMessage('Temporarily switching to WebGL for VAE compatibility...');
       await tf.setBackend('webgl');
     }
 
     setIsGenerating(true);
-    setStatusMessage(`Generating with MusicVAE (Temp: ${vaeTemperature})...`);
+    setStatusMessage(`Generating with MusicVAE (Temp: ${vaeTemperature.toFixed(1)})...`);
     setGeneratedSequence(null);
 
     try {
-      // Use the temperature from the state
       const sequences = await musicVaeRef.current.sample(1, vaeTemperature);
       setGeneratedSequence(sequences[0]);
       setStatusMessage('MusicVAE generation complete!');
@@ -95,7 +93,6 @@ function MagentaComposer() {
       console.error('MusicVAE generation failed:', error);
       setStatusMessage('Error during VAE generation. Check console.');
     } finally {
-      // If we switched the backend, switch it back now.
       if (originalBackend === 'wasm' && tf.getBackend() !== 'wasm') {
         setStatusMessage('Switching back to WASM backend...');
         await tf.setBackend('wasm');
@@ -108,7 +105,7 @@ function MagentaComposer() {
   const handleContinueWithRNN = async () => {
     if (!musicRnnRef.current) return;
     setIsGenerating(true);
-    setStatusMessage('Continuing with MelodyRNN...');
+    setStatusMessage(`Continuing with MelodyRNN (Temp: ${rnnTemperature.toFixed(1)})...`);
     setGeneratedSequence(null);
     
     const seedSequence = {
@@ -124,7 +121,8 @@ function MagentaComposer() {
     const quantizedSeed = mm.sequences.quantizeNoteSequence(seedSequence, 4);
 
     try {
-      const continuedSequence = await musicRnnRef.current.continueSequence(quantizedSeed, 60, 1.1);
+      // Use the temperature from the state for the RNN model
+      const continuedSequence = await musicRnnRef.current.continueSequence(quantizedSeed, 60, rnnTemperature);
       setGeneratedSequence(continuedSequence);
       setStatusMessage('MelodyRNN continuation complete!');
     } catch (error) {
@@ -194,7 +192,7 @@ function MagentaComposer() {
           </select>
         </div>
         <div style={styles.settingGroup}>
-          <label htmlFor="vae-temp">MusicVAE Creativity (Temp): {vaeTemperature.toFixed(1)}</label>
+          <label htmlFor="vae-temp">VAE Creativity: {vaeTemperature.toFixed(1)}</label>
           <input 
             type="range" 
             id="vae-temp"
@@ -206,8 +204,21 @@ function MagentaComposer() {
             style={{width: '100%'}}
           />
         </div>
+        <div style={styles.settingGroup}>
+          <label htmlFor="rnn-temp">RNN Creativity: {rnnTemperature.toFixed(1)}</label>
+          <input 
+            type="range" 
+            id="rnn-temp"
+            min="0.1" 
+            max="2.0" 
+            step="0.1" 
+            value={rnnTemperature} 
+            onChange={(e) => setRnnTemperature(parseFloat(e.target.value))}
+            style={{width: '100%'}}
+          />
+        </div>
       </div>
-      <small style={styles.note}>Note: MusicVAE is not fully compatible with the WASM backend and will temporarily use WebGL.</small>
+      <small style={styles.note}>Note: MusicVAE will temporarily use WebGL if WASM is selected.</small>
 
       <p style={styles.status}>{statusMessage}</p>
 
@@ -258,13 +269,14 @@ const styles = {
     boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
   },
   settings: {
-    display: 'flex',
-    justifyContent: 'space-around',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
     gap: '20px',
     padding: '15px',
     marginBottom: '5px',
     backgroundColor: '#efefef',
     borderRadius: '5px',
+    alignItems: 'start'
   },
   settingGroup: {
     display: 'flex',
