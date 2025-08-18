@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import './App.css';
 
 // URLs for the pre-trained Magenta models
 const VAE_CHECKPOINT = 'https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/mel_4bar_small_q2';
@@ -117,21 +116,29 @@ function MagentaComposer() {
     setStatusMessage(`Continuing with MelodyRNN (Temp: ${rnnTemperature.toFixed(1)})...`);
     
     let seedSequence;
-    // FIX: Instead of trimming by time, we now extract the last 8 notes to create a more stable seed.
     if (songSequence && songSequence.notes.length > 0) {
-        const lastNotes = songSequence.notes.slice(-8); // Get the last 8 notes
-        const startTime = lastNotes[0].startTime;
-        // Create a new sequence with normalized timing (starting from 0)
-        seedSequence = {
-            notes: lastNotes.map(n => ({
-                ...n,
-                startTime: n.startTime - startTime,
-                endTime: n.endTime - startTime,
-            })),
-            totalTime: lastNotes[lastNotes.length - 1].endTime - startTime
-        };
-    } else {
-        // Default seed if the song is empty
+        let lastNotes = songSequence.notes.slice(-16); // Get up to the last 16 notes
+        
+        // FIX: Filter out notes with pitches outside the model's valid range.
+        // The basic_rnn model works well with pitches roughly in the piano's main range.
+        const validPitchRange = { min: 48, max: 84 }; // C3 to C6
+        lastNotes = lastNotes.filter(note => note.pitch >= validPitchRange.min && note.pitch <= validPitchRange.max);
+
+        if (lastNotes.length > 0) {
+            const startTime = lastNotes[0].startTime;
+            seedSequence = {
+                notes: lastNotes.map(n => ({
+                    ...n,
+                    startTime: n.startTime - startTime,
+                    endTime: n.endTime - startTime,
+                })),
+                totalTime: lastNotes[lastNotes.length - 1].endTime - startTime
+            };
+        }
+    } 
+    
+    // If there's no valid seed from the song, create a default one.
+    if (!seedSequence) {
         seedSequence = {
             notes: [ { pitch: 60, startTime: 0.0, endTime: 0.5 } ], totalTime: 0.5
         };
