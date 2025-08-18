@@ -104,6 +104,14 @@ function MagentaComposer() {
   
   const handleContinueWithRNN = async () => {
     if (!musicRnnRef.current) return;
+
+    const originalBackend = tf.getBackend();
+    // Also apply the WASM compatibility fix for MelodyRNN
+    if (originalBackend === 'wasm') {
+      setStatusMessage('Temporarily switching to WebGL for RNN compatibility...');
+      await tf.setBackend('webgl');
+    }
+
     setIsGenerating(true);
     setStatusMessage(`Continuing with MelodyRNN (Temp: ${rnnTemperature.toFixed(1)})...`);
     setGeneratedSequence(null);
@@ -128,8 +136,14 @@ function MagentaComposer() {
     } catch (error) {
       console.error('MelodyRNN generation failed:', error);
       setStatusMessage('Error during RNN generation.');
+    } finally {
+       if (originalBackend === 'wasm' && tf.getBackend() !== 'wasm') {
+        setStatusMessage('Switching back to WASM backend...');
+        await tf.setBackend('wasm');
+        setStatusMessage(`Models ready on ${tf.getBackend()} backend.`);
+      }
+      setIsGenerating(false);
     }
-    setIsGenerating(false);
   };
   
   useEffect(() => {
@@ -218,7 +232,7 @@ function MagentaComposer() {
           />
         </div>
       </div>
-      <small style={styles.note}>Note: MusicVAE will temporarily use WebGL if WASM is selected.</small>
+      <small style={styles.note}>Note: VAE & RNN models will temporarily use WebGL if WASM is selected.</small>
 
       <p style={styles.status}>{statusMessage}</p>
 
