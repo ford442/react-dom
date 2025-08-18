@@ -5,6 +5,10 @@ import Box from '@mui/material/Box'; // Assuming you still use these
 import Slider from '@mui/material/Slider'; // Assuming you still use these
 import './App.css';
 import { KokoroTTS } from 'kokoro-js';
+// NEW: Import Firestore and functions
+import { db } from './firebase';
+import { collection, addDoc, getDocs, serverTimestamp, query, orderBy } from "firebase/firestore";
+
 
 const personalityProfiles = {
   default: {
@@ -494,7 +498,7 @@ function App() {
     currentPersonalityKey
   ]);
 
-  // NEW: Function to handle puzzle solving
+  // UPDATED: Function to handle puzzle solving with Firestore
   const handleSolvePuzzle = useCallback(async () => {
     if (!generator) {
       alert("The text generation model is not loaded yet. Please wait.");
@@ -510,7 +514,6 @@ function App() {
     setStatusMessage(`Solving puzzle: "${currentPuzzle.question}"`);
 
     try {
-      // If there's an image, we can optionally get a caption first
       let promptForLLM = currentPuzzle.question;
       if (currentPuzzle.image && imageCaptioner) {
         const captions = await imageCaptioner(currentPuzzle.image);
@@ -522,10 +525,18 @@ function App() {
       const outputs = await generator(promptForLLM, { max_new_tokens: 100 });
       const resultText = outputs[0].generated_text;
 
-      setPuzzleResults(prevResults => [...prevResults, { question: currentPuzzle.question, answer: resultText }]);
-      setStatusMessage("Puzzle solved!");
+      // Save to Firestore
+      const resultToSave = {
+        question: currentPuzzle.question,
+        answer: resultText,
+        createdAt: serverTimestamp() // Use server-side timestamp
+      };
+      await addDoc(collection(db, "puzzleResults"), resultToSave);
 
-      // Move to the next puzzle
+      // Update local state immediately
+      setPuzzleResults(prevResults => [...prevResults, { ...resultToSave, id: 'temp-id' }]); // Optimistic update
+      setStatusMessage("Puzzle solved and saved!");
+
       setCurrentPuzzleIndex((prevIndex) => (prevIndex + 1) % puzzleSet.length);
 
     } catch (error) {
@@ -689,7 +700,7 @@ function App() {
     };
   }, [selectedVoiceURI]);
 
-  // NEW: useEffect to load puzzle data from HTML
+  // useEffect to load puzzle data from HTML
   useEffect(() => {
     const puzzleDataElement = document.getElementById('puzzle-data');
     if (puzzleDataElement) {
@@ -702,7 +713,28 @@ function App() {
         setStatusMessage("Error: Could not load puzzle data.");
       }
     }
-  }, []); // Empty dependency array means this runs once on mount
+  }, []);
+
+  // NEW: useEffect to load results from Firestore on mount
+  useEffect(() => {
+    const fetchResults = async () => {
+      setStatusMessage("Fetching previous results...");
+      try {
+        const q = query(collection(db, "puzzleResults"), orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        const results = [];
+        querySnapshot.forEach((doc) => {
+          results.push({ id: doc.id, ...doc.data() });
+        });
+        setPuzzleResults(results);
+        setStatusMessage(prev => prev.includes("Loading") ? "Models loaded. Ready." : "Ready.");
+      } catch (error) {
+        console.error("Error fetching results from Firestore:", error);
+        setStatusMessage("Error: Could not fetch saved results.");
+      }
+    };
+    fetchResults();
+  }, []);
 
 
   const handleWebSpeechSpeak = () => {
@@ -1039,8 +1071,8 @@ function App() {
                     <p>No puzzles solved yet.</p>
                   ) : (
                     <ul>
-                      {puzzleResults.map((result, index) => (
-                        <li key={index}><strong>Q:</strong> {result.question} <br /> <strong>A:</strong> {result.answer}</li>
+                      {puzzleResults.map((result) => (
+                        <li key={result.id}><strong>Q:</strong> {result.question} <br /> <strong>A:</strong> {result.answer}</li>
                       ))}
                     </ul>
                   )}
