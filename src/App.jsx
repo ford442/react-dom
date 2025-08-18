@@ -1,101 +1,106 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+// Access the Magenta and TensorFlow libraries from the window object
+const mm = window.mm;
+const tf = window.tf;
+
 // URLs for the pre-trained Magenta models
 const VAE_CHECKPOINT = 'https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/mel_4bar_small_q2';
 const RNN_CHECKPOINT = 'https://storage.googleapis.com/magentadata/js/checkpoints/music_rnn/basic_rnn';
-
-// Access the Magenta library from the window object
-const mm = window.mm;
 
 function MagentaComposer() {
   // Refs to hold the model instances and the visualizer canvas
   const musicVaeRef = useRef();
   const musicRnnRef = useRef();
-  const playerRef = useRef(); // Initialize later
-  const visualizerRef = useRef(); // Ref for the canvas element
-  const visualizerInstanceRef = useRef(); // Ref for the visualizer instance
+  const playerRef = useRef();
+  const visualizerRef = useRef();
+  const visualizerInstanceRef = useRef();
 
   // State to manage the UI
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Click "Load Models" to begin.');
   const [generatedSequence, setGeneratedSequence] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(false); // State to track playback
+  const [isPlaying, setIsPlaying] = useState(false);
+  
+  // New state for backend and VAE temperature
+  const [backend, setBackend] = useState('webgl');
+  const [vaeTemperature, setVaeTemperature] = useState(1.0);
 
-  // Effect to load the models when the component mounts
+  // Effect to set the initial TF.js backend
+  useEffect(() => {
+    if (tf) {
+      tf.setBackend(backend).then(() => {
+        console.log(`TensorFlow.js backend set to: ${tf.getBackend()}`);
+      });
+    }
+  }, []); // Runs only once on mount
+
+  const handleBackendChange = async (newBackend) => {
+    if (!tf) return;
+    setStatusMessage(`Switching backend to ${newBackend}...`);
+    setBackend(newBackend);
+    await tf.setBackend(newBackend);
+    setStatusMessage(`Backend switched to ${tf.getBackend()}. Models need to be reloaded.`);
+    setModelsLoaded(false); // Force model reload on new backend
+  };
+
   const loadModels = async () => {
     if (!mm) {
-      setStatusMessage('Error: Magenta.js library not found. Please check the script tag in your HTML.');
+      setStatusMessage('Error: Magenta.js library not found.');
       return;
     }
     
-    // Initialize the player once the library is confirmed to be available
     playerRef.current = new mm.Player();
-
-    setStatusMessage('Loading models... This may take a moment.');
+    setStatusMessage(`Loading models on ${tf.getBackend()} backend...`);
+    
     try {
-      // Initialize MusicVAE
       musicVaeRef.current = new mm.MusicVAE(VAE_CHECKPOINT);
       await musicVaeRef.current.initialize();
       console.log('MusicVAE model loaded.');
 
-      // Initialize MelodyRNN
       musicRnnRef.current = new mm.MusicRNN(RNN_CHECKPOINT);
       await musicRnnRef.current.initialize();
       console.log('MelodyRNN model loaded.');
       
       setModelsLoaded(true);
-      setStatusMessage('Models loaded successfully! Ready to generate music.');
+      setStatusMessage(`Models loaded on ${tf.getBackend()}! Ready to generate.`);
     } catch (error) {
       console.error('Failed to load models:', error);
-      setStatusMessage('Error: Could not load models. Check the console.');
+      setStatusMessage('Error: Could not load models.');
     }
   };
 
-  // --- Model Interaction Functions ---
-
   const handleGenerateWithVAE = async () => {
     if (!musicVaeRef.current) return;
-
     setIsGenerating(true);
-    setStatusMessage('Generating a new melody with MusicVAE...');
+    setStatusMessage(`Generating with MusicVAE (Temp: ${vaeTemperature})...`);
     setGeneratedSequence(null);
 
     try {
-      const sequences = await musicVaeRef.current.sample(1);
+      // Use the temperature from the state
+      const sequences = await musicVaeRef.current.sample(1, vaeTemperature);
       setGeneratedSequence(sequences[0]);
       setStatusMessage('MusicVAE generation complete!');
     } catch (error) {
       console.error('MusicVAE generation failed:', error);
       setStatusMessage('Error during VAE generation.');
     }
-
     setIsGenerating(false);
   };
   
   const handleContinueWithRNN = async () => {
     if (!musicRnnRef.current) return;
-
     setIsGenerating(true);
-    setStatusMessage('Continuing a melody with MelodyRNN...');
+    setStatusMessage('Continuing with MelodyRNN...');
     setGeneratedSequence(null);
     
-    // A more interesting and harmonic seed melody (I-V-vi-IV progression in C)
     const seedSequence = {
       notes: [
-        // C Major
-        { pitch: 60, startTime: 0.0, endTime: 0.4 },  // C4
-        { pitch: 64, startTime: 0.4, endTime: 0.8 },  // E4
-        { pitch: 67, startTime: 0.8, endTime: 1.2 },  // G4
-        // G Major
-        { pitch: 67, startTime: 1.2, endTime: 1.6 },  // G4
-        { pitch: 71, startTime: 1.6, endTime: 2.0 },  // B4
-        // A minor
-        { pitch: 69, startTime: 2.0, endTime: 2.4 },  // A4
-        { pitch: 72, startTime: 2.4, endTime: 2.8 },  // C5
-        // F Major
-        { pitch: 71, startTime: 2.8, endTime: 3.2 },  // B4
-        { pitch: 74, startTime: 3.2, endTime: 4.0 },  // D5
+        { pitch: 60, startTime: 0.0, endTime: 0.4 }, { pitch: 64, startTime: 0.4, endTime: 0.8 }, { pitch: 67, startTime: 0.8, endTime: 1.2 },
+        { pitch: 67, startTime: 1.2, endTime: 1.6 }, { pitch: 71, startTime: 1.6, endTime: 2.0 },
+        { pitch: 69, startTime: 2.0, endTime: 2.4 }, { pitch: 72, startTime: 2.4, endTime: 2.8 },
+        { pitch: 71, startTime: 2.8, endTime: 3.2 }, { pitch: 74, startTime: 3.2, endTime: 4.0 },
       ],
       totalTime: 4.0
     };
@@ -110,11 +115,9 @@ function MagentaComposer() {
       console.error('MelodyRNN generation failed:', error);
       setStatusMessage('Error during RNN generation.');
     }
-
     setIsGenerating(false);
   };
   
-  // Effect to update the visualizer whenever the sequence changes
   useEffect(() => {
     if (generatedSequence && visualizerRef.current && mm) {
       const unquantizedSeq = mm.sequences.unquantizeSequence(generatedSequence);
@@ -126,9 +129,6 @@ function MagentaComposer() {
     }
   }, [generatedSequence]);
 
-
-  // --- Player and Download Functions ---
-
   const handlePlay = () => {
     if (!generatedSequence || !playerRef.current) return;
     const player = playerRef.current;
@@ -139,18 +139,13 @@ function MagentaComposer() {
     } else {
       setIsPlaying(true);
       player.start(mm.sequences.unquantizeSequence(generatedSequence))
-        .then(() => {
-          // This promise resolves when the music finishes playing.
-          setIsPlaying(false);
-        });
+        .then(() => setIsPlaying(false));
     }
   };
 
   const handleDownload = () => {
     if (!generatedSequence || !mm) return;
-    
     const midiBlob = new Blob([mm.sequenceToMidi(generatedSequence)], { type: 'audio/midi' });
-    
     const url = URL.createObjectURL(midiBlob);
     const link = document.createElement('a');
     link.href = url;
@@ -161,7 +156,6 @@ function MagentaComposer() {
     URL.revokeObjectURL(url);
   };
 
-  // Cleanup effect to stop the player if the component unmounts
   useEffect(() => {
     return () => {
       if (playerRef.current && playerRef.current.isPlaying()) {
@@ -173,6 +167,31 @@ function MagentaComposer() {
   return (
     <div style={styles.container}>
       <h1>Magenta.js Composer in React</h1>
+      
+      <div style={styles.settings}>
+        <div style={styles.settingGroup}>
+          <label>Backend:</label>
+          <select value={backend} onChange={(e) => handleBackendChange(e.target.value)} style={styles.select}>
+            <option value="webgl">WebGL</option>
+            <option value="wasm">WASM</option>
+            <option value="cpu">CPU</option>
+          </select>
+        </div>
+        <div style={styles.settingGroup}>
+          <label htmlFor="vae-temp">MusicVAE Creativity (Temp): {vaeTemperature.toFixed(1)}</label>
+          <input 
+            type="range" 
+            id="vae-temp"
+            min="0.1" 
+            max="2.0" 
+            step="0.1" 
+            value={vaeTemperature} 
+            onChange={(e) => setVaeTemperature(parseFloat(e.target.value))}
+            style={{width: '100%'}}
+          />
+        </div>
+      </div>
+
       <p style={styles.status}>{statusMessage}</p>
 
       {!modelsLoaded ? (
@@ -220,6 +239,26 @@ const styles = {
     margin: '40px auto',
     backgroundColor: '#f9f9f9',
     boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+  },
+  settings: {
+    display: 'flex',
+    justifyContent: 'space-around',
+    gap: '20px',
+    padding: '15px',
+    marginBottom: '10px',
+    backgroundColor: '#efefef',
+    borderRadius: '5px',
+  },
+  settingGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '5px'
+  },
+  select: {
+    padding: '5px',
+    borderRadius: '4px',
+    border: '1px solid #ccc'
   },
   status: {
     minHeight: '40px',
