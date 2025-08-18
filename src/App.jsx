@@ -1,164 +1,207 @@
-import { useState, useRef, useEffect } from 'react';
-import './App.css';
-import * as mm from '@magenta/image';
+import React, { useState, useEffect, useRef } from 'react';
+import * as mm from '@magenta/music';
 
-function App() {
-  const [model, setModel] = useState(null);
-  const [styleImg, setStyleImg] = useState(null);
-  const [contentImg, setContentImg] = useState(null);
-  const [stylizedImg, setStylizedImg] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState('Loading model...');
+// URLs for the pre-trained Magenta models
+const VAE_CHECKPOINT = 'https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/mel_4bar_small_q2';
+const RNN_CHECKPOINT = 'https://storage.googleapis.com/magentadata/js/checkpoints/music_rnn/basic_rnn';
 
-  const stylizedImgRef = useRef(null);
+function MagentaComposer() {
+  // Refs to hold the model instances. Using refs prevents them from being re-initialized on every render.
+  const musicVaeRef = useRef();
+  const musicRnnRef = useRef();
+  const playerRef = useRef(new mm.Player());
 
-  // Load the model on component mount
-  useEffect(() => {
-    const loadModel = async () => {
-      try {
-        console.log("Creating ArbitraryStyleTransferNetwork model...");
-        const newModel = new mm.ArbitraryStyleTransferNetwork();
-        console.log("Model created. Initializing...");
-        await newModel.initialize();
-        console.log("Model initialized successfully.");
-        setModel(newModel);
-        setStatus('Model loaded. Ready to stylize.');
-      } catch (error) {
-        console.error("CRITICAL: Failed to initialize the model.", error);
-        setStatus('Error: Could not load the Magenta.js model.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadModel();
-  }, []);
+  // State to manage the UI
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('Click "Load Models" to begin.');
+  const [generatedSequence, setGeneratedSequence] = useState(null);
 
-  const handleContentImage = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const reader = new FileReader();
-      reader.onload = (event) => setContentImg(event.target.result);
-      reader.readAsDataURL(e.target.files[0]);
+  // Effect to load the models when the component mounts
+  const loadModels = async () => {
+    setStatusMessage('Loading models... This may take a moment.');
+    try {
+      // Initialize MusicVAE
+      musicVaeRef.current = new mm.MusicVAE(VAE_CHECKPOINT);
+      await musicVaeRef.current.initialize();
+      console.log('MusicVAE model loaded.');
+
+      // Initialize MelodyRNN
+      musicRnnRef.current = new mm.MusicRNN(RNN_CHECKPOINT);
+      await musicRnnRef.current.initialize();
+      console.log('MelodyRNN model loaded.');
+      
+      setModelsLoaded(true);
+      setStatusMessage('Models loaded successfully! Ready to generate music.');
+    } catch (error) {
+      console.error('Failed to load models:', error);
+      setStatusMessage('Error: Could not load models. Check the console.');
     }
   };
 
-  const handleStyleImage = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const reader = new FileReader();
-      reader.onload = (event) => setStyleImg(event.target.result);
-      reader.readAsDataURL(e.target.files[0]);
-    }
-  };
+  // --- Model Interaction Functions ---
 
-const stylizeImage = async () => {
-    if (!model || !contentImg || !styleImg) {
-      setStatus('Please select both a content and a style image.');
-      return;
-    }
+  const handleGenerateWithVAE = async () => {
+    if (!musicVaeRef.current) return;
 
-    setLoading(true);
-    setStatus('Stylizing image...');
+    setIsGenerating(true);
+    setStatusMessage('Generating a new melody with MusicVAE...');
+    setGeneratedSequence(null);
 
     try {
-      // 1. Load images into memory
-      const contentImageElement = new Image();
-      const styleImageElement = new Image();
-
-      const contentPromise = new Promise((resolve, reject) => {
-        contentImageElement.onload = () => resolve(contentImageElement);
-        contentImageElement.onerror = reject;
-        contentImageElement.src = contentImg;
-      });
-
-      const stylePromise = new Promise((resolve, reject) => {
-        styleImageElement.onload = () => resolve(styleImageElement);
-        styleImageElement.onerror = reject;
-        styleImageElement.src = styleImg;
-      });
-
-      const [loadedContentImg, loadedStyleImg] = await Promise.all([contentPromise, stylePromise]);
-
-      // 2. Resize images to prevent GPU errors
-      setStatus('Images loaded. Resizing...');
-      const MAX_DIMENSION = 1024;
-      const resizeImageToCanvas = (image, maxDimension) => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        let { width, height } = image;
-
-        if (width > maxDimension || height > maxDimension) {
-          if (width > height) {
-            height = Math.round((height * maxDimension) / width);
-            width = maxDimension;
-          } else {
-            width = Math.round((width * maxDimension) / height);
-            height = maxDimension;
-          }
-        }
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(image, 0, 0, width, height);
-        return canvas;
-      };
-
-      const contentCanvas = resizeImageToCanvas(loadedContentImg, MAX_DIMENSION);
-      const styleCanvas = resizeImageToCanvas(loadedStyleImg, MAX_DIMENSION);
-      
-      // 3. THE FIX: Set the result canvas dimensions
-      const resultCanvas = stylizedImgRef.current;
-      resultCanvas.width = contentCanvas.width;
-      resultCanvas.height = contentCanvas.height;
-
-      // 4. Stylize the image
-      setStatus('Applying style...');
-      await model.stylize(contentCanvas, styleCanvas, resultCanvas);
-
-      setStylizedImg(resultCanvas.toDataURL());
-      setStatus('Stylization complete!');
-
+      // The sample() method generates a new sequence from the model.
+      const sequences = await musicVaeRef.current.sample(1); // Generate 1 sequence
+      setGeneratedSequence(sequences[0]);
+      setStatusMessage('MusicVAE generation complete!');
     } catch (error) {
-        console.error("Error during stylization:", error);
-        setStatus('An error occurred during stylization. Please check the console for details.');
-    } finally {
-        setLoading(false);
+      console.error('MusicVAE generation failed:', error);
+      setStatusMessage('Error during VAE generation.');
     }
+
+    setIsGenerating(false);
+  };
+  
+  const handleContinueWithRNN = async () => {
+    if (!musicRnnRef.current) return;
+
+    setIsGenerating(true);
+    setStatusMessage('Continuing a melody with MelodyRNN...');
+    setGeneratedSequence(null);
+    
+    // Create a short "seed" melody for the RNN to continue.
+    // This is C4, D4, E4, F4.
+    const seedSequence = {
+      notes: [
+        { pitch: 60, startTime: 0.0, endTime: 0.5 },
+        { pitch: 62, startTime: 0.5, endTime: 1.0 },
+        { pitch: 64, startTime: 1.0, endTime: 1.5 },
+        { pitch: 65, startTime: 1.5, endTime: 2.0 }
+      ],
+      totalTime: 2.0
+    };
+    
+    // Quantize the sequence - a required step for many models.
+    const quantizedSeed = mm.sequences.quantizeNoteSequence(seedSequence, 4);
+
+    try {
+      // The continueSequence() method takes a seed and generates the rest.
+      // Parameters: seed sequence, number of steps to generate, temperature (creativity)
+      const continuedSequence = await musicRnnRef.current.continueSequence(quantizedSeed, 60, 1.1);
+      setGeneratedSequence(continuedSequence);
+      setStatusMessage('MelodyRNN continuation complete!');
+    } catch (error) {
+      console.error('MelodyRNN generation failed:', error);
+      setStatusMessage('Error during RNN generation.');
+    }
+
+    setIsGenerating(false);
+  };
+
+
+  // --- Player and Download Functions ---
+
+  const handlePlay = () => {
+    if (!generatedSequence) return;
+    const player = playerRef.current;
+
+    if (player.isPlaying()) {
+      player.stop();
+    } else {
+      // The NoteSequence must be unquantized before playback.
+      player.start(mm.sequences.unquantizeSequence(generatedSequence));
+    }
+  };
+
+  const handleDownload = () => {
+    if (!generatedSequence) return;
+    
+    // Convert the NoteSequence to a MIDI file Blob
+    const midiBlob = new Blob([mm.sequenceToMidi(generatedSequence)], { type: 'audio/midi' });
+    
+    // Create a temporary link to trigger the download
+    const url = URL.createObjectURL(midiBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'generated-music.mid';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
-    <div className="floating-control-panel base-panel">
-      <div className="panel-section">
-        <h2>Magenta.js Image Style Transfer</h2>
-        <p className="status-display">{status}</p>
+    <div style={styles.container}>
+      <h1>Magenta.js Composer in React</h1>
+      <p style={styles.status}>{statusMessage}</p>
 
-        <div className="input-group">
-          <label htmlFor="content-img-input">Content Image:</label>
-          <input id="content-img-input" type="file" onChange={handleContentImage} accept="image/*" />
-          {contentImg && <img src={contentImg} alt="Content" width="200" />}
-        </div>
-
-        <div className="input-group">
-          <label htmlFor="style-img-input">Style Image:</label>
-          <input id="style-img-input" type="file" onChange={handleStyleImage} accept="image/*" />
-          {styleImg && <img src={styleImg} alt="Style" width="200" />}
-        </div>
-
-        <button onClick={stylizeImage} disabled={loading || !contentImg || !styleImg}>
-          {loading ? 'Processing...' : 'Stylize'}
+      {!modelsLoaded ? (
+        <button onClick={loadModels} style={styles.button}>
+          Load Models
         </button>
-      </div>
-
-      <div className="panel-section">
-        <h3>Result</h3>
-        <div className="generated-output-display">
-          {stylizedImg ? (
-            <img src={stylizedImg} alt="Stylized" style={{ maxWidth: '100%' }} />
-          ) : (
-            <p>The stylized image will appear here.</p>
-          )}
+      ) : (
+        <div style={styles.controls}>
+          <button onClick={handleGenerateWithVAE} disabled={isGenerating} style={styles.button}>
+            {isGenerating ? 'Generating...' : 'Generate with MusicVAE'}
+          </button>
+          <button onClick={handleContinueWithRNN} disabled={isGenerating} style={styles.button}>
+            {isGenerating ? 'Generating...' : 'Continue with MelodyRNN'}
+          </button>
         </div>
-        <canvas ref={stylizedImgRef} style={{ display: 'none' }} />
-      </div>
+      )}
+
+      {generatedSequence && (
+        <div style={styles.results}>
+          <h3>Generated Music:</h3>
+          <button onClick={handlePlay} style={styles.button}>
+            {playerRef.current?.isPlaying() ? 'Stop' : 'Play'}
+          </button>
+          <button onClick={handleDownload} style={styles.button}>
+            Download MIDI
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-export default App;
+// Basic styling for the component
+const styles = {
+  container: {
+    fontFamily: 'sans-serif',
+    textAlign: 'center',
+    padding: '20px',
+    border: '1px solid #ccc',
+    borderRadius: '8px',
+    maxWidth: '600px',
+    margin: '40px auto',
+    backgroundColor: '#f9f9f9',
+  },
+  status: {
+    minHeight: '40px',
+    color: '#333',
+    fontWeight: 'bold'
+  },
+  controls: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '15px',
+    marginBottom: '20px',
+  },
+  results: {
+    marginTop: '30px',
+    borderTop: '1px solid #ddd',
+    paddingTop: '20px',
+  },
+  button: {
+    padding: '10px 20px',
+    fontSize: '16px',
+    cursor: 'pointer',
+    border: 'none',
+    borderRadius: '5px',
+    backgroundColor: '#007bff',
+    color: 'white',
+    transition: 'background-color 0.2s',
+  },
+};
+
+export default MagentaComposer;
