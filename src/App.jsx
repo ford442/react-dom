@@ -80,7 +80,7 @@ const stylizeImage = async () => {
 
       // 2. Resize images to prevent GPU errors
       setStatus('Images loaded. Resizing...');
-      const MAX_DIMENSION = 1024;
+      const MAX_DIMENSION = 512;
       const resizeImageToCanvas = (image, maxDimension) => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
