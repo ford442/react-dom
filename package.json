@@ -10,11 +10,13 @@
   "dependencies": {
     "@emotion/react": "latest",
     "@emotion/styled": "latest",
-    "@mui/material": "latest",
-    "react": "latest",
-    "react-dom": "latest",
     "@magenta/image": "0.1.2",
-    "p5": "latest"
+    "@mui/material": "latest",
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-backend-wasm": "^4.22.0",
+    "p5": "latest",
+    "react": "latest",
+    "react-dom": "latest"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "latest",
