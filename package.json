@@ -13,7 +13,7 @@
     "@mui/material": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "@magenta/music": "latest",
+    "@magenta/music": "latest"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "latest",
