@@ -161,7 +161,7 @@ label {
 .radio-group {
   display: flex;
   flex-direction: row;
-  align-items: center;
+  align-items_center;
   flex-wrap: wrap;
   gap: 1rem;
 }
@@ -169,14 +169,14 @@ label {
 .radio-group label {
   font-weight: normal;
   display: flex;
-  align-items: center;
+  align-items_center;
   gap: 0.3rem;
   cursor: pointer;
 }
 
 .personality-header {
   display: flex;
-  align-items: center;
+  align-items_center;
   gap: 1rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--panel-border-color);
@@ -233,6 +233,30 @@ label {
 
   .radio-group {
     flex-direction: column;
-    align-items: flex-start;
+    align-items_flex-start;
   }
+}
+
+/* Puzzle Mode Styles */
+.puzzle-container {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--panel-border-color);
+}
+
+.results-list {
+  margin-top: 1rem;
+}
+
+.results-list ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.results-list li {
+  background-color: #f9f9f9;
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  border-left: 4px solid var(--ai-primary-color);
 }
