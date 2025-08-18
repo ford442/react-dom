@@ -7,7 +7,7 @@ import './App.css';
 import { KokoroTTS } from 'kokoro-js';
 // NEW: Import Firestore and functions
 import { db } from './firebase';
-import { collection, addDoc, getDocs, serverTimestamp, query, orderBy } from "firebase/firestore";
+import { getFirestore, collection, addDoc, getDocs, serverTimestamp, query, orderBy } from "firebase/firestore";
 
 
 const personalityProfiles = {
