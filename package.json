@@ -12,9 +12,7 @@
     "@emotion/styled": "latest",
     "@mui/material": "latest",
     "react": "latest",
-    "react-dom": "latest",
-    "@magenta/music": "latest",
-    "@tensorflow/tfjs": "^4.22.0"
+    "react-dom": "latest"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "latest",
