@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 // Note: The '@magenta/music' import is removed as it will be loaded from a script tag in index.html
+import * as mm from '@magenta/music';
+
 
 // URLs for the pre-trained Magenta models
 const VAE_CHECKPOINT = 'https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/mel_4bar_small_q2';
