@@ -13,7 +13,8 @@
     "@mui/material": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "@tensorflow/tfjs":"latest"
+    "@tensorflow/tfjs":"latest",
+    "@magenta/music": "latest"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "latest",
