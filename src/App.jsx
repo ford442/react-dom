@@ -29,7 +29,7 @@ function MagentaComposer() {
 
   // Effect to set the initial TF.js backend
   useEffect(() => {
-    if (tf) {
+    if (tf && tf.getBackend() !== backend) {
       tf.setBackend(backend).then(() => {
         console.log(`TensorFlow.js backend set to: ${tf.getBackend()}`);
       });
@@ -37,7 +37,7 @@ function MagentaComposer() {
   }, []); // Runs only once on mount
 
   const handleBackendChange = async (newBackend) => {
-    if (!tf) return;
+    if (!tf || tf.getBackend() === newBackend) return;
     setStatusMessage(`Switching backend to ${newBackend}...`);
     setBackend(newBackend);
     await tf.setBackend(newBackend);
@@ -73,6 +73,15 @@ function MagentaComposer() {
 
   const handleGenerateWithVAE = async () => {
     if (!musicVaeRef.current) return;
+
+    const originalBackend = tf.getBackend();
+    // The WASM backend in this TFJS version doesn't support the 'split' op needed by MusicVAE.
+    // Temporarily switch to WebGL if WASM is active to avoid the error.
+    if (originalBackend === 'wasm') {
+      setStatusMessage('Temporarily switching to WebGL for VAE compatibility...');
+      await tf.setBackend('webgl');
+    }
+
     setIsGenerating(true);
     setStatusMessage(`Generating with MusicVAE (Temp: ${vaeTemperature})...`);
     setGeneratedSequence(null);
@@ -84,9 +93,16 @@ function MagentaComposer() {
       setStatusMessage('MusicVAE generation complete!');
     } catch (error) {
       console.error('MusicVAE generation failed:', error);
-      setStatusMessage('Error during VAE generation.');
+      setStatusMessage('Error during VAE generation. Check console.');
+    } finally {
+      // If we switched the backend, switch it back now.
+      if (originalBackend === 'wasm' && tf.getBackend() !== 'wasm') {
+        setStatusMessage('Switching back to WASM backend...');
+        await tf.setBackend('wasm');
+        setStatusMessage(`Models ready on ${tf.getBackend()} backend.`);
+      }
+      setIsGenerating(false);
     }
-    setIsGenerating(false);
   };
   
   const handleContinueWithRNN = async () => {
@@ -191,6 +207,7 @@ function MagentaComposer() {
           />
         </div>
       </div>
+      <small style={styles.note}>Note: MusicVAE is not fully compatible with the WASM backend and will temporarily use WebGL.</small>
 
       <p style={styles.status}>{statusMessage}</p>
 
@@ -245,7 +262,7 @@ const styles = {
     justifyContent: 'space-around',
     gap: '20px',
     padding: '15px',
-    marginBottom: '10px',
+    marginBottom: '5px',
     backgroundColor: '#efefef',
     borderRadius: '5px',
   },
@@ -259,6 +276,11 @@ const styles = {
     padding: '5px',
     borderRadius: '4px',
     border: '1px solid #ccc'
+  },
+  note: {
+    fontSize: '0.8rem',
+    color: '#666',
+    marginBottom: '10px'
   },
   status: {
     minHeight: '40px',
