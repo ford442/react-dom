@@ -6,12 +6,12 @@ const VAE_CHECKPOINT = 'https://storage.googleapis.com/magentadata/js/checkpoint
 const RNN_CHECKPOINT = 'https://storage.googleapis.com/magentadata/js/checkpoints/music_rnn/basic_rnn';
 
 function MagentaComposer() {
-  // Refs to hold the model instances and the visualizer canvas
+  // Refs to hold the model instances and the visualizer canvases
   const musicVaeRef = useRef();
   const musicRnnRef = useRef();
   const playerRef = useRef();
-  const visualizerRef = useRef();
-  const visualizerInstanceRef = useRef();
+  const generatedVizRef = useRef();
+  const songVizRef = useRef();
 
   // State to manage the UI
   const [libsLoaded, setLibsLoaded] = useState(false);
@@ -19,6 +19,7 @@ function MagentaComposer() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Loading libraries...');
   const [generatedSequence, setGeneratedSequence] = useState(null);
+  const [songSequence, setSongSequence] = useState(null); // State for the full song
   const [isPlaying, setIsPlaying] = useState(false);
   
   // State for backend and model temperatures
@@ -81,7 +82,6 @@ function MagentaComposer() {
 
     const originalBackend = tf.getBackend();
     if (originalBackend === 'wasm') {
-      setStatusMessage('Temporarily switching to WebGL for VAE compatibility...');
       await tf.setBackend('webgl');
     }
 
@@ -92,15 +92,13 @@ function MagentaComposer() {
     try {
       const sequences = await musicVaeRef.current.sample(1, vaeTemperature);
       setGeneratedSequence(sequences[0]);
-      setStatusMessage('MusicVAE generation complete!');
+      setStatusMessage('New clip generated with MusicVAE!');
     } catch (error) {
       console.error('MusicVAE generation failed:', error);
-      setStatusMessage('Error during VAE generation. Check console.');
+      setStatusMessage('Error during VAE generation.');
     } finally {
       if (originalBackend === 'wasm' && tf.getBackend() !== 'wasm') {
-        setStatusMessage('Switching back to WASM backend...');
         await tf.setBackend('wasm');
-        setStatusMessage(`Models ready on ${tf.getBackend()} backend.`);
       }
       setIsGenerating(false);
     }
@@ -112,58 +110,81 @@ function MagentaComposer() {
 
     const originalBackend = tf.getBackend();
     if (originalBackend === 'wasm') {
-      setStatusMessage('Temporarily switching to WebGL for RNN compatibility...');
       await tf.setBackend('webgl');
     }
 
     setIsGenerating(true);
     setStatusMessage(`Continuing with MelodyRNN (Temp: ${rnnTemperature.toFixed(1)})...`);
-    setGeneratedSequence(null);
     
-    const seedSequence = {
-      notes: [
-        { pitch: 60, startTime: 0.0, endTime: 0.4 }, { pitch: 64, startTime: 0.4, endTime: 0.8 }, { pitch: 67, startTime: 0.8, endTime: 1.2 },
-        { pitch: 67, startTime: 1.2, endTime: 1.6 }, { pitch: 71, startTime: 1.6, endTime: 2.0 },
-        { pitch: 69, startTime: 2.0, endTime: 2.4 }, { pitch: 72, startTime: 2.4, endTime: 2.8 },
-        { pitch: 71, startTime: 2.8, endTime: 3.2 }, { pitch: 74, startTime: 3.2, endTime: 4.0 },
-      ],
-      totalTime: 4.0
+    // Use the end of the current song as the seed, or a default seed if the song is empty
+    const seed = songSequence ? songSequence : {
+      notes: [ { pitch: 60, startTime: 0.0, endTime: 0.5 } ], totalTime: 0.5
     };
-    
-    const quantizedSeed = mm.sequences.quantizeNoteSequence(seedSequence, 4);
+    const quantizedSeed = mm.sequences.quantizeNoteSequence(seed, 4);
 
     try {
       const continuedSequence = await musicRnnRef.current.continueSequence(quantizedSeed, 60, rnnTemperature);
       setGeneratedSequence(continuedSequence);
-      setStatusMessage('MelodyRNN continuation complete!');
+      setStatusMessage('New clip generated with MelodyRNN!');
     } catch (error) {
       console.error('MelodyRNN generation failed:', error);
       setStatusMessage('Error during RNN generation.');
     } finally {
        if (originalBackend === 'wasm' && tf.getBackend() !== 'wasm') {
-        setStatusMessage('Switching back to WASM backend...');
         await tf.setBackend('wasm');
-        setStatusMessage(`Models ready on ${tf.getBackend()} backend.`);
       }
       setIsGenerating(false);
     }
   };
+
+  const handleAddToSong = () => {
+    if (!generatedSequence) return;
+    const { mm } = window;
+    if (songSequence) {
+      const concatenated = mm.sequences.concatenate([songSequence, generatedSequence]);
+      setSongSequence(concatenated);
+    } else {
+      setSongSequence(generatedSequence);
+    }
+    setGeneratedSequence(null); // Clear the generated clip after adding it
+  };
+
+  const handleClearSong = () => {
+    setSongSequence(null);
+    setGeneratedSequence(null);
+    if (playerRef.current && playerRef.current.isPlaying()) {
+      playerRef.current.stop();
+      setIsPlaying(false);
+    }
+  };
   
+  // Effect to draw the PREVIEW clip
   useEffect(() => {
     const { mm } = window;
-    if (generatedSequence && visualizerRef.current && mm) {
-      visualizerInstanceRef.current = null;
-      const ctx = visualizerRef.current.getContext('2d');
-      ctx.clearRect(0, 0, visualizerRef.current.width, visualizerRef.current.height);
-
+    if (generatedSequence && generatedVizRef.current && mm) {
       const unquantizedSeq = mm.sequences.unquantizeSequence(generatedSequence);
-      visualizerInstanceRef.current = new mm.PianoRollCanvasVisualizer(unquantizedSeq, visualizerRef.current);
+      new mm.PianoRollCanvasVisualizer(unquantizedSeq, generatedVizRef.current);
+    } else if (generatedVizRef.current) {
+        const ctx = generatedVizRef.current.getContext('2d');
+        ctx.clearRect(0, 0, generatedVizRef.current.width, generatedVizRef.current.height);
     }
   }, [generatedSequence]);
 
+  // Effect to draw the FULL song
+  useEffect(() => {
+    const { mm } = window;
+    if (songSequence && songVizRef.current && mm) {
+        const unquantizedSeq = mm.sequences.unquantizeSequence(songSequence);
+        new mm.PianoRollCanvasVisualizer(unquantizedSeq, songVizRef.current);
+    } else if (songVizRef.current) {
+        const ctx = songVizRef.current.getContext('2d');
+        ctx.clearRect(0, 0, songVizRef.current.width, songVizRef.current.height);
+    }
+  }, [songSequence]);
+
   const handlePlay = () => {
     const { mm } = window;
-    if (!generatedSequence || !playerRef.current || !mm) return;
+    if (!songSequence || !playerRef.current || !mm) return;
     const player = playerRef.current;
 
     if (isPlaying) {
@@ -171,19 +192,19 @@ function MagentaComposer() {
       setIsPlaying(false);
     } else {
       setIsPlaying(true);
-      player.start(mm.sequences.unquantizeSequence(generatedSequence))
+      player.start(mm.sequences.unquantizeSequence(songSequence))
         .then(() => setIsPlaying(false));
     }
   };
 
   const handleDownload = () => {
     const { mm } = window;
-    if (!generatedSequence || !mm) return;
-    const midiBlob = new Blob([mm.sequenceToMidi(generatedSequence)], { type: 'audio/midi' });
+    if (!songSequence || !mm) return;
+    const midiBlob = new Blob([mm.sequenceToMidi(songSequence)], { type: 'audio/midi' });
     const url = URL.createObjectURL(midiBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'generated-music.mid';
+    link.download = 'full-song.mid';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -200,10 +221,11 @@ function MagentaComposer() {
 
   return (
     <div style={styles.container}>
-      <h1>Magenta.js Composer in React</h1>
+      <h1>Magenta.js Song Composer</h1>
       
       <div style={styles.settings}>
-        <div style={styles.settingGroup}>
+        {/* Settings controls remain the same */}
+         <div style={styles.settingGroup}>
           <label>Backend:</label>
           <select value={backend} onChange={(e) => handleBackendChange(e.target.value)} style={styles.select} disabled={!libsLoaded}>
             <option value="webgl">WebGL</option>
@@ -253,28 +275,41 @@ function MagentaComposer() {
       {modelsLoaded && (
         <div style={styles.controls}>
           <button onClick={handleGenerateWithVAE} disabled={isGenerating || isPlaying} style={styles.button}>
-            {isGenerating ? 'Generating...' : 'Generate with MusicVAE'}
+            {isGenerating ? 'Working...' : 'New Idea (VAE)'}
           </button>
           <button onClick={handleContinueWithRNN} disabled={isGenerating || isPlaying} style={styles.button}>
-            {isGenerating ? 'Generating...' : 'Continue with MelodyRNN'}
+            {isGenerating ? 'Working...' : 'Continue (RNN)'}
           </button>
         </div>
       )}
 
       {generatedSequence && (
         <div style={styles.results}>
-          <h3>Generated Music:</h3>
-          <canvas ref={visualizerRef} style={styles.canvas}></canvas>
+          <h3>Generated Clip (Preview)</h3>
+          <canvas ref={generatedVizRef} style={styles.canvas}></canvas>
+          <button onClick={handleAddToSong} disabled={isGenerating || isPlaying} style={styles.button}>
+            Add to Song
+          </button>
+        </div>
+      )}
+
+      <div style={styles.results}>
+        <h3>Full Song</h3>
+        <canvas ref={songVizRef} style={styles.canvas}></canvas>
+        {songSequence && (
           <div style={styles.playbackControls}>
             <button onClick={handlePlay} disabled={isGenerating} style={styles.button}>
-              {isPlaying ? 'Stop' : 'Play'}
+              {isPlaying ? 'Stop' : 'Play Song'}
             </button>
             <button onClick={handleDownload} style={styles.button}>
               Download MIDI
             </button>
+            <button onClick={handleClearSong} style={{...styles.button, ...styles.clearButton}}>
+              Clear Song
+            </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -330,7 +365,7 @@ const styles = {
     marginBottom: '20px',
   },
   results: {
-    marginTop: '30px',
+    marginTop: '20px',
     borderTop: '1px solid #ddd',
     paddingTop: '20px',
   },
@@ -357,6 +392,9 @@ const styles = {
     color: 'white',
     transition: 'background-color 0.2s',
   },
+  clearButton: {
+      backgroundColor: '#dc3545'
+  }
 };
 
 export default MagentaComposer;
