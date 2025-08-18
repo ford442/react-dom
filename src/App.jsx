@@ -116,11 +116,19 @@ function MagentaComposer() {
     setIsGenerating(true);
     setStatusMessage(`Continuing with MelodyRNN (Temp: ${rnnTemperature.toFixed(1)})...`);
     
-    // Use the end of the current song as the seed, or a default seed if the song is empty
-    const seed = songSequence ? songSequence : {
-      notes: [ { pitch: 60, startTime: 0.0, endTime: 0.5 } ], totalTime: 0.5
-    };
-    const quantizedSeed = mm.sequences.quantizeNoteSequence(seed, 4);
+    let seedSequence;
+    // FIX: Use the last 2 seconds of the song as a seed to avoid overly long inputs and pitch range errors.
+    if (songSequence) {
+        const lastNoteTime = songSequence.totalTime;
+        seedSequence = mm.sequences.trim(songSequence, Math.max(0, lastNoteTime - 2.0), lastNoteTime);
+    } else {
+        // Default seed if the song is empty
+        seedSequence = {
+            notes: [ { pitch: 60, startTime: 0.0, endTime: 0.5 } ], totalTime: 0.5
+        };
+    }
+    
+    const quantizedSeed = mm.sequences.quantizeNoteSequence(seedSequence, 4);
 
     try {
       const continuedSequence = await musicRnnRef.current.continueSequence(quantizedSeed, 60, rnnTemperature);
