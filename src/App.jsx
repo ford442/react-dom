@@ -26,7 +26,7 @@ function MagentaComposer() {
   // State for backend and model temperatures
   const [backend, setBackend] = useState('webgl');
   const [vaeTemperature, setVaeTemperature] = useState(1.0);
-  const [rnnTemperature, setRnnTemperature] = useState(1.1); // Add state for RNN temperature
+  const [rnnTemperature, setRnnTemperature] = useState(1.1);
 
   // Effect to set the initial TF.js backend
   useEffect(() => {
@@ -76,6 +76,7 @@ function MagentaComposer() {
     if (!musicVaeRef.current) return;
 
     const originalBackend = tf.getBackend();
+    // FIX: Re-implement the logic to temporarily switch from WASM to a compatible backend (WebGL) for VAE.
     if (originalBackend === 'wasm') {
       setStatusMessage('Temporarily switching to WebGL for VAE compatibility...');
       await tf.setBackend('webgl');
@@ -93,6 +94,7 @@ function MagentaComposer() {
       console.error('MusicVAE generation failed:', error);
       setStatusMessage('Error during VAE generation. Check console.');
     } finally {
+      // If we switched the backend, switch it back now.
       if (originalBackend === 'wasm' && tf.getBackend() !== 'wasm') {
         setStatusMessage('Switching back to WASM backend...');
         await tf.setBackend('wasm');
@@ -106,7 +108,7 @@ function MagentaComposer() {
     if (!musicRnnRef.current) return;
 
     const originalBackend = tf.getBackend();
-    // Also apply the WASM compatibility fix for MelodyRNN
+    // FIX: Re-implement the logic to temporarily switch from WASM for RNN as well.
     if (originalBackend === 'wasm') {
       setStatusMessage('Temporarily switching to WebGL for RNN compatibility...');
       await tf.setBackend('webgl');
@@ -129,7 +131,6 @@ function MagentaComposer() {
     const quantizedSeed = mm.sequences.quantizeNoteSequence(seedSequence, 4);
 
     try {
-      // Use the temperature from the state for the RNN model
       const continuedSequence = await musicRnnRef.current.continueSequence(quantizedSeed, 60, rnnTemperature);
       setGeneratedSequence(continuedSequence);
       setStatusMessage('MelodyRNN continuation complete!');
