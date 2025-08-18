@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import p5 from 'p5';
-import * as ms from '@magenta/sketch';
+import * as ms from '@magenta/image';
 
 const MagentaSketch = () => {
   const sketchRef = useRef();
