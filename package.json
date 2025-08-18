@@ -12,7 +12,8 @@
     "@emotion/styled": "latest",
     "@mui/material": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "@tensorflow/tfjs":"latest"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "latest",
