@@ -117,10 +117,19 @@ function MagentaComposer() {
     setStatusMessage(`Continuing with MelodyRNN (Temp: ${rnnTemperature.toFixed(1)})...`);
     
     let seedSequence;
-    // FIX: Use the last 2 seconds of the song as a seed to avoid overly long inputs and pitch range errors.
-    if (songSequence) {
-        const lastNoteTime = songSequence.totalTime;
-        seedSequence = mm.sequences.trim(songSequence, Math.max(0, lastNoteTime - 2.0), lastNoteTime);
+    // FIX: Instead of trimming by time, we now extract the last 8 notes to create a more stable seed.
+    if (songSequence && songSequence.notes.length > 0) {
+        const lastNotes = songSequence.notes.slice(-8); // Get the last 8 notes
+        const startTime = lastNotes[0].startTime;
+        // Create a new sequence with normalized timing (starting from 0)
+        seedSequence = {
+            notes: lastNotes.map(n => ({
+                ...n,
+                startTime: n.startTime - startTime,
+                endTime: n.endTime - startTime,
+            })),
+            totalTime: lastNotes[lastNotes.length - 1].endTime - startTime
+        };
     } else {
         // Default seed if the song is empty
         seedSequence = {
