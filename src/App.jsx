@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { React, useState, useRef, useEffect } from 'react';
 import './App.css';
 import * as mm from '@magenta/image';
+import MagentaSketch from './MagentaSketch';
 
 function App() {
   const [model, setModel] = useState(null);
@@ -124,29 +125,33 @@ const stylizeImage = async () => {
   };
 
   return (
+     <div className="App">
     <div className="floating-control-panel base-panel">
       <div className="panel-section">
         <h2>Magenta.js Image Style Transfer</h2>
         <p className="status-display">{status}</p>
-
         <div className="input-group">
           <label htmlFor="content-img-input">Content Image:</label>
           <input id="content-img-input" type="file" onChange={handleContentImage} accept="image/*" />
           {contentImg && <img src={contentImg} alt="Content" width="200" />}
         </div>
-
         <div className="input-group">
           <label htmlFor="style-img-input">Style Image:</label>
           <input id="style-img-input" type="file" onChange={handleStyleImage} accept="image/*" />
           {styleImg && <img src={styleImg} alt="Style" width="200" />}
         </div>
-
         <button onClick={stylizeImage} disabled={loading || !contentImg || !styleImg}>
           {loading ? 'Processing...' : 'Stylize'}
         </button>
       </div>
-
       <div className="panel-section">
+      <header className="App-header">
+        <h1>React + Magenta.js</h1>
+        <p>This demo loads the <code>bird</code> SketchRNN model and generates bird sketches.</p>
+        <div className="sketch-container">
+          <MagentaSketch />
+        </div>
+      </header>
         <h3>Result</h3>
         <div className="generated-output-display">
           {stylizedImg ? (
@@ -157,7 +162,8 @@ const stylizeImage = async () => {
         </div>
         <canvas ref={stylizedImgRef} style={{ display: 'none' }} />
       </div>
-    </div>
+    </div> 
+       </div>
   );
 }
 
