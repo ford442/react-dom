@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as mm from '@magenta/music';
 import * as tf from '@tensorflow/tfjs';
+import './App.css';
 
 // URLs for the pre-trained Magenta models
 const VAE_CHECKPOINT = 'https://storage.googleapis.com/magentadata/js/checkpoints/music_vae/mel_4bar_small_q2';
