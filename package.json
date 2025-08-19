@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "react": "latest",
+    "react-dom": "latest",
     "midi-file": "latest"
   },
   "devDependencies": {
