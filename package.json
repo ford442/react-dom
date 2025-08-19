@@ -1,14 +1,14 @@
 {
-  "name": "client-side-llm-multimodal",
+  "name": "xm-builder",
   "version": "1.0.0",
-  "description": "A web application that runs client-side LLMs for text and music generation.",
+  "description": "A web application that assembles XM format mods out of audio and MIDI.",
   "scripts": {
     "start": "parcel index.html",
     "build": "parcel build index.html",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@xenova/transformers": "^2.9.0"
+    "midi-file": "latest"
   },
   "devDependencies": {
     "parcel": "^2.11.0",
@@ -23,6 +23,6 @@
     "typescript",
     "client-side"
   ],
-  "author": "Your Name",
+  "author": "1ink.us",
   "license": "ISC"
 }
