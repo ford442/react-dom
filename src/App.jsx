@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 // import { pipeline, env, Tensor } from '@huggingface/transformers';
-import { pipeline, env, Tensor } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.1";
+import { pipeline, env, Tensor } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.6.0";
 import Box from '@mui/material/Box'; // Assuming you still use these
 import Slider from '@mui/material/Slider'; // Assuming you still use these
 import './App.css';
@@ -691,7 +691,7 @@ async function loadModel() {
             const message = `Loading: ${progress.file} - ${progress.status} (${percentage}%)`;
             console.log(message);
             setStatusMessage(message);
-          },  dtype: "uint8"
+          },  dtype: "q4"
   },
   { device: "webgpu" } //  "webnn" }
         );
@@ -709,7 +709,7 @@ async function loadModel() {
             const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
             const message = `Loading TTS: ${progress.file} (${percentage}%)`;
             setStatusMessage(message);
-          }, dtype: "fp32"
+          }, dtype: "q4"
         },
   { device: "webgpu" }); // "webnn" });
         setTtsPipelineInstance(() => ttsPipe);
