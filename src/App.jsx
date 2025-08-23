@@ -693,7 +693,7 @@ async function loadModel() {
             setStatusMessage(message);
           }, // dtype: "q8"
   },
-  { device: "webnn" }
+  { device: "webgpu" } //  "webnn" }
         );
         console.log("Pipeline loaded successfully.");
         setStatusMessage("Model loaded! Ready to generate.");
@@ -711,7 +711,7 @@ async function loadModel() {
             setStatusMessage(message);
           },
         },
-  { device: "webnn" });
+  { device: "webgpu" }); // "webnn" });
         setTtsPipelineInstance(() => ttsPipe);
         setStatusMessage(prev => `${prev} TTS model loaded.`);
         console.log("TTS pipeline (SpeechT5 + Vocoder) loaded successfully.");
@@ -764,7 +764,7 @@ async function loadModel() {
           setStatusMessage(message);
         },
       },
-  { device: "webnn" });
+  { device: "webgpu" }); "webnn" });
       setImageCaptioner(() => captionerInstance);
       console.log("Image Captioning model loaded successfully.");
       // Update the overall status message
