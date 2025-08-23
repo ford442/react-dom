@@ -691,7 +691,7 @@ async function loadModel() {
             const message = `Loading: ${progress.file} - ${progress.status} (${percentage}%)`;
             console.log(message);
             setStatusMessage(message);
-          }, // dtype: "q8"
+          },  dtype: "uint8"
   },
   { device: "webgpu" } //  "webnn" }
         );
@@ -709,7 +709,7 @@ async function loadModel() {
             const percentage = progress.total > 0 ? (progress.loaded / progress.total * 100).toFixed(2) : 'N/A';
             const message = `Loading TTS: ${progress.file} (${percentage}%)`;
             setStatusMessage(message);
-          },
+          }, dtype: "fp32"
         },
   { device: "webgpu" }); // "webnn" });
         setTtsPipelineInstance(() => ttsPipe);
@@ -739,7 +739,7 @@ async function loadModel() {
         setStatusMessage(prev => `${prev} Loading TTS model (Kokoro)...`);
         
         // This single line downloads and initializes the Kokoro TTS model.
-        const kokoroInstance = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {dtype: "fp32", device: "webgpu", });
+        const kokoroInstance = await KokoroTTS.from_pretrained('onnx-community/Kokoro-82M-v1.0-ONNX', {dtype: "q4", device: "webgpu", });
         
         setKokoroTtsInstance(() => kokoroInstance);
         console.log("Kokoro TTS pipeline loaded successfully.");
