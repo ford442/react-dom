@@ -764,7 +764,7 @@ async function loadModel() {
           setStatusMessage(message);
         },
       },
-  { device: "webgpu" }); "webnn" });
+  { device: "webgpu" }); // "webnn" });
       setImageCaptioner(() => captionerInstance);
       console.log("Image Captioning model loaded successfully.");
       // Update the overall status message
