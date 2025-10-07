@@ -36,41 +36,13 @@ body {
 }
 
 .canvas-container {
-  /* Make the container a full-screen layer */
   position: absolute;
   top: 0;
   left: 0;
-  width: 100vh;
+  width: 100vw; /* <-- FIX: Changed from 100vh to 100vw */
   height: 100vh;
-  z-index: 3300; /* Can be behind your UI panel */
-
-  /* Use Flexbox to center its child */
-  display: flex;
-  justify-content: center; /* Horizontally center */
-  align-items: center;     /* Vertically center */
-}
-
-.centered-square {
-  /* Your square's specific styling */
+  z-index: 1; /* The canvas should be in the background */
   background-color: rgba(0, 0, 0, 0.1); /* Optional: just to see it */
-  border: 1px solid #ccc;
-}
-
-#wrap {
-  position: absolute;
-  top: 0;
-  height: 100vh;
-  width: 100vw;
-  pointer-events: none;
-}
-
-#contain1 {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  width: 100%;
-  background-color: rgba(255, 255, 255, 0.0);
 }
 
 /*
@@ -79,31 +51,36 @@ body {
  * ===================================================================
  */
 
-/* Base style for all UI panels */
-.base-panel {
+/* Main Floating Control Panel Style */
+.floating-control-panel {
+  /* FIX: Increased z-index to ensure it's on top of the canvas */
+  z-index: 6000;
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
   background-color: var(--panel-bg-color);
   border: 1px solid var(--panel-border-color);
   border-radius: var(--panel-border-radius);
   box-shadow: var(--panel-box-shadow);
   padding: var(--panel-padding);
-  display: flex;
-  flex-direction: column;
-  gap: var(--panel-gap);
   pointer-events: auto;
-  z-index: 6000;
-  box-sizing: border-box;
 }
 
-/* Main Floating Control Panel Style */
-.floating-control-panel {
-  z-index: 3300;
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  right: 20px;
-  max-height: calc(100vh - 40px); /* Max height with margins */
-  overflow-y: auto; /* Enable scrolling within the panel if content overflows */
+.panel-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
 }
+
+@media (max-width: 768px) {
+    .panel-content {
+        grid-template-columns: 1fr;
+    }
+}
+
 
 /* Sections within the panel */
 .panel-section {
@@ -116,17 +93,16 @@ body {
   gap: 0.75rem;
 }
 
-.panel-section h2, .panel-section h3, .panel-section h4 {
+.panel-section h3 {
   margin: 0;
   color: var(--ai-text-color);
+  font-size: 1.1rem;
+  margin-bottom: 0.6rem;
 }
 
-.panel-section h2 { font-size: 1.25rem; margin-bottom: 0.75rem; }
-.panel-section h3 { font-size: 1.1rem; margin-bottom: 0.6rem; }
-.panel-section h4 { font-size: 1rem; margin-bottom: 0.5rem; }
 
 /* Form Elements */
-textarea, select, button {
+textarea, select, button, input[type="file"] {
   width: 100%;
   padding: 0.6rem;
   box-sizing: border-box;
@@ -160,11 +136,6 @@ button:hover:not(:disabled) {
   opacity: 0.85;
 }
 
-button.auto-width {
-  width: auto;
-  align-self: flex-start;
-}
-
 label {
   display: block;
   margin-bottom: 0.3rem;
@@ -173,48 +144,20 @@ label {
   color: var(--ai-text-color);
 }
 
-/* Specific Component Groups */
-.input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+.button-group {
+    display: flex;
+    gap: 10px;
 }
 
-.radio-group {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.radio-group label {
-  font-weight: normal;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  cursor: pointer;
-}
-
-.personality-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
+.panel-header {
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--panel-border-color);
+  margin-bottom: 1rem;
 }
 
-.personality-header h2 {
-  margin: 0;
+.panel-header h2 {
+  margin: 0 0 1rem 0;
   color: var(--ai-primary-color);
-}
-
-.personality-avatar {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  border: 3px solid var(--ai-primary-color);
-  object-fit: cover;
 }
 
 .status-display {
@@ -236,25 +179,4 @@ label {
   border-radius: 4px;
   word-wrap: break-word;
   font-size: 0.9rem;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  :root {
-    --panel-padding: 15px;
-    --panel-gap: 10px;
-    --base-font-size: 14px;
-  }
-
-  .floating-control-panel {
-    bottom: 10px;
-    left: 10px;
-    right: 10px;
-    max-height: calc(100vh - 20px);
-  }
-
-  .radio-group {
-    flex-direction: column;
-    align-items: flex-start;
-  }
 }
