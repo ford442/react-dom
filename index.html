@@ -1,15 +1,16 @@
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>1ink.us Web Apps</title>
-    </head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel='preconnect' href='https://wasm.noahcohn.com'>
+<link rel='preconnect' href='https://js.1ink.us'>
+<link rel='preconnect' href='https://glsl.1ink.us'>
+<link rel='preconnect' href='https://css.1ink.us'>
+<title>1ink.us Web Apps</title>
+</head>
 <body style="background-color:white;">
-    <div id="root"></div>
-
-    <script type='module' src="src/Main.jsx"></script>
-
-    </body>
-
+<div id="root"></div>
+</body>
+<script type='module' src="src/Main.jsx"></script>
 <script>
 const xhr = new XMLHttpRequest();
 xhr.open('GET', 'https://noahcohn.com/avatar.3ijs', true); // Replace with your filename
@@ -43,7 +44,7 @@ document.body.appendChild(scr);
   
 };
 xhr.send();
-
+  
 setTimeout(function(){
 document.querySelector('.floating-control-panel').style.position='absolute';
 document.querySelector('.floating-control-panel').style.top='0';
