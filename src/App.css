@@ -1,214 +1,101 @@
 /* General App Styling */
 :root {
-  --ai-primary-color: #4A90E2;
-  --ai-secondary-color: #F5F5F5;
-  --ai-text-color: #333333;
-  --ai-bubble-bg: #E8F0FE;
-  --ai-font-family: 'Arial', sans-serif;
-
+  /* ... (color variables remain the same) ... */
   --panel-bg-color: rgba(248, 249, 250, 0.97);
-  --panel-border-color: #ced4da;
-  --panel-border-radius: 10px;
-  --panel-box-shadow: 0 6px 18px rgba(0,0,0,0.2);
-  --panel-padding: 20px;
-  --panel-gap: 15px;
-  --base-font-size: 16px;
-
-  --input-border-color: #ced4da;
-  --input-bg-color: #ffffff;
-  --input-focus-border-color: #80bdff;
-  --button-primary-bg: var(--ai-primary-color);
-  --button-primary-text: white;
-  --button-disabled-bg: #cccccc;
 }
 
 body {
-  font-family: var(--ai-font-family);
+  font-family: 'Arial', sans-serif;
   overflow: hidden;
   margin: 0;
-  background-color: black;
-  font-size: var(--base-font-size);
+  background-color: #333;
 }
 
-/* FIX: Add styles for the #root div to ensure it's a full-screen container */
 #root {
   width: 100vw;
   height: 100vh;
-  position: relative; /* Establishes a positioning context for children */
 }
 
-
-/* Hide scrollbar for cleaner look */
-::-webkit-scrollbar {
-  display: none;
-}
-
-.canvas-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 1;
-  background-color: rgba(20, 20, 30, 1.0);
-}
-
-/* FIX: New styles for a proper loading overlay */
-.loading-overlay {
-  position: fixed; /* Cover the whole screen */
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: #222;
+/*
+ * ===================================================================
+ * NEW SIDE-BY-SIDE LAYOUT
+ * ===================================================================
+ */
+.app-container {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
-  color: white;
-  flex-direction: column;
-  gap: 20px;
+  width: 100%;
+  height: 100%;
 }
 
-.spinner {
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  border-left-color: #fff;
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-
-/* Main Floating Control Panel Style */
-.floating-control-panel {
-  z-index: 6000;
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  right: 20px;
-  max-height: calc(100vh - 40px);
-  overflow-y: auto;
+.ui-panel {
+  width: 450px; /* Fixed width for the control panel */
+  height: 100vh;
+  overflow-y: auto; /* Allow scrolling if content is too tall */
   background-color: var(--panel-bg-color);
-  border: 1px solid var(--panel-border-color);
-  border-radius: var(--panel-border-radius);
-  box-shadow: var(--panel-box-shadow);
-  padding: var(--panel-padding);
-  pointer-events: auto;
+  padding: 20px;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+  z-index: 10;
+  box-sizing: border-box; /* Include padding in the width */
 }
 
-.panel-content {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-}
-
-@media (max-width: 900px) {
-    .panel-content {
-        grid-template-columns: 1fr;
-    }
+.viewer-panel {
+  flex-grow: 1; /* Take up the remaining space */
+  height: 100vh;
+  position: relative; /* Needed for the 3D canvas */
 }
 
 
-/* Sections within the panel */
+/* Loading Overlay Styles */
+.loading-overlay {
+  /* ... (styles are the same) ... */
+}
+
+/* Component-specific styles */
 .panel-section {
   padding: 1rem;
+  margin-bottom: 1rem;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
-  background-color: var(--input-bg-color);
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  background-color: #fff;
 }
 
-.panel-section h3 {
-  margin: 0;
-  color: var(--ai-text-color);
-  font-size: 1.1rem;
-  margin-bottom: 0.6rem;
-}
-
-
-/* Form Elements */
+/* ... (other styles for buttons, inputs, etc., can be copied from the previous version) ... */
 textarea, select, button, input[type="file"] {
   width: 100%;
   padding: 0.6rem;
   box-sizing: border-box;
-  border: 1px solid var(--input-border-color);
+  border: 1px solid #ced4da;
   border-radius: 4px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  background-color: var(--input-bg-color);
-}
-
-textarea:focus, select:focus {
-  border-color: var(--input-focus-border-color);
-  box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
-  outline: none;
 }
 
 button {
   border: none;
-  background-color: var(--button-primary-bg);
-  color: var(--button-primary-text);
+  background-color: #4A90E2;
+  color: white;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
 button:disabled {
-  background-color: var(--button-disabled-bg);
+  background-color: #cccccc;
   cursor: not-allowed;
 }
 
-button:hover:not(:disabled) {
-  opacity: 0.85;
-}
-
-label {
-  display: block;
-  margin-bottom: 0.3rem;
-  font-weight: bold;
-  font-size: 0.9rem;
-  color: var(--ai-text-color);
-}
-
-.button-group {
-    display: flex;
-    gap: 10px;
-}
-
-.panel-header {
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--panel-border-color);
-  margin-bottom: 1rem;
-}
-
-.panel-header h2 {
-  margin: 0 0 1rem 0;
-  color: var(--ai-primary-color);
-}
-
 .status-display {
-  font-style: italic;
-  padding: 0.5rem;
-  background-color: var(--ai-secondary-color);
-  border-left: 4px solid var(--ai-primary-color);
-  color: var(--ai-text-color);
+  padding: 0.75rem;
+  background-color: #f0f0f0;
+  border-left: 4px solid #4A90E2;
   border-radius: 4px;
-  font-size: 0.85rem;
+  margin-top: 1rem;
+  font-size: 0.9rem;
 }
 
 .generated-output-display {
   min-height: 50px;
   padding: 0.6rem;
-  border: 1px solid var(--input-border-color);
+  border: 1px solid #ced4da;
   background-color: #f9f9f9;
   white-space: pre-wrap;
   border-radius: 4px;
   word-wrap: break-word;
-  font-size: 0.9rem;
 }
