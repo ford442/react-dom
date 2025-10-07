@@ -24,11 +24,19 @@
 
 body {
   font-family: var(--ai-font-family);
-  overflow: hidden; /* Hide body scrollbars */
+  overflow: hidden;
   margin: 0;
   background-color: black;
   font-size: var(--base-font-size);
 }
+
+/* FIX: Add styles for the #root div to ensure it's a full-screen container */
+#root {
+  width: 100vw;
+  height: 100vh;
+  position: relative; /* Establishes a positioning context for children */
+}
+
 
 /* Hide scrollbar for cleaner look */
 ::-webkit-scrollbar {
@@ -39,21 +47,45 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100vw; /* <-- FIX: Changed from 100vh to 100vw */
+  width: 100vw;
   height: 100vh;
-  z-index: 1; /* The canvas should be in the background */
-  background-color: rgba(0, 0, 0, 0.1); /* Optional: just to see it */
+  z-index: 1;
+  background-color: rgba(20, 20, 30, 1.0);
 }
 
-/*
- * ===================================================================
- * NEW PANEL STYLES - This is the core of the UI fix.
- * ===================================================================
- */
+/* FIX: New styles for a proper loading overlay */
+.loading-overlay {
+  position: fixed; /* Cover the whole screen */
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #222;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  color: white;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.spinner {
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-left-color: #fff;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 
 /* Main Floating Control Panel Style */
 .floating-control-panel {
-  /* FIX: Increased z-index to ensure it's on top of the canvas */
   z-index: 6000;
   position: absolute;
   bottom: 20px;
@@ -75,7 +107,7 @@ body {
     gap: 1rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
     .panel-content {
         grid-template-columns: 1fr;
     }
