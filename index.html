@@ -9,3 +9,70 @@
     <script type='module' src="src/Main.jsx"></script>
 
     </body>
+
+<script>
+const xhr = new XMLHttpRequest();
+xhr.open('GET', 'https://noahcohn.com/react.3ijs', true); // Replace with your filename
+xhr.responseType = 'arraybuffer'; // Get raw binary data
+console.log('got react html run');
+function decodeUTF32(uint8Array, isLittleEndian = true) {
+  const dataView = new DataView(uint8Array.buffer);
+  let result = "";
+  for (let i = 0; i < uint8Array.length; i += 4) {
+    let codePoint;
+    if (isLittleEndian) {
+      codePoint = dataView.getUint32(i, true); // Little-endian
+    } else {
+      codePoint = dataView.getUint32(i, false); // Big-endian
+    }
+    result += String.fromCodePoint(codePoint);
+  }
+  return result;
+}
+xhr.onload = function() {
+console.log('got load react');
+if (xhr.status === 200) {
+const utf32Data = xhr.response;
+  //  const decoder = new TextDecoder('utf-32'); // Or 'utf-32be'
+const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
+const scr = document.createElement('script');
+scr.type = 'module';
+scr.text = jsCode;
+document.body.appendChild(scr);
+}
+  
+};
+xhr.send();
+  /*
+setTimeout(function(){
+document.querySelector('.floating-control-panel').style.position='absolute';
+document.querySelector('.floating-control-panel').style.top='0';
+document.querySelector('.floating-control-panel').style.zIndex='3330';
+document.querySelector('.floating-control-panel').style.pointerEvents='auto';
+document.querySelector("#getThree").addEventListener('click',function(){
+document.querySelector('#mvi').id='ivi';
+document.querySelector('#scanvas').style.transform='ScaleY(-1.0)';
+document.querySelector('#scanvas').style.pointerEvents='none';
+// document.querySelector('#scanvas').style.zIndex=3302;
+document.querySelector('#tvi').style.pointerEvents='auto';
+// document.querySelector('#tvi').style.zIndex=2200;
+// document.querySelector('#tvi').hidden=true;
+// document.querySelector('#tvi').opacity=0.0;
+document.querySelector('#tti').style.opacity=0.0;
+// document.querySelector('#tvi').style.display='none';
+document.querySelector('#tvi').id='mvi';
+document.querySelector('#startBtnC').click();
+});
+document.querySelector('#vsiz').innerHTML=parseInt(window.innerHeight,10);
+document.querySelector('#startBtn5').click();
+},2500);
+*/
+setTimeout(function(){
+window.scrollTo({
+top: 0,
+left: 0,
+behavior: "smooth",
+});
+},1500);
+  
+</script>
