@@ -46,29 +46,6 @@ document.body.appendChild(scr);
 xhr.send();
   
 setTimeout(function(){
-document.querySelector('.floating-control-panel').style.position='absolute';
-document.querySelector('.floating-control-panel').style.top='0';
-document.querySelector('.floating-control-panel').style.zIndex='3330';
-document.querySelector('.floating-control-panel').style.pointerEvents='auto';
-document.querySelector("#getThree").addEventListener('click',function(){
-document.querySelector('#mvi').id='ivi';
-document.querySelector('#scanvas').style.transform='ScaleY(-1.0)';
-document.querySelector('#scanvas').style.pointerEvents='none';
-// document.querySelector('#scanvas').style.zIndex=3302;
-document.querySelector('#tvi').style.pointerEvents='auto';
-// document.querySelector('#tvi').style.zIndex=2200;
-// document.querySelector('#tvi').hidden=true;
-// document.querySelector('#tvi').opacity=0.0;
-document.querySelector('#tti').style.opacity=0.0;
-// document.querySelector('#tvi').style.display='none';
-document.querySelector('#tvi').id='mvi';
-document.querySelector('#startBtnC').click();
-});
-document.querySelector('#vsiz').innerHTML=parseInt(window.innerHeight,10);
-document.querySelector('#startBtn5').click();
-},6500);
-
-setTimeout(function(){
 window.scrollTo({
 top: 0,
 left: 0,
