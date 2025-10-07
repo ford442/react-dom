@@ -15,6 +15,15 @@ const personalityProfiles = {
   // ... other profiles
 };
 
+// FIX: New component for the loading screen
+const LoadingOverlay = ({ statusMessage }) => (
+  <div className="loading-overlay">
+    <div className="spinner"></div>
+    <p>{statusMessage}</p>
+  </div>
+);
+
+
 function App() {
   const [prompt, setPrompt] = useState('');
   const [currentPersonalityKey, setCurrentPersonalityKey] = useState('default');
@@ -33,7 +42,7 @@ function App() {
     generatedCaption,
     handleGenerateText,
     handleImageCaptioning,
-    modelsLoaded
+    modelsLoaded // We get this from the hook now
   } = useAI();
 
   const {
@@ -47,18 +56,19 @@ function App() {
 
   const handleTranscript = (transcript) => {
     setPrompt(transcript);
-    handleGenerateText(transcript);
+    // Optional: automatically send transcript to AI
+    // handleGenerateText(transcript);
   };
-  const { isListening, toggleListen, recognitionSupported } = useSpeechRecognition(handleTranscript);
+  const { isListening, toggleListen } = useSpeechRecognition(handleTranscript);
 
 
   useEffect(() => {
-    if (mountRef.current && !avatarRef.current) {
+    if (modelsLoaded && mountRef.current && !avatarRef.current) {
       const avatar = new Avatar(mountRef.current);
       avatar.load();
       avatarRef.current = avatar;
     }
-  }, []);
+  }, [modelsLoaded]); // Depend on modelsLoaded to initialize the avatar
 
   useEffect(() => {
     if (generatedOutput) {
@@ -67,7 +77,7 @@ function App() {
   }, [generatedOutput, speakWithKokoro]);
 
   useEffect(() => {
-    if (generatedCaption) {
+    if (generatedCaption && !generatedCaption.startsWith("Error:")) {
         speakWithKokoro(generatedCaption);
     }
   }, [generatedCaption, speakWithKokoro]);
@@ -75,7 +85,10 @@ function App() {
 
   return (
     <>
-      <div ref={mountRef} className="canvas-container" style={{ position: 'absolute', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1 }} />
+      {/* FIX: Conditionally render the loading overlay */}
+      {!modelsLoaded && <LoadingOverlay statusMessage={statusMessage} />}
+
+      <div ref={mountRef} className="canvas-container" />
       <ControlPanel
         personalityProfiles={personalityProfiles}
         currentPersonalityKey={currentPersonalityKey}
