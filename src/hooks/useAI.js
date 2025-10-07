@@ -10,6 +10,7 @@ const useAI = () => {
   const [isCaptioning, setIsCaptioning] = useState(false);
   const [generatedOutput, setGeneratedOutput] = useState('');
   const [generatedCaption, setGeneratedCaption] = useState('');
+  const [modelsLoaded, setModelsLoaded] = useState(false); // New state to control loading overlay
 
   useEffect(() => {
     const loadModels = async () => {
@@ -17,7 +18,13 @@ const useAI = () => {
       setGenerator(() => textGen);
       const imgCap = await initializeImageCaptioner(setStatusMessage);
       setImageCaptioner(() => imgCap);
-      setStatusMessage("All models loaded!");
+
+      if (textGen && imgCap) {
+        setStatusMessage("All models loaded!");
+        setModelsLoaded(true); // Set to true on success
+      } else {
+        setStatusMessage("A model failed to load. Check the console for errors.");
+      }
     };
     loadModels();
   }, []);
@@ -31,6 +38,7 @@ const useAI = () => {
       setGeneratedOutput(output[0].generated_text.replace(prompt, '').trim());
     } catch (error) {
       console.error("Error generating text:", error);
+      setGeneratedOutput("Sorry, an error occurred while generating text.");
     } finally {
       setIsGenerating(false);
     }
@@ -39,12 +47,19 @@ const useAI = () => {
   const handleImageCaptioning = useCallback(async (imageSrc) => {
     if (!imageCaptioner) return;
     setIsCaptioning(true);
-    setGeneratedCaption('');
+    setGeneratedCaption("Generating caption..."); // Give immediate feedback
     try {
       const captions = await captionImage(imageSrc);
-      setGeneratedCaption(captions[0].generated_text);
+      // FIX: Add validation to ensure the caption exists before trying to access it
+      if (captions && captions.length > 0 && captions[0].generated_text) {
+        setGeneratedCaption(captions[0].generated_text);
+      } else {
+        throw new Error("Received an invalid response from the captioning model.");
+      }
     } catch (error) {
       console.error("Error captioning image:", error);
+      // FIX: Set a user-facing error message in the UI
+      setGeneratedCaption(`Error: ${error.message}`);
     } finally {
       setIsCaptioning(false);
     }
@@ -58,7 +73,7 @@ const useAI = () => {
     generatedCaption,
     handleGenerateText,
     handleImageCaptioning,
-    modelsLoaded: !!generator && !!imageCaptioner
+    modelsLoaded // Expose this for the loading screen
   };
 };
 
