@@ -34,7 +34,8 @@ function App() {
     generatedCaption,
     handleGenerateText,
     handleImageCaptioning,
-    modelsLoaded
+    modelsLoaded,
+    getGestureForText
   } = useAI();
 
   const {
@@ -60,7 +61,6 @@ function App() {
     recognitionSupported
   } = useSpeechRecognition(handleTranscript);
 
-
   useEffect(() => {
     if (modelsLoaded && mountRef.current && !avatarRef.current) {
       const initAvatar = async () => {
@@ -79,10 +79,23 @@ function App() {
     }
   }, [modelsLoaded]);
   
-  useEffect(() => {
-      if (generatedOutput) speakWithKokoro(generatedOutput);
-  }, [generatedOutput, speakWithKokoro]);
-
+ useEffect(() => {
+    const handleNewOutput = async (text) => {
+      // Make the avatar speak the text
+      speakWithKokoro(text);
+      // And simultaneously, analyze the text to choose and play a gesture
+      if (avatarRef.current && getGestureForText) {
+        const gesture = await getGestureForText(text);
+        if (gesture !== 'idle') {
+          // Only trigger a specific animation if it's not the default state
+          avatarRef.current.setAnimation(gesture);
+        }
+      }
+    };
+       if (generatedOutput) {
+      handleNewOutput(generatedOutput);
+    }
+  }, [generatedOutput, speakWithKokoro, getGestureForText]); // 3. ADD getGestureForText to dependency array
 
   const displayStatus = isGenerating || isCaptioning || isSpeaking ? aiStatus : appStatus;
 
