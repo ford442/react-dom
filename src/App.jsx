@@ -1,8 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import useAI from './hooks/useAI';
 import useTTS from './hooks/useTTS';
-// NOTE: We are removing the old STT and other unused hooks for now to simplify
-// import useSpeechRecognition from './hooks/useSpeechRecognition';
+import useSpeechRecognition from './hooks/useSpeechRecognition'; // 1. UNCOMMENT this line
 import Avatar from './three/Avatar';
 import ControlPanel from './components/ControlPanel';
 import './App.css';
@@ -38,7 +37,6 @@ function App() {
     modelsLoaded
   } = useAI();
 
-  // FIX: Destructure all the necessary values and functions from the useTTS hook
   const {
     isSpeaking,
     availableVoices,
@@ -49,6 +47,19 @@ function App() {
     speakWithWebAPI,
     speakWithKokoro,
   } = useTTS();
+
+  // 2. ACTIVATE THE SPEECH RECOGNITION HOOK
+  // This function will receive the transcribed text from the hook.
+  const handleTranscript = useCallback((transcript) => {
+    setPrompt(transcript); // Update the main prompt with your speech.
+  }, [setPrompt]);
+
+  const {
+    isListening,
+    toggleListen,
+    recognitionSupported
+  } = useSpeechRecognition(handleTranscript);
+
 
   useEffect(() => {
     if (modelsLoaded && mountRef.current && !avatarRef.current) {
@@ -68,7 +79,6 @@ function App() {
     }
   }, [modelsLoaded]);
   
-  // Speak when new AI output is generated
   useEffect(() => {
       if (generatedOutput) speakWithKokoro(generatedOutput);
   }, [generatedOutput, speakWithKokoro]);
@@ -79,32 +89,53 @@ function App() {
   return (
     <div className="app-container">
       {!modelsLoaded && <LoadingOverlay statusMessage={aiStatus} />}
-      <div className="ui-panel">
-        <ControlPanel
-          // Pass all props, including the newly added TTS props
-          personalityProfiles={personalityProfiles}
-          currentPersonalityKey={currentPersonalityKey}
-          statusMessage={displayStatus}
-          prompt={prompt}
-          setPrompt={setPrompt}
-          handleGenerateText={handleGenerateText}
-          isGenerating={isGenerating}
-          handleImageCaptioning={handleImageCaptioning}
-          isCaptioning={isCaptioning}
-          generatedCaption={generatedCaption}
-          modelsLoaded={modelsLoaded}
-          generatedOutput={generatedOutput}
-          // FIX: Pass all the TTS props down to the Control Panel
-          isSpeaking={isSpeaking}
-          availableVoices={availableVoices}
-          selectedVoiceURI={selectedVoiceURI}
-          setSelectedVoiceURI={setSelectedVoiceURI}
-          textToSpeak={textToSpeak}
-          setTextToSpeak={setTextToSpeak}
-          speakWithWebAPI={speakWithWebAPI}
-        />
+      
+      <div className="main-content-area">
+        <div className="ui-panel">
+          <ControlPanel
+            // ... (all the other props remain the same)
+            personalityProfiles={personalityProfiles}
+            currentPersonalityKey={currentPersonalityKey}
+            statusMessage={displayStatus}
+            handleImageCaptioning={handleImageCaptioning}
+            isCaptioning={isCaptioning}
+            generatedCaption={generatedCaption}
+            modelsLoaded={modelsLoaded}
+            isSpeaking={isSpeaking}
+            availableVoices={availableVoices}
+            selectedVoiceURI={selectedVoiceURI}
+            setSelectedVoiceURI={setSelectedVoiceURI}
+            textToSpeak={textToSpeak}
+            setTextToSpeak={setTextToSpeak}
+            speakWithWebAPI={speakWithWebAPI}
+            // 3. PASS THE NEW PROPS DOWN
+            isListening={isListening}
+            toggleListen={toggleListen}
+            recognitionSupported={recognitionSupported}
+          />
+        </div>
+        <div ref={mountRef} className="viewer-panel" />
       </div>
-      <div ref={mountRef} className="viewer-panel" />
+
+      <div className="interaction-bar">
+        <div className="interaction-bar-input-section">
+          <label htmlFor="prompt-textarea">Your Message:</label>
+          <textarea
+            id="prompt-textarea"
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder="Type your message..."
+            disabled={!modelsLoaded || isGenerating}
+          />
+          <button onClick={() => handleGenerateText(prompt)} disabled={!modelsLoaded || isGenerating || !prompt.trim()}>
+            {isGenerating ? 'Generating...' : 'Send Message'}
+          </button>
+        </div>
+        <div className="interaction-bar-output-section">
+          <label>AI Response:</label>
+          <div className='generated-output-display'>{generatedOutput}</div>
+        </div>
+      </div>
     </div>
   );
 }
