@@ -8,11 +8,11 @@ let classifier = null;
 export const initializeTextClassifier = async (setStatusMessage) => {
   try {
     setStatusMessage("Loading gesture analysis model...");
-    // We use a lightweight, distilled model for fast performance in the browser.
-    // MODIFIED: Added a 'revision' to create a more direct link to the model files.
-    classifier = await pipeline('zero-shot-classification', 'Xenova/distilbert-base-zero-shot-mnli', {
-      revision: 'main',
-    });
+
+    // MODIFIED: Changed the model name to the local path inside the 'public' folder.
+    // The revision option is no longer needed.
+    classifier = await pipeline('zero-shot-classification', './models/nli-deberta-v3-xsmall');
+    
     setStatusMessage("Gesture analysis model loaded!");
     return classifier;
   } catch (error) {
