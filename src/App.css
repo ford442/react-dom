@@ -1,6 +1,5 @@
 /* General App Styling */
 :root {
-  /* ... (color variables remain the same) ... */
   --panel-bg-color: rgba(248, 249, 250, 0.97);
 }
 
@@ -18,64 +17,80 @@ body {
 
 /*
  * ===================================================================
- * NEW SIDE-BY-SIDE LAYOUT
+ * NEW 3-PART LAYOUT
  * ===================================================================
  */
+
 .app-container {
   display: flex;
+  flex-direction: column; /* Stack main content and interaction bar vertically */
   width: 100%;
   height: 100%;
+  background-color: #e9ecef; /* A light background for the whole app */
+}
+
+/* This container holds the side panel and the viewer */
+.main-content-area {
+  display: flex;
+  flex-grow: 1; /* Takes up all available vertical space */
+  overflow: hidden; /* Prevent this area from causing page scroll */
 }
 
 .ui-panel {
-  width: 380px; /* MODIFIED: Reduced width to give more space to the avatar */
-  height: 100vh;
-  overflow-y: auto; 
+  width: 380px;
+  height: 100%; /* Fill the height of the parent main-content-area */
+  overflow-y: auto; /* Allow scrolling ONLY if absolutely necessary */
   background-color: var(--panel-bg-color);
   padding: 20px;
-  box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-  z-index: 10;
-  box-sizing: border-box; 
+  border-right: 1px solid #dee2e6;
+  box-sizing: border-box;
 }
 
 .viewer-panel {
-  flex-grow: 1; /* Take up the remaining space */
-  height: 100vh;
-  position: relative; /* Needed for the 3D canvas */
+  flex-grow: 1;
+  height: 100%;
+  position: relative;
+  background-color: #333;
 }
 
+/* The bar at the bottom for main chat interaction */
+.interaction-bar {
+  height: 200px; /* Fixed height for the bottom bar */
+  flex-shrink: 0; /* Prevent this bar from shrinking */
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  box-sizing: border-box;
+  background-color: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+}
 
-/* Loading Overlay Styles */
-.loading-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
+.interaction-bar-input-section,
+.interaction-bar-output-section {
+  flex: 1; /* Each takes up half the space */
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 100;
+  gap: 8px; /* Space between label and element */
 }
 
-.spinner {
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  border-top: 4px solid #fff;
-  width: 40px;
-  height: 40px;
-  animation: spin 1s linear infinite;
-  margin-bottom: 20px;
+.interaction-bar textarea {
+  flex-grow: 1; /* Fill available vertical space */
+  resize: none; /* Disable resizing */
+  font-size: 1rem;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+.interaction-bar button {
+  padding: 10px;
 }
 
+/* Style the output display for the interaction bar */
+.interaction-bar .generated-output-display {
+  flex-grow: 1; /* Fill available vertical space */
+  overflow-y: auto;
+  background-color: #fff;
+  border: 1px solid #ced4da;
+  padding: 10px;
+}
 
 /* Component-specific styles */
 .panel-section {
@@ -101,7 +116,6 @@ button {
   color: white;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  margin-top: 0.5rem;
 }
 
 button:disabled {
@@ -120,8 +134,6 @@ button:disabled {
 
 .generated-output-display {
   min-height: 50px;
-  max-height: 120px; /* ADDED: Constrain height to prevent panel overflow */
-  overflow-y: auto;   /* ADDED: Allow this specific box to scroll */
   padding: 0.6rem;
   margin-top: 0.5rem;
   border: 1px solid #ced4da;
@@ -130,3 +142,6 @@ button:disabled {
   border-radius: 4px;
   word-wrap: break-word;
 }
+
+/* Loading Overlay Styles (for completeness) */
+.loading-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background-color:rgba(0,0,0,.7);color:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:100}.spinner{border:4px solid hsla(0,0%,100%,.3);border-radius:50%;border-top:4px solid #fff;width:40px;height:40px;animation:spin 1s linear infinite;margin-bottom:20px}@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
