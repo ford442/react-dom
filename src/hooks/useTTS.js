@@ -41,7 +41,7 @@ const useTTS = () => {
     synthRef.current.speak(utterance);
   }, [availableVoices, selectedVoiceURI]);
 
-  const speakWithKokoro = useCallback(async (text, voiceId = "en_nova") => {
+  const speakWithKokoro = useCallback(async (text, voiceId = "af_nova") => {
     if (!kokoroTtsInstance || !text) return;
     setIsSpeaking(true);
     try {
