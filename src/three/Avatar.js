@@ -12,7 +12,6 @@ class Avatar {
         this.animationState = { action: 'idle', startTime: 0, duration: 1000 };
     }
 
-    // FIX: Modified the load function to be async and throw errors
     async load() {
         try {
             console.log("Avatar: Starting to load GLTF model...");
@@ -29,9 +28,32 @@ class Avatar {
             this.startAnimationLoop();
         } catch (error) {
             console.error("Avatar Load Error:", error);
-            // Re-throw the error so the App component can catch it
             throw new Error(`Failed to load avatar: ${error.message}`);
         }
+    }
+
+    /**
+     * NEW METHOD: Sets the avatar's current animation.
+     * @param {string} actionName - The name of the animation to play (e.g., 'wave', 'nod').
+     * @param {number} duration - How long the animation should play in milliseconds.
+     */
+    setAnimation(actionName, duration = 3000) {
+        console.log(`Setting avatar animation to: ${actionName}`);
+        // This is where you would add your logic to find and play the actual animation clip
+        // from your GLTF model's armature. For now, we'll just update the state.
+        this.animationState.action = actionName;
+        this.animationState.startTime = this.clock.getElapsedTime();
+        this.animationState.duration = duration;
+
+        // After the animation duration, revert to 'idle'.
+        // This is a simple approach; a more advanced state machine could be used here.
+        setTimeout(() => {
+            // Only revert to idle if another animation hasn't already been set.
+            if (this.animationState.action === actionName) {
+                this.animationState.action = 'idle';
+                console.log('Reverting avatar animation to: idle');
+            }
+        }, duration);
     }
 
     armature_from_gltf(gltf, defaultBoneLen = 0.07) {
@@ -46,13 +68,12 @@ class Avatar {
     startAnimationLoop() {
         const animate = () => {
             requestAnimationFrame(animate);
-            // ... (animation logic remains the same)
+            // In a full implementation, you'd check `this.animationState.action` here
+            // and apply the corresponding animation pose to the armature on each frame.
             this.app.render();
         };
         animate();
     }
-    
-    // ... (other methods like wave)
 }
 
 export default Avatar;
