@@ -5,7 +5,7 @@ let generator = null;
 export const initializeTextGenerator = async (setStatusMessage) => {
   try {
     setStatusMessage("Loading text generation model...");
-    generator = await pipeline('text2text-generation', 'Xenova/LaMini-Flan-T5-783M', {
+    classifier = await pipeline('zero-shot-classification', 'Xenova/nli-deberta-v3-xsmall', {
       quantized: true
     });
     setStatusMessage("Text generation model loaded!");
