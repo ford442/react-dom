@@ -2,32 +2,28 @@ import React from 'react';
 import PersonalitySelector from './PersonalitySelector';
 import TTS_Controls from './TTS_Controls';
 import ImageCaptioning from './ImageCaptioning';
+import STT_Controls from './STT_Controls'; // 1. IMPORT the new component
 
-// This component now receives many props and distributes them to child components.
+// This component is now simpler and only manages secondary controls.
 const ControlPanel = ({
-  // AI Interaction Props
   statusMessage,
-  prompt,
-  setPrompt,
-  handleGenerateText,
-  isGenerating,
-  generatedOutput,
   modelsLoaded,
-  // Personality Props
   personalityProfiles,
   currentPersonalityKey,
-  // Image Captioning Props
   handleImageCaptioning,
   isCaptioning,
   generatedCaption,
-  // TTS Props
   isSpeaking,
   availableVoices,
   selectedVoiceURI,
   setSelectedVoiceURI,
   textToSpeak,
   setTextToSpeak,
-  speakWithWebAPI
+  speakWithWebAPI,
+  // 2. RECEIVE the new props
+  isListening,
+  toggleListen,
+  recognitionSupported,
 }) => {
   return (
     <>
@@ -37,27 +33,18 @@ const ControlPanel = ({
         setCurrentPersonalityKey={() => {}} // Placeholder, not implemented yet
       />
 
-      <div className="panel-section">
-        <h3>Interaction</h3>
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Type your message..."
-          rows={3}
-          disabled={!modelsLoaded || isGenerating}
-        />
-        <button onClick={() => handleGenerateText(prompt)} disabled={!modelsLoaded || isGenerating || !prompt.trim()}>
-          {isGenerating ? 'Generating...' : 'Generate Text'}
-        </button>
-        <label>Generated Output:</label>
-        <div className='generated-output-display'>{generatedOutput}</div>
-      </div>
-
       <ImageCaptioning
         onCaption={handleImageCaptioning}
         isCaptioning={isCaptioning}
         caption={generatedCaption}
         disabled={!modelsLoaded}
+      />
+
+      {/* 3. ADD the new component to the UI */}
+      <STT_Controls
+        isListening={isListening}
+        toggleListen={toggleListen}
+        recognitionSupported={recognitionSupported}
       />
 
       <TTS_Controls
