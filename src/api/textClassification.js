@@ -11,7 +11,7 @@ export const initializeTextClassifier = async (setStatusMessage) => {
 
     // MODIFIED: Changed the model name to the local path inside the 'public' folder.
     // The revision option is no longer needed.
-    classifier = await pipeline('zero-shot-classification', '/models/nli-deberta-v3-xsmall');
+    classifier = await pipeline('zero-shot-classification', 'https://www.noahcohn.com/models/nli-deberta-v3-xsmall');
     
     setStatusMessage("Gesture analysis model loaded!");
     return classifier;
