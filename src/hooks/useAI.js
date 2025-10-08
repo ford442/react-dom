@@ -1,27 +1,48 @@
 import { useState, useEffect, useCallback } from 'react';
 import { initializeTextGenerator, generateText } from '../api/textGeneration';
 import { initializeImageCaptioner, captionImage } from '../api/imageCaptioning';
+// 1. IMPORT our new classifier functions
+import { initializeTextClassifier, classifyText } from '../api/textClassification';
+
+// 2. DEFINE our gesture labels and the mapping to animation names
+// These labels are what the AI will classify text into.
+const GESTURE_LABELS = ['greeting', 'agreement', 'disagreement', 'question', 'farewell'];
+// This map translates the AI label to a specific animation your avatar can perform.
+const GESTURE_MAP = {
+  greeting: 'wave',
+  farewell: 'wave',
+  agreement: 'nod',
+  disagreement: 'shake_head',
+  question: 'think', // You'll need a 'think' animation in your model
+};
 
 const useAI = () => {
   const [generator, setGenerator] = useState(null);
   const [imageCaptioner, setImageCaptioner] = useState(null);
+  const [classifier, setClassifier] = useState(null); // 3. ADD state for the new model
   const [statusMessage, setStatusMessage] = useState('Initializing...');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCaptioning, setIsCaptioning] = useState(false);
   const [generatedOutput, setGeneratedOutput] = useState('');
   const [generatedCaption, setGeneratedCaption] = useState('');
-  const [modelsLoaded, setModelsLoaded] = useState(false); // New state to control loading overlay
+  const [modelsLoaded, setModelsLoaded] = useState(false);
 
   useEffect(() => {
     const loadModels = async () => {
-      const textGen = await initializeTextGenerator(setStatusMessage);
-      setGenerator(() => textGen);
-      const imgCap = await initializeImageCaptioner(setStatusMessage);
-      setImageCaptioner(() => imgCap);
+      // Load all three models in parallel for efficiency
+      const [textGen, imgCap, textClassifier] = await Promise.all([
+        initializeTextGenerator(setStatusMessage),
+        initializeImageCaptioner(setStatusMessage),
+        initializeTextClassifier(setStatusMessage) // 4. INITIALIZE the new model
+      ]);
 
-      if (textGen && imgCap) {
+      setGenerator(() => textGen);
+      setImageCaptioner(() => imgCap);
+      setClassifier(() => textClassifier); // 5. SET the new model in state
+
+      if (textGen && imgCap && textClassifier) { // 6. CHECK that all models loaded
         setStatusMessage("All models loaded!");
-        setModelsLoaded(true); // Set to true on success
+        setModelsLoaded(true);
       } else {
         setStatusMessage("A model failed to load. Check the console for errors.");
       }
@@ -47,10 +68,9 @@ const useAI = () => {
   const handleImageCaptioning = useCallback(async (imageSrc) => {
     if (!imageCaptioner) return;
     setIsCaptioning(true);
-    setGeneratedCaption("Generating caption..."); // Give immediate feedback
+    setGeneratedCaption("Generating caption...");
     try {
       const captions = await captionImage(imageSrc);
-      // FIX: Add validation to ensure the caption exists before trying to access it
       if (captions && captions.length > 0 && captions[0].generated_text) {
         setGeneratedCaption(captions[0].generated_text);
       } else {
@@ -58,12 +78,24 @@ const useAI = () => {
       }
     } catch (error) {
       console.error("Error captioning image:", error);
-      // FIX: Set a user-facing error message in the UI
       setGeneratedCaption(`Error: ${error.message}`);
     } finally {
       setIsCaptioning(false);
     }
   }, [imageCaptioner]);
+
+  // 7. CREATE a new function to get a gesture for a piece of text
+  const getGestureForText = useCallback(async (text) => {
+    if (!classifier) return 'idle'; // Default to 'idle' if the model isn't ready
+    try {
+      const bestLabel = await classifyText(text, GESTURE_LABELS);
+      // Look up the animation in our map, or default to 'idle' if no specific gesture fits
+      return GESTURE_MAP[bestLabel] || 'idle';
+    } catch (error) {
+      console.error("Error classifying gesture:", error);
+      return 'idle'; // Default on error
+    }
+  }, [classifier]);
 
   return {
     statusMessage,
@@ -73,7 +105,8 @@ const useAI = () => {
     generatedCaption,
     handleGenerateText,
     handleImageCaptioning,
-    modelsLoaded // Expose this for the loading screen
+    modelsLoaded,
+    getGestureForText // 8. EXPOSE the new function from the hook
   };
 };
 
