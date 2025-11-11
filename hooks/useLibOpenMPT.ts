@@ -56,14 +56,12 @@ export function useLibOpenMPT() {
     
     setPatternData(ended ? '... Song Ended ...' : '... Stopped ...');
     if (ended) {
-      var temp=patternData;
-      temp='0';
         setStatus(`Finished playing "${moduleInfoRef.current.title}".`);
     }
   }, []);
 
   const preCachePatternData = useCallback((modPtr: number, lib: LibOpenMPT, title: string) => {
-    setStatus("Caching pattern data...");
+    setStatus("Caching pattern data...", patternData);
     rowBufferRef.current = {};
     setTimeout(() => {
         try {
