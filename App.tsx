@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { useLibOpenMPT } from './hooks/useLibOpenMPT';
 import { Header } from './components/Header';
 import { Controls } from './components/Controls';
-import { InfoDisplay } from './components/InfoDisplay';
-import { PatternDisplay } from './components/PatternDisplay';
+import { LcdDisplay } from './components/LcdDisplay'; // Import new LCD
+import { Visualizer } from './components/Visualizer';
+import { PatternCanvas } from './components/PatternCanvas'; // Import new Canvas
 import { AiInfoCard } from './components/AiInfoCard';
 import { GithubIcon } from './components/icons';
 
@@ -18,6 +18,7 @@ export default function App() {
     patternData,
     aiResponse,
     isAiLoading,
+    analyserNode,
     loadModule,
     play,
     stopMusic,
@@ -39,8 +40,17 @@ export default function App() {
         />
 
         {isModuleLoaded && (
-          <>
-            <InfoDisplay moduleInfo={moduleInfo} />
+          // This div is the "faux hardware" container
+          <div className="bg-gray-900 border-4 border-gray-700 p-4 md:p-6 rounded-2xl shadow-2xl">
+            {/* 1. LCD Display Section */}
+            <LcdDisplay moduleInfo={moduleInfo} />
+            
+            {/* 2. Visualizer Section */}
+            <div className="bg-gray-800 p-4 rounded-lg shadow-lg mb-6 border border-gray-600/50 h-32">
+              <Visualizer analyserNode={analyserNode} isPlaying={isPlaying} />
+            </div>
+
+            {/* 3. AI Button */}
             <div className="my-6 flex justify-center">
               <button
                 onClick={askAI}
@@ -51,8 +61,10 @@ export default function App() {
               </button>
             </div>
             <AiInfoCard response={aiResponse} isLoading={isAiLoading} />
-            <PatternDisplay data={patternData} numChannels={moduleInfo.numChannels} />
-          </>
+
+            {/* 4. Pattern Canvas Section */}
+            <PatternCanvas data={patternData} numChannels={moduleInfo.numChannels} />
+          </div>
         )}
 
         {!isModuleLoaded && (
