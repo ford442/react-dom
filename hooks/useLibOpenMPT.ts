@@ -61,7 +61,7 @@ export function useLibOpenMPT() {
   }, []);
 
   const preCachePatternData = useCallback((modPtr: number, lib: LibOpenMPT, title: string) => {
-    setStatus("Caching pattern data..."${patternData});
+    setStatus("Caching pattern data...${patternData}");
     rowBufferRef.current = {};
     setTimeout(() => {
         try {
