@@ -1,6 +1,5 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { LibOpenMPT, ModuleInfo } from '../types';
+import type { LibOpenMPT, ModuleInfo, FormattedPatternRow } from '../types'; // Import FormattedPatternRow
 import { ai } from '../lib/gemini';
 
 const SAMPLE_RATE = 48000;
@@ -16,15 +15,19 @@ export function useLibOpenMPT() {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isModuleLoaded, setIsModuleLoaded] = useState<boolean>(false);
   const [moduleInfo, setModuleInfo] = useState<ModuleInfo>(INITIAL_MODULE_INFO);
-  const [patternData, setPatternData] = useState<string>('... Waiting for module to play ...');
+  // Change patternData state
+  const [patternData, setPatternData] = useState<FormattedPatternRow[]>([]);
   const [aiResponse, setAiResponse] = useState<string>('');
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
+  const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null); // State for visualizer
 
   const libopenmptRef = useRef<LibOpenMPT | null>(null);
   const currentModulePtr = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const scriptNodeRef = useRef<ScriptProcessorNode | null>(null);
-  const rowBufferRef = useRef<Record<string, string>>({});
+  const analyserNodeRef = useRef<AnalyserNode | null>(null); // Ref to create analyser only once
+  // Update rowBufferRef type
+  const rowBufferRef = useRef<Record<string, string[]>>({});
   const animationFrameHandle = useRef<number>(0);
   const moduleInfoRef = useRef(moduleInfo);
   const isPlayingRef = useRef(isPlaying);
@@ -40,7 +43,7 @@ export function useLibOpenMPT() {
   const stopMusic = useCallback((ended = false) => {
     if (!scriptNodeRef.current) return;
 
-    scriptNodeRef.current.disconnect();
+    scriptNodeRef.current.disconnect(); // Disconnects from analyser
     scriptNodeRef.current = null;
     setIsPlaying(false);
     cancelAnimationFrame(animationFrameHandle.current);
@@ -53,9 +56,12 @@ export function useLibOpenMPT() {
       }
     }
     
-    setPatternData(ended ? '... Song Ended ...' : '... Stopped ...');
+    // Update pattern data on stop
+    setPatternData([]);
     if (ended) {
         setStatus(`Finished playing "${moduleInfoRef.current.title}".`);
+    } else {
+        setStatus(`Stopped.`);
     }
   }, []);
 
@@ -74,14 +80,16 @@ export function useLibOpenMPT() {
                 const numRows = lib._openmpt_module_get_pattern_num_rows(modPtr, pattern);
                 
                 for (let r = 0; r < numRows; r++) {
-                    let line = "";
+                    // Store channel strings as an array
+                    const rowKey = `${o}-${r}`;
+                    rowBufferRef.current[rowKey] = [];
                     for (let c = 0; c < numChannels; c++) {
                         const commandPtr = lib._openmpt_module_format_pattern_row_channel(modPtr, pattern, r, c, 12, 1);
                         const commandStr = lib.UTF8ToString(commandPtr);
                         lib._openmpt_free_string(commandPtr);
-                        line += " " + commandStr.replace(/ /g, '&nbsp;') + " |";
+                        // Add the formatted string for the channel
+                        rowBufferRef.current[rowKey].push(commandStr.replace(/ /g, '\u00A0')); // Use non-breaking space
                     }
-                    rowBufferRef.current[`${o}-${r}`] = line;
                 }
             }
             setStatus(`Loaded "${title}". Ready to play.`);
@@ -106,6 +114,7 @@ export function useLibOpenMPT() {
     }
     rowBufferRef.current = {};
     setIsModuleLoaded(false);
+    setPatternData([]); // Clear pattern data
     setAiResponse('');
 
     setStatus(`Loading "${fileName}"...`);
@@ -164,30 +173,29 @@ export function useLibOpenMPT() {
 
       const currentPattern = lib._openmpt_module_get_order_pattern(modPtr, order);
       const numRows = lib._openmpt_module_get_pattern_num_rows(modPtr, currentPattern);
-      let patternHtml = "";
-      const contextRows = 8;
+      
+      const newPatternData: FormattedPatternRow[] = [];
+      const contextRows = 8; // Number of rows to show above/below
 
       for (let r = row - contextRows; r <= row + contextRows; r++) {
         if (r < 0 || r >= numRows) {
-          patternHtml += "\n";
+          // Add empty row for spacing
+          newPatternData.push({ rowNum: r, isCurrent: false, channelStrings: [] });
           continue;
         }
         
         const isCurrentRow = r === row;
-        const highlightClass = isCurrentRow ? 'text-yellow-300 bg-gray-700/50' : '';
-        let line = `<span class="${highlightClass}">`;
-        line += isCurrentRow ? "> " : "  ";
-        line += String(r).padStart(3, '0') + " |";
-        
         const rowKey = `${order}-${r}`;
-        if (rowBufferRef.current[rowKey]) {
-          line += rowBufferRef.current[rowKey];
-        }
-        line += `</span>\n`;
-        patternHtml += line;
+        const channelStrings = rowBufferRef.current[rowKey] || [];
+        
+        newPatternData.push({
+          rowNum: r,
+          isCurrent: isCurrentRow,
+          channelStrings: channelStrings
+        });
       }
       
-      setPatternData(patternHtml);
+      setPatternData(newPatternData);
     } catch (e) {
       console.error("Error in UI update:", e);
     }
@@ -207,6 +215,14 @@ export function useLibOpenMPT() {
       if (audioContextRef.current.state === 'suspended') {
         audioContextRef.current.resume();
       }
+
+      // Create or re-use AnalyserNode
+      let analyser: AnalyserNode;
+      if (!analyserNodeRef.current) {
+        analyserNodeRef.current = audioContextRef.current.createAnalyser();
+        analyserNodeRef.current.fftSize = 512; // Frequency bins
+      }
+      analyser = analyserNodeRef.current;
 
       const lib = libopenmptRef.current;
       const modPtr = currentModulePtr.current;
@@ -234,7 +250,11 @@ export function useLibOpenMPT() {
         }
       };
 
-      scriptNodeRef.current.connect(audioContextRef.current.destination);
+      // Connect graph: ScriptProcessor -> Analyser -> Destination
+      scriptNodeRef.current.connect(analyser);
+      analyser.connect(audioContextRef.current.destination);
+
+      setAnalyserNode(analyser); // Pass analyser to React state for UI
       setIsPlaying(true);
       setStatus(`Playing "${moduleInfoRef.current.title}"...`);
       animationFrameHandle.current = requestAnimationFrame(updateUI);
@@ -356,7 +376,7 @@ export function useLibOpenMPT() {
           const arrayBuffer = await response.arrayBuffer();
           const fileData = new Uint8Array(arrayBuffer);
           await processModuleData(fileData, fileName);
-        } catch (e) {
+        } catch (e) SvgIcon {
           console.error("Failed to load default module:", e);
           setStatus(`Error fetching default module. See console.`);
         }
@@ -365,5 +385,5 @@ export function useLibOpenMPT() {
     }
   }, [isReady, processModuleData]);
 
-  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI };
+  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, aiResponse, isAiLoading, analyserNode, loadModule, play, stopMusic, askAI };
 }
