@@ -4,7 +4,7 @@ import { useLibOpenMPT } from './hooks/useLibOpenMPT';
 import { Header } from './components/Header';
 import { Controls } from './components/Controls';
 import { InfoDisplay } from './components/InfoDisplay';
-import { PatternDisplay } from './components/PatternDisplay';
+import { InteractiveGUI } from './components/InteractiveGUI';
 import { AiInfoCard } from './components/AiInfoCard';
 import { GithubIcon } from './components/icons';
 
@@ -15,7 +15,7 @@ export default function App() {
     isPlaying,
     isModuleLoaded,
     moduleInfo,
-    patternData,
+    channelData,
     aiResponse,
     isAiLoading,
     loadModule,
@@ -51,7 +51,7 @@ export default function App() {
               </button>
             </div>
             <AiInfoCard response={aiResponse} isLoading={isAiLoading} />
-            <PatternDisplay data={patternData} numChannels={moduleInfo.numChannels} />
+            <InteractiveGUI moduleInfo={moduleInfo} channelData={channelData} />
           </>
         )}
 

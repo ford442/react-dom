@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { LibOpenMPT, ModuleInfo } from '../types';
+import type { LibOpenMPT, ModuleInfo, ChannelData } from '../types';
 import { ai } from '../lib/gemini';
 
 const SAMPLE_RATE = 48000;
@@ -17,6 +17,7 @@ export function useLibOpenMPT() {
   const [isModuleLoaded, setIsModuleLoaded] = useState<boolean>(false);
   const [moduleInfo, setModuleInfo] = useState<ModuleInfo>(INITIAL_MODULE_INFO);
   const [patternData, setPatternData] = useState<string>('... Waiting for module to play ...');
+  const [channelData, setChannelData] = useState<ChannelData[]>([]);
   const [aiResponse, setAiResponse] = useState<string>('');
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
 
@@ -164,30 +165,32 @@ export function useLibOpenMPT() {
 
       const currentPattern = lib._openmpt_module_get_order_pattern(modPtr, order);
       const numRows = lib._openmpt_module_get_pattern_num_rows(modPtr, currentPattern);
-      let patternHtml = "";
-      const contextRows = 8;
+      const newChannelData: ChannelData[] = [];
+      for (let i = 0; i < moduleInfo.numChannels; i++) {
+        const notePtr = lib._openmpt_module_get_pattern_row_channel_command(modPtr, currentPattern, row, i, 0);
+        const instrPtr = lib._openmpt_module_get_pattern_row_channel_command(modPtr, currentPattern, row, i, 1);
+        const volPtr = lib._openmpt_module_get_pattern_row_channel_command(modPtr, currentPattern, row, i, 2);
+        const effectPtr = lib._openmpt_module_get_pattern_row_channel_command(modPtr, currentPattern, row, i, 3);
+        
+        const note = lib.UTF8ToString(notePtr);
+        const instrument = lib.UTF8ToString(instrPtr);
+        const volume = lib.UTF8ToString(volPtr);
+        const effect = lib.UTF8ToString(effectPtr);
 
-      for (let r = row - contextRows; r <= row + contextRows; r++) {
-        if (r < 0 || r >= numRows) {
-          patternHtml += "\n";
-          continue;
-        }
-        
-        const isCurrentRow = r === row;
-        const highlightClass = isCurrentRow ? 'text-yellow-300 bg-gray-700/50' : '';
-        let line = `<span class="${highlightClass}">`;
-        line += isCurrentRow ? "> " : "  ";
-        line += String(r).padStart(3, '0') + " |";
-        
-        const rowKey = `${order}-${r}`;
-        if (rowBufferRef.current[rowKey]) {
-          line += rowBufferRef.current[rowKey];
-        }
-        line += `</span>\n`;
-        patternHtml += line;
+        newChannelData.push({
+            note,
+            instrument,
+            volume,
+            effect,
+            isActive: note.trim() !== '...' || instrument.trim() !== '..',
+        });
+
+        lib._openmpt_free_string(notePtr);
+        lib._openmpt_free_string(instrPtr);
+        lib._openmpt_free_string(volPtr);
+        lib._openmpt_free_string(effectPtr);
       }
-      
-      setPatternData(patternHtml);
+      setChannelData(newChannelData);
     } catch (e) {
       console.error("Error in UI update:", e);
     }
@@ -365,5 +368,5 @@ export function useLibOpenMPT() {
     }
   }, [isReady, processModuleData]);
 
-  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI };
+  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, channelData, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI };
 }

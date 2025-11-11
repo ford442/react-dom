@@ -7,6 +7,14 @@ export interface ModuleInfo {
   numChannels: number;
 }
 
+export interface ChannelData {
+  note: string;
+  instrument: string;
+  volume: string;
+  effect: string;
+  isActive: boolean;
+}
+
 // A best-effort typing for the Emscripten module object
 export interface LibOpenMPT {
   onRuntimeInitialized: () => void;
@@ -42,6 +50,13 @@ export interface LibOpenMPT {
     channel: number,
     width: number,
     padded: number
+  ) => number; // returns strPtr
+  _openmpt_module_get_pattern_row_channel_command: (
+    modulePtr: number,
+    pattern: number,
+    row: number,
+    channel: number,
+    command: number
   ) => number; // returns strPtr
   _openmpt_module_read_float_stereo: (
     modulePtr: number,
