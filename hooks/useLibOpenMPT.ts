@@ -376,7 +376,7 @@ export function useLibOpenMPT() {
           const arrayBuffer = await response.arrayBuffer();
           const fileData = new Uint8Array(arrayBuffer);
           await processModuleData(fileData, fileName);
-        } catch (e) SvgIcon {
+        } catch (e) {
           console.error("Failed to load default module:", e);
           setStatus(`Error fetching default module. See console.`);
         }
