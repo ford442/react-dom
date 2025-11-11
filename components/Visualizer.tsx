@@ -50,10 +50,10 @@ export const Visualizer: React.FC<VisualizerProps> = ({ analyserNode, isPlaying 
       animationFrameHandle.current = requestAnimationFrame(draw);
 
       // Get time domain data
-      // FIX: Explicitly pass the Uint8Array. The error TS2345 is a known
-      // issue with TypeScript's DOM library definitions mismatch.
-      // This code is functionally correct.
-      analyserNode.getByteTimeDomainData(dataArrayRef.current as Uint8Array);
+      // FIX: Use `as any` to bypass the strict ArrayBuffer vs ArrayBufferLike
+      // type definition mismatch in the DOM libraries. This code is
+      // functionally correct, but the type definitions are mismatched.
+      analyserNode.getByteTimeDomainData(dataArrayRef.current as any);
 
       const width = canvasRef.current.width;
       const height = canvasRef.current.height;
