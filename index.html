@@ -1,48 +1,47 @@
+
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link rel='preconnect' href='https://wasm.noahcohn.com'>
-<link rel='preconnect' href='https://js.1ink.us'>
-<link rel='preconnect' href='https://glsl.1ink.us'>
-<link rel='preconnect' href='https://css.1ink.us'>
-<title>1ink.us Web Apps</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>React libopenmpt Note Viewer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/index.css">
+  <script>
+    window.GEMINI_API_KEY = "YOUR_API_KEY_HERE";
+  </script>
 </head>
-<body style="background-color:white;">
-<img id=splash1 src=./image/shroud.jpg style='background-color:rgba(233,233,233,0.0);display:block;position:absolute;height:100vh;width:100vw;z-index:3590;'></img>
-<img id=splash2 src=./image/spinner.gif style='background-color:rgba(47,47,47,1.0);display:block;top:50%;left:50%;transform:translate(-50%,-50%);position:absolute;height:20vh;width:20vh;z-index:3591;'></img>
-<div id="root"></div>
-</body>
-<script type="module" src="src/Main.jsx"></script>
-<script>
-const xhr = new XMLHttpRequest();
-xhr.open('GET', 'https://noahcohn.com/react.3ijs', true); // Replace with your filename
-xhr.responseType = 'arraybuffer'; // Get raw binary data
-console.log('got react html run');
-function decodeUTF32(uint8Array, isLittleEndian = true) {
-  const dataView = new DataView(uint8Array.buffer);
-  let result = "";
-  for (let i = 0; i < uint8Array.length; i += 4) {
-    let codePoint;
-    if (isLittleEndian) {
-      codePoint = dataView.getUint32(i, true); // Little-endian
-    } else {
-      codePoint = dataView.getUint32(i, false); // Big-endian
+<body class="bg-gray-900 text-gray-200">
+  <div id="root"></div>
+  
+  <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "@google/genai": "https://esm.sh/@google/genai@0.1.0"
+      }
     }
-    result += String.fromCodePoint(codePoint);
-  }
-  return result;
-}
-xhr.onload = function() {
-console.log('got load react');
-if (xhr.status === 200) {
-const utf32Data = xhr.response;
-  //  const decoder = new TextDecoder('utf-32'); // Or 'utf-32be'
-const jsCode = decodeUTF32(new Uint8Array(utf32Data), true); // Assuming little-endian
-const scr = document.createElement('script');
-// scr.type = 'module';
-scr.text = jsCode;
-document.body.appendChild(scr);
-}
-};
-xhr.send();
-</script>
+  </script>
+
+  <script type="module" src="/index.tsx"></script>
+  
+  <!--
+    FIX: Define the libopenmpt configuration object BEFORE the script loads.
+    This prevents the script from overwriting our onRuntimeInitialized callback.
+    A promise is used to signal readiness to the React application.
+  -->
+  <script>
+    window.libopenmptReady = new Promise(resolve => {
+      window.libopenmpt = {
+        onRuntimeInitialized: function() {
+          console.log('libopenmpt runtime initialized via pre-load script.');
+          // 'this' is the fully initialized module object.
+          resolve(this);
+        }
+      };
+    });
+  </script>
+  <script src="https://wasm.noahcohn.com/libmpt/libopenmptjs.js"></script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+
+import React from 'react';
+import { PlayIcon, StopIcon, UploadIcon } from './icons';
+
+interface ControlsProps {
+  isReady: boolean;
+  isPlaying: boolean;
+  isModuleLoaded: boolean;
+  onFileSelected: (file: File) => void;
+  onPlay: () => void;
+  onStop: () => void;
+}
+
+export const Controls: React.FC<ControlsProps> = ({
+  isReady,
+  isPlaying,
+  isModuleLoaded,
+  onFileSelected,
+  onPlay,
+  onStop,
+}) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      onFileSelected(file);
+    }
+  };
+
+  return (
+    <section className="bg-gray-800 p-4 rounded-lg shadow-lg mb-6 flex flex-wrap gap-4 items-center">
+      <div className="flex items-center gap-2">
+        <UploadIcon className="w-5 h-5 text-gray-400" />
+        <input
+          type="file"
+          id="file-input"
+          className="text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+          disabled={!isReady}
+          onChange={handleFileChange}
+          accept=".mod,.s3m,.it,.xm,.mo3"
+        />
+      </div>
+      
+      <div className="flex gap-4">
+        <button
+          id="play-button"
+          className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+          onClick={onPlay}
+          disabled={!isModuleLoaded || isPlaying}
+          aria-label="Play"
+        >
+          <PlayIcon className="w-5 h-5" />
+          Play
+        </button>
+        
+        <button
+          id="stop-button"
+          className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
+          onClick={() => onStop()}
+          disabled={!isPlaying}
+          aria-label="Stop"
+        >
+          <StopIcon className="w-5 h-5" />
+          Stop
+        </button>
+      </div>
+    </section>
+  );
+};
