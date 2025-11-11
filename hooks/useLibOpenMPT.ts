@@ -164,7 +164,7 @@ export function useLibOpenMPT() {
       setModuleInfo(prev => ({ ...prev, order, row, bpm: Math.round(bpm) }));
 
       const currentPattern = lib._openmpt_module_get_order_pattern(modPtr, order);
-      const numRows = lib._openmpt_module_get_pattern_num_rows(modPtr, currentPattern);
+      // const numRows = lib._openmpt_module_get_pattern_num_rows(modPtr, currentPattern);
       const newChannelData: ChannelData[] = [];
       for (let i = 0; i < moduleInfo.numChannels; i++) {
         const notePtr = lib._openmpt_module_get_pattern_row_channel_command(modPtr, currentPattern, row, i, 0);
