@@ -56,6 +56,7 @@ export function useLibOpenMPT() {
     
     setPatternData(ended ? '... Song Ended ...' : '... Stopped ...');
     if (ended) {
+      patternData=0;
         setStatus(`Finished playing "${moduleInfoRef.current.title}".`);
     }
   }, []);
