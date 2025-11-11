@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { useLibOpenMPT } from './hooks/useLibOpenMPT';
 import { Header } from './components/Header';
 import { Controls } from './components/Controls';

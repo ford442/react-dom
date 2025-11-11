@@ -273,7 +273,7 @@ export function useLibOpenMPT() {
         }
       });
       
-      setAiResponse(response.text);
+      setAiResponse(response.text ?? '');
 
     } catch (error) {
       console.error("Gemini API error:", error);

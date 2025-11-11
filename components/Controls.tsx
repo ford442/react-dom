@@ -1,5 +1,4 @@
 
-import React from 'react';
 import { PlayIcon, StopIcon, UploadIcon } from './icons';
 
 interface ControlsProps {
