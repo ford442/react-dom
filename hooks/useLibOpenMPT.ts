@@ -315,7 +315,7 @@ export function useLibOpenMPT() {
         
         if (!lib.UTF8ToString) {
           console.warn('Polyfilling libopenmpt.UTF8ToString...');
-          lib.UTF8ToString = (ptr) => {
+          lib.UTF8ToString = (ptr: number) => { // Added type for ptr
             let str = '';
             if (!ptr) return str;
             const heap = lib.HEAPU8;
@@ -327,7 +327,7 @@ export function useLibOpenMPT() {
         }
         if (!lib.stringToUTF8) {
           console.warn('Polyfilling libopenmpt.stringToUTF8...');
-          lib.stringToUTF8 = (jsString) => {
+          lib.stringToUTF8 = (jsString: string) => { // Added type for jsString
             const length = (jsString.length << 2) + 1;
             const ptr = lib._malloc(length);
             const heap = lib.HEAPU8;
