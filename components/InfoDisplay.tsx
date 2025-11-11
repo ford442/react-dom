@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { ModuleInfo } from '../types';
 
 interface InfoDisplayProps {

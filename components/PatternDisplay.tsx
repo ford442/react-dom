@@ -1,4 +1,6 @@
 
+import React from 'react';
+
 interface PatternDisplayProps {
   data: string;
   numChannels: number;
