@@ -1,4 +1,6 @@
 
+@import url('https://rsms.me/inter/inter.css');
+
 /* 
   FIX: Removed @tailwind directives. The Tailwind CDN script provides these utilities.
 */
@@ -9,7 +11,6 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-@import url('https://rsms.me/inter/inter.css');
 html { font-family: 'Inter', sans-serif; }
 @supports (font-variation-settings: normal) {
   html { font-family: 'Inter var', sans-serif; }
