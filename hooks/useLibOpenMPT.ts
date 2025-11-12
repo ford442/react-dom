@@ -196,7 +196,7 @@ export function useLibOpenMPT() {
         
         const note = lib.UTF8ToString(notePtr);
         const instrument = lib.UTF8ToString(instrPtr);
-        const volume = lib.UTF8ToString(volPtr);
+        // const volume = lib.UTF8ToString(volPtr);
         const effect = lib.UTF8ToString(effectPtr);
 
         const vuLeft = lib._openmpt_module_get_current_channel_vu_left(modPtr, i);
