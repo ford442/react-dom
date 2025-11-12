@@ -1,0 +1,10 @@
+
+> react-libopenmpt-viewer@0.0.0 dev
+> vite
+
+Port 5173 is in use, trying another one...
+
+  VITE v4.5.14  ready in 723 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: use --host to expose

@@ -61,7 +61,7 @@ export function useLibOpenMPT() {
   }, []);
 
   const preCachePatternData = useCallback((modPtr: number, lib: LibOpenMPT, title: string) => {
-    setStatus(`Caching pattern data..."${patternData}"`);
+    setStatus("Caching pattern data...");
     rowBufferRef.current = {};
     setTimeout(() => {
         try {
@@ -95,13 +95,19 @@ export function useLibOpenMPT() {
   }, []);
 
   const processModuleData = useCallback(async (fileData: Uint8Array, fileName: string) => {
-    if (!libopenmptRef.current) return;
+    console.log(`[processModuleData] Starting for "${fileName}"`);
+    if (!libopenmptRef.current) {
+      console.error("[processModuleData] libopenmptRef is not initialized.");
+      return;
+    }
     
     if (isPlayingRef.current) {
+      console.log("[processModuleData] Music is playing, stopping it first.");
       stopMusic(false);
     }
 
     if (currentModulePtr.current !== 0) {
+        console.log(`[processModuleData] Destroying previous module with pointer ${currentModulePtr.current}`);
         libopenmptRef.current._openmpt_module_destroy(currentModulePtr.current);
         currentModulePtr.current = 0;
     }
@@ -110,38 +116,55 @@ export function useLibOpenMPT() {
     setAiResponse('');
 
     setStatus(`Loading "${fileName}"...`);
+    console.log(`[processModuleData] Status set to: Loading "${fileName}"...`);
     
     try {
         const lib = libopenmptRef.current;
-        
+        console.log("[processModuleData] Allocating memory for module data...");
         const bufferPtr = lib._malloc(fileData.length);
         lib.HEAPU8.set(fileData, bufferPtr);
+        console.log(`[processModuleData] Memory allocated at pointer ${bufferPtr}. Creating module from memory...`);
 
         const modPtr = lib._openmpt_module_create_from_memory2(bufferPtr, fileData.length, 0, 0, 0, 0, 0, 0, 0);
         lib._free(bufferPtr);
+        console.log(`[processModuleData] _openmpt_module_create_from_memory2 returned pointer: ${modPtr}`);
 
         if (modPtr === 0) {
-            throw new Error(`Failed to load module "${fileName}".`);
+            throw new Error(`_openmpt_module_create_from_memory2 returned 0. Failed to load module "${fileName}".`);
         }
         currentModulePtr.current = modPtr;
+        console.log(`[processModuleData] Module created successfully. Pointer: ${modPtr}`);
 
         const titleKeyPtr = lib.stringToUTF8("title");
         const titleValuePtr = lib._openmpt_module_get_metadata(modPtr, titleKeyPtr);
         const title = lib.UTF8ToString(titleValuePtr) || fileName;
         lib._free(titleKeyPtr);
         lib._openmpt_free_string(titleValuePtr);
+        console.log(`[processModuleData] Module title: "${title}"`);
 
         setModuleInfo({ ...INITIAL_MODULE_INFO, title });
         setIsModuleLoaded(true);
+        console.log("[processModuleData] isModuleLoaded state set to true. Starting pattern pre-caching.");
         preCachePatternData(modPtr, lib, title);
 
     } catch (e) {
-        console.error("Failed to load module:", e);
-        const error = e as Error;
-        setStatus(`Error: ${error.message}. See console.`);
-        if (error.name === "TypeError") {
-            setStatus("Error: libopenmpt.js may be missing required C API functions.");
+        const lib = libopenmptRef.current;
+        let errorMessage = "An unknown error occurred.";
+        if (typeof e === 'number' && lib) {
+            try {
+                // Attempt to decode the error number as a C++ exception string pointer
+                errorMessage = lib.UTF8ToString(e);
+            } catch (e2) {
+                errorMessage = `Caught a numeric error code (${e}), but failed to decode it as a string. It might be an internal Emscripten error.`;
+            }
+        } else if (e instanceof Error) {
+            errorMessage = e.message;
+        } else {
+            errorMessage = String(e);
         }
+
+        console.error("[processModuleData] CATCH BLOCK: Failed to load module. Decoded error:", errorMessage);
+        setStatus(`Error: ${errorMessage}. See console.`);
     }
   }, [stopMusic, preCachePatternData]);
 
@@ -164,7 +187,7 @@ export function useLibOpenMPT() {
       setModuleInfo(prev => ({ ...prev, order, row, bpm: Math.round(bpm) }));
 
       const currentPattern = lib._openmpt_module_get_order_pattern(modPtr, order);
-      // const numRows = lib._openmpt_module_get_pattern_num_rows(modPtr, currentPattern);
+      const numRows = lib._openmpt_module_get_pattern_num_rows(modPtr, currentPattern);
       const newChannelData: ChannelData[] = [];
       for (let i = 0; i < moduleInfo.numChannels; i++) {
         const notePtr = lib._openmpt_module_get_pattern_row_channel_command(modPtr, currentPattern, row, i, 0);
@@ -177,12 +200,19 @@ export function useLibOpenMPT() {
         const volume = lib.UTF8ToString(volPtr);
         const effect = lib.UTF8ToString(effectPtr);
 
+        if (i === 0 && row % 8 === 0) { // Log channel 0 every 8 rows to avoid spam
+            console.log(`[updateUI] Ch0, Row ${row}: Note='${note}', Instr='${instrument}', Vol='${volume}', Effect='${effect}'`);
+        }
+
+        const vu = lib._openmpt_module_get_current_channel_vu_mono(modPtr, i);
+
         newChannelData.push({
             note,
             instrument,
             volume,
             effect,
             isActive: note.trim() !== '...' || instrument.trim() !== '..',
+            vu,
         });
 
         lib._openmpt_free_string(notePtr);
@@ -196,7 +226,7 @@ export function useLibOpenMPT() {
     }
     
     animationFrameHandle.current = requestAnimationFrame(updateUI);
-  }, []);
+  }, [moduleInfo]);
 
   const play = useCallback(() => {
     if (isPlaying || currentModulePtr.current === 0 || !libopenmptRef.current) return;

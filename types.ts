@@ -13,6 +13,7 @@ export interface ChannelData {
   volume: string;
   effect: string;
   isActive: boolean;
+  vu: number;
 }
 
 // A best-effort typing for the Emscripten module object

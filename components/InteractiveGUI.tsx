@@ -20,6 +20,7 @@ export const InteractiveGUI: React.FC<InteractiveGUIProps> = ({ moduleInfo, chan
           return (
             <div
               key={i}
+              id={`step-light-${i}`}
               className="w-[54px] h-[54px] transition-all duration-100"
               style={{
                 backgroundColor: isActive ? 'rgba(255, 223, 186, 0.8)' : 'rgba(255, 223, 186, 0.1)',
@@ -35,13 +36,13 @@ export const InteractiveGUI: React.FC<InteractiveGUIProps> = ({ moduleInfo, chan
         {channelData.map((channel, i) => {
           const isActive = channel.isActive;
           return (
-            <div key={i} className="w-[10px] h-[50px] bg-gray-800 border-2 border-gray-600 rounded-sm">
+            <div key={i} className="w-[10px] h-[50px] bg-gray-800 border-2 border-gray-600 rounded-sm relative">
               <div
-                className="w-full transition-all duration-100"
+                className="w-full bg-green-500"
                 style={{
-                  height: isActive ? `${(parseInt(channel.volume, 16) || 0) / 64 * 100}%` : '0%',
-                  backgroundColor: isActive ? `hsl(${100 - ((parseInt(channel.volume, 16) || 0) / 64 * 100)}, 100%, 50%)` : 'transparent',
-                  boxShadow: isActive ? `0 0 10px 3px hsl(${100 - ((parseInt(channel.volume, 16) || 0) / 64 * 100)}, 100%, 50%)` : 'none',
+                  height: `${channel.vu * 100}%`,
+                  backgroundColor: `hsl(${100 - (channel.vu * 100)}, 100%, 50%)`,
+                  boxShadow: `0 0 10px 3px hsl(${100 - (channel.vu * 100)}, 100%, 50%)`,
                 }}
               ></div>
             </div>

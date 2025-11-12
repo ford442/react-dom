@@ -1,0 +1,41 @@
+
+> react-libopenmpt-viewer@0.0.0 dev
+> vite
+
+Port 5173 is in use, trying another one...
+Port 5174 is in use, trying another one...
+
+  VITE v4.5.14  ready in 605 ms
+
+  ➜  Local:   http://localhost:5175/
+  ➜  Network: use --host to expose
+[Browser Console] warning: cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation
+[Browser Console] log: libopenmpt runtime initialized via pre-load script.
+[Browser Console] debug: [vite] connecting...
+[Browser Console] debug: [vite] connected.
+[Browser Console] info: %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold
+[Browser Console] warning: GEMINI_API_KEY is not set on the window object or is a placeholder. AI features will be disabled.
+[Browser Console] log: Cleaning up libopenmpt resources.
+[Browser Console] warning: Polyfilling libopenmpt.UTF8ToString...
+[Browser Console] warning: Polyfilling libopenmpt.stringToUTF8...
+[Browser Console] log: [processModuleData] Starting for "4-mat_-_space_debris.mod"
+[Browser Console] log: [processModuleData] Status set to: Loading "4-mat_-_space_debris.mod"...
+[Browser Console] log: [processModuleData] Allocating memory for module data...
+[Browser Console] log: [processModuleData] Memory allocated at pointer 577464. Creating module from memory...
+[Browser Console] log: [processModuleData] _openmpt_module_create_from_memory2 returned pointer: 776592
+[Browser Console] log: [processModuleData] Module created successfully. Pointer: 776592
+[Browser Console] log: [processModuleData] Module title: "cyberride"
+[Browser Console] log: [processModuleData] isModuleLoaded state set to true. Starting pattern pre-caching.
+[Browser Console] error: Failed to load resource: the server responded with a status of 404 ()
+[Browser Console] error: Failed to load default module: Error: Failed to fetch module:
+    at loadDefault (http://localhost:5174/hooks/useLibOpenMPT.ts?t=1762906336996:337:19)
+[Browser Console] log: Pattern data cached.
+[Browser Console] warning: The ScriptProcessorNode is deprecated. Use AudioWorkletNode instead. (https://bit.ly/audio-worklet)
+[Browser Console] log: [updateUI] Ch0, Row 0: Note='', Instr='', Vol='', Effect=''
+[Browser Console] log: [updateUI] Ch0, Row 0: Note='', Instr='Møÿ', Vol='', Effect='8#'
+[Browser Console] log: [updateUI] Ch0, Row 0: Note='', Instr='', Vol='', Effect=''
+[Browser Console] log: [updateUI] Ch0, Row 0: Note='³', Instr='', Vol='', Effect='¶'
+[Browser Console] log: [updateUI] Ch0, Row 0: Note='³', Instr='ÿÿÿ', Vol='', Effect=''
+[Browser Console] log: [updateUI] Ch0, Row 0: Note='³', Instr='ÿÿÿ', Vol='', Effect='³'
+[Browser Console] log: [updateUI] Ch0, Row 0: Note='', Instr='Løÿ', Vol='', Effect=''
+[Browser Console] log: [updateUI] Ch0, Row 0: Note='', Instr='', Vol='', Effect=''
