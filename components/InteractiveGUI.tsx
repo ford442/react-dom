@@ -34,15 +34,14 @@ export const InteractiveGUI: React.FC<InteractiveGUIProps> = ({ moduleInfo, chan
       {/* VU Meters */}
       <div className="absolute top-[210px] left-[calc(50%-450px)] flex gap-[20px]">
         {channelData.map((channel, i) => {
-          const isActive = channel.isActive;
           return (
             <div key={i} className="w-[10px] h-[50px] bg-gray-800 border-2 border-gray-600 rounded-sm relative">
               <div
-                className="w-full bg-green-500"
+                className="w-full transition-all duration-100"
                 style={{
-                  height: `${channel.vu * 100}%`,
-                  backgroundColor: `hsl(${100 - (channel.vu * 100)}, 100%, 50%)`,
-                  boxShadow: `0 0 10px 3px hsl(${100 - (channel.vu * 100)}, 100%, 50%)`,
+                  height: `${(parseFloat(channel.volume) || 0) * 100}%`,
+                  backgroundColor: `hsl(${100 - ((parseFloat(channel.volume) || 0) * 100)}, 100%, 50%)`,
+                  boxShadow: `0 0 10px 3px hsl(${100 - ((parseFloat(channel.volume) || 0) * 100)}, 100%, 50%)`,
                 }}
               ></div>
             </div>

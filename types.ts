@@ -13,7 +13,6 @@ export interface ChannelData {
   volume: string;
   effect: string;
   isActive: boolean;
-  vu: number;
 }
 
 // A best-effort typing for the Emscripten module object
@@ -70,6 +69,8 @@ export interface LibOpenMPT {
   _openmpt_module_get_current_order: (modulePtr: number) => number;
   _openmpt_module_get_current_row: (modulePtr: number) => number;
   _openmpt_module_get_current_estimated_bpm: (modulePtr: number) => number;
+  _openmpt_module_get_current_channel_vu_left: (modulePtr: number, channel: number) => number;
+  _openmpt_module_get_current_channel_vu_right: (modulePtr: number, channel: number) => number;
 }
 
 // For the global window object

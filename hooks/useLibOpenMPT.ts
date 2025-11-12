@@ -16,7 +16,7 @@ export function useLibOpenMPT() {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isModuleLoaded, setIsModuleLoaded] = useState<boolean>(false);
   const [moduleInfo, setModuleInfo] = useState<ModuleInfo>(INITIAL_MODULE_INFO);
-  const [patternData, setPatternData] = useState<string>('... Waiting for module to play ...');
+  const [, setPatternData] = useState<string>('... Waiting for module to play ...');
   const [channelData, setChannelData] = useState<ChannelData[]>([]);
   const [aiResponse, setAiResponse] = useState<string>('');
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
@@ -187,7 +187,6 @@ export function useLibOpenMPT() {
       setModuleInfo(prev => ({ ...prev, order, row, bpm: Math.round(bpm) }));
 
       const currentPattern = lib._openmpt_module_get_order_pattern(modPtr, order);
-      const numRows = lib._openmpt_module_get_pattern_num_rows(modPtr, currentPattern);
       const newChannelData: ChannelData[] = [];
       for (let i = 0; i < moduleInfo.numChannels; i++) {
         const notePtr = lib._openmpt_module_get_pattern_row_channel_command(modPtr, currentPattern, row, i, 0);
@@ -200,19 +199,16 @@ export function useLibOpenMPT() {
         const volume = lib.UTF8ToString(volPtr);
         const effect = lib.UTF8ToString(effectPtr);
 
-        if (i === 0 && row % 8 === 0) { // Log channel 0 every 8 rows to avoid spam
-            console.log(`[updateUI] Ch0, Row ${row}: Note='${note}', Instr='${instrument}', Vol='${volume}', Effect='${effect}'`);
-        }
-
-        const vu = lib._openmpt_module_get_current_channel_vu_mono(modPtr, i);
+        const vuLeft = lib._openmpt_module_get_current_channel_vu_left(modPtr, i);
+        const vuRight = lib._openmpt_module_get_current_channel_vu_right(modPtr, i);
+        const vu = (vuLeft + vuRight) / 2;
 
         newChannelData.push({
             note,
             instrument,
-            volume,
+            volume: vu.toString(),
             effect,
             isActive: note.trim() !== '...' || instrument.trim() !== '..',
-            vu,
         });
 
         lib._openmpt_free_string(notePtr);
