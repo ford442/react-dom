@@ -78,7 +78,7 @@ export function useLibOpenMPT() {
 
                 // initialize matrix rows
                 const matrixRows = Array.from({ length: numRows }, () => Array.from({ length: numChannels }, () => ({ type: 'empty' as const, text: '' })));
-+
+
                 for (let r = 0; r < numRows; r++) {
                      let line = "";
                      for (let c = 0; c < numChannels; c++) {
@@ -86,49 +86,38 @@ export function useLibOpenMPT() {
                          const commandStr = lib.UTF8ToString(commandPtr);
                          lib._openmpt_free_string(commandPtr);
                          line += " " + commandStr.replace(/ /g, '&nbsp;') + " |";
--
--                        // Heuristic: mark cell active if command contains an alphanumeric char other than . or -
--                        const hasEvent = /[A-Za-z0-9]/.test(commandStr.replace(/[\.\-\s]/g, ''));
--                        matrixRows[r][c] = hasEvent;
-+
-+                        // Parse commandStr into a PatternCell (simple heuristics)
-+                        const raw = (commandStr || '').trim();
-+                        let cellType: 'note' | 'effect' | 'instrument' | 'empty' = 'empty';
-+                        if (!raw || /^[-\.\s]+$/.test(raw)) {
-+                            cellType = 'empty';
-+                        } else if (/[A-Ga-g][#b]?\d/.test(raw)) {
-+                            // e.g., C-4, A#3
-+                            cellType = 'note';
-+                        } else if (/^\d{1,3}$/.test(raw) || /^i\d+/i.test(raw)) {
-+                            // pure numeric instrument ids
-+                            cellType = 'instrument';
-+                        } else if (/^[0-9A-Fa-f]{1,4}$/.test(raw) || /[A-Za-z]+=/.test(raw) || /[0-9A-Fa-f]{1,2}/.test(raw)) {
-+                            cellType = 'effect';
-+                        } else {
-+                            // default to effect for other non-empty commands
-+                            cellType = 'effect';
-+                        }
-+
-+                        matrixRows[r][c] = { type: cellType, text: raw };
+
+                        // Parse commandStr into a PatternCell (simple heuristics)
+                        const raw = (commandStr || '').trim();
+                        let cellType: 'note' | 'effect' | 'instrument' | 'empty' = 'empty';
+                        if (!raw || /^[-\.\s]+$/.test(raw)) {
+                            cellType = 'empty';
+                        } else if (/[A-Ga-g][#b]?\d/.test(raw)) {
+                            // e.g., C-4, A#3
+                            cellType = 'note';
+                        } else if (/^\d{1,3}$/.test(raw) || /^i\d+/i.test(raw)) {
+                            // pure numeric instrument ids
+                            cellType = 'instrument';
+                        } else if (/^[0-9A-Fa-f]{1,4}$/.test(raw) || /[A-Za-z]+=/.test(raw) || /[0-9A-Fa-f]{1,2}/.test(raw)) {
+                            cellType = 'effect';
+                        } else {
+                            // default to effect for other non-empty commands
+                            cellType = 'effect';
+                        }
+
+                        matrixRows[r][c] = { type: cellType, text: raw };
                      }
                      rowBufferRef.current[`${o}-${r}`] = line;
                  }
 
--                patternMatricesRef.current[o] = {
--                    order: o,
--                    patternIndex: pattern,
--                    numRows,
--                    numChannels,
--                    rows: matrixRows,
--                };
-+                patternMatricesRef.current[o] = {
-+                    order: o,
-+                    patternIndex: pattern,
-+                    numRows,
-+                    numChannels,
-+                    rows: matrixRows,
-+                };
-             }
+                patternMatricesRef.current[o] = {
+                    order: o,
+                    patternIndex: pattern,
+                    numRows,
+                    numChannels,
+                    rows: matrixRows,
+                };
+            }             }
             setStatus(`Loaded "${title}". Ready to play.`);
             console.log("Pattern data cached.");
         } catch (e) {
