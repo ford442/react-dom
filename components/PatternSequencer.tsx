@@ -107,9 +107,13 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
         }
       `}</style>
       {/* compact step readout mapped to module pattern length (at least 64) */}
-      <div className="mb-3 flex items-center gap-2">
-        <div className="text-xs text-gray-400 mr-2">Steps</div>
-        <div className="flex gap-2 overflow-x-auto py-1 px-1" style={{ maxWidth: '100%' }}>
+      <div className="mb-3 flex flex-col gap-2">
+        <div className="text-xs text-gray-400">Pattern Steps ({(() => {
+          const patternLen = matrix.numRows || 64;
+          const stepCount = Math.max(64, patternLen);
+          return stepCount;
+        })()})</div>
+        <div className="flex gap-1 overflow-x-auto py-2 px-2 bg-black/40 rounded-lg" style={{ maxWidth: '100%', scrollbarWidth: 'thin' }}>
           {(() => {
             const patternLen = matrix.numRows || 64;
             const stepCount = Math.max(64, patternLen);
@@ -137,16 +141,17 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
                 <button
                   key={i}
                   onClick={handleClick}
-                  title={`Step ${rowIndex + 1}`}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-mono ${isActive ? '' : 'opacity-90'}`}
+                  title={`Step ${rowIndex + 1}${hasNote ? ' [Note]' : ''}${hasEffect ? ' [Effect]' : ''}${hasInstr ? ' [Instr]' : ''}`}
+                  className={`flex-shrink-0 w-8 h-12 rounded flex flex-col items-center justify-center text-[9px] font-mono ${isActive ? 'opacity-100' : 'opacity-80'} hover:opacity-100 transition-all duration-150`}
                   style={{
-                    background: 'transparent',
-                    border: isActive ? `1px solid rgba(255,230,120,0.6)` : '1px solid rgba(255,255,255,0.03)',
+                    background: neonColor || 'rgba(60,60,60,0.3)',
+                    border: isActive ? `2px solid rgba(255,230,120,0.8)` : '1px solid rgba(255,255,255,0.08)',
                     ...(neonColor ? glowStyle : {}),
                     animation: isActive ? 'neonPulse 900ms ease-in-out infinite' : undefined,
                   }}
                 >
-                  <span style={{ color: '#fff', fontWeight: isActive ? 700 : 500 }}>{(rowIndex + 1).toString().padStart(2, '0')}</span>
+                  <span style={{ color: '#fff', fontWeight: isActive ? 700 : 400, fontSize: '8px', opacity: 0.7 }}>{(rowIndex + 1).toString().padStart(2, '0')}</span>
+                  <div className="w-full h-1 mt-1" style={{ background: neonColor ? `linear-gradient(90deg, ${neonColor}, ${neonColor.replace('0.95', '0.6')})` : 'transparent', borderRadius: 1 }} />
                 </button>
               );
             });
