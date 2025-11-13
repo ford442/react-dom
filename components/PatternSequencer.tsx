@@ -10,7 +10,7 @@ interface PatternSequencerProps {
   bpm?: number;
 }
 
-export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, currentRow, globalRow = 0, totalRows: _totalRows = 0, onSeek, bpm = 120 }) => {
+export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, currentRow, globalRow = 0, totalRows: _totalRows = 0, onSeek, bpm: _bpm = 120 }) => {
   // 1. Defined all hooks unconditionally at the top
   const [cellSize] = useState<number>(14); // px
   const [visibleRows] = useState<number>(16);
@@ -77,8 +77,7 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
   const totalBanks = Math.max(1, Math.ceil(stepCount / gridCapacity));
   const followBank = Math.floor((currentRow % Math.max(1, patternLen)) / gridCapacity);
   const bank = autoFollow ? followBank : Math.min(totalBanks - 1, Math.max(0, manualBank));
-  const msPer16th = bpm > 0 ? (60000 / bpm) / 4 : 125;
-  const pulseDuration = `${Math.max(80, Math.round(msPer16th))}ms`;
+  // BPM calculation removed; per-channel display uses smooth CSS transitions
 
   const noteToHue = (note: string): number => {
     const noteMap: Record<string, number> = {
@@ -135,54 +134,99 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
           100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(255,255,255,0.06)); }
         }
       `}</style>
-        <div className="mb-3 flex flex-col gap-2">
-          <div className="text-xs text-gray-400">Pattern Steps ({stepCount})</div>
-          {
-            (() => {
-              const { displayBanks, colsForRender, rLayout, cLayout, patternRows } = patternTiles;
+        {/* Futuristic per-channel sequencer display */}
+        <div className="mb-4 flex flex-col gap-3 relative">
+          <div className="text-xs text-gray-400 flex items-center justify-between">
+            <span>Multi-Channel Pattern Sequencer — {columns} Channels × {patternLen} Steps</span>
+            <span className="text-gray-500">Row {currentRow + 1}/{patternLen}</span>
+          </div>
+
+          {/* Per-channel sequencer strips */}
+          <div className="relative bg-black/60 rounded-xl p-4 border border-white/5 shadow-2xl overflow-x-auto" style={{ maxHeight: '60vh' }}>
+            {Array.from({ length: columns }).map((_, chIdx) => {
+              const { patternRows } = patternTiles;
 
               return (
-                  <div className="grid gap-1 py-2 px-2 bg-black/40 rounded-lg" style={{ gridTemplateColumns: `repeat(${colsForRender}, minmax(0, 1fr))` }}>
-                    {displayBanks.flatMap((b) => Array.from({ length: rLayout * cLayout }).map((_, idx) => {
-                      const rowIndex = b * (rLayout * cLayout) + idx;
-                      const disabled = rowIndex >= patternLen;
-                      const safeRow = ((rowIndex % Math.max(1, patternLen)) + Math.max(1, patternLen)) % Math.max(1, patternLen);
-                      const cells = disabled ? Array.from({ length: columns }, () => ({ type: 'empty', text: '' })) : (patternRows[safeRow] || Array.from({ length: columns }, () => ({ type: 'empty', text: '' })));
-                      const hasEffect = cells.some(c => c.type === 'effect');
-                      const hasInstr = cells.some(c => c.type === 'instrument');
-                      const isActive = !disabled && (safeRow === (currentRow % patternLen));
+                <div key={chIdx} className="flex items-center gap-2 mb-2 last:mb-0">
+                  {/* Channel label */}
+                  <div className="flex-shrink-0 w-16 text-right pr-2">
+                    <div className="text-xs font-mono text-gray-400">CH {(chIdx + 1).toString().padStart(2, '0')}</div>
+                  </div>
 
-                      const firstNote = cells.find(c => /[A-G]#?-\d/.test(c.text || ''))?.text || '';
-                      const noteHue = firstNote ? noteToHue(firstNote) : null;
-                      const noteLight = firstNote ? octaveToLightness(firstNote) : 50;
-                      const neonColor = noteHue != null ? `hsl(${noteHue} 85% ${noteLight}%)` : hasEffect ? 'rgba(50,214,255,0.95)' : hasInstr ? 'rgba(255,159,28,0.95)' : null;
-                      const glowStyle = neonColor ? { boxShadow: `0 0 12px ${neonColor}66, 0 0 28px ${neonColor}33` } : { boxShadow: 'none' };
+                  {/* Step strip for this channel */}
+                  <div className="flex-1 flex gap-0.5 relative" style={{ minWidth: 0 }}>
+                    {Array.from({ length: patternLen }).map((_, stepIdx) => {
+                      const cells = patternRows[stepIdx] || Array.from({ length: columns }, () => ({ type: 'empty', text: '' }));
+                      const cell = cells[chIdx];
+                      const cellNote = cell && /[A-G]#?-/i.test(cell.text || '') ? cell.text : '';
+                      const isActive = stepIdx === (currentRow % patternLen);
 
-                      const handleClick = () => { if (disabled) return; const baseGlobal = (globalRow ?? 0) - currentRow; const targetGlobal = baseGlobal + safeRow; onSeek?.(targetGlobal); };
+                      let cellColor = 'rgba(60,60,70,0.3)'; // empty/dim
+                      let cellGlow = {};
+
+                      if (cellNote) {
+                        const hue = noteToHue(cellNote);
+                        const light = octaveToLightness(cellNote);
+                        cellColor = `hsl(${hue} 85% ${light}%)`;
+
+                        if (isActive) {
+                          // Active step: brightest neon glow
+                          cellGlow = { boxShadow: `0 0 16px hsl(${hue} 95% ${light + 5}%)AA, 0 0 32px hsl(${hue} 90% ${light}%)66` };
+                        } else {
+                          // Inactive but has note: subtle glow
+                          cellGlow = { boxShadow: `0 0 6px ${cellColor}55` };
+                        }
+                      } else if (isActive) {
+                        // Active but empty: white/neutral glow
+                        cellColor = 'rgba(255,255,255,0.15)';
+                        cellGlow = { boxShadow: '0 0 12px rgba(255,255,255,0.4)' };
+                      }
 
                       return (
-                          <button
-                              key={`${b}-${idx}`}
-                              data-row={disabled ? -1 : safeRow}
-                              onClick={handleClick}
-                              title={disabled ? '—' : `Row ${safeRow + 1}`}
-                              className={`w-full aspect-square rounded flex flex-col items-center justify-center text-[9px] font-mono ${disabled ? 'opacity-40' : (isActive ? 'opacity-100' : 'opacity-80')} hover:opacity-100 transition-all duration-150`}
-                              style={{
-                                background: disabled ? 'rgba(30,30,30,0.3)' : (neonColor ? `linear-gradient(180deg, ${neonColor}, rgba(10,10,10,0.12))` : 'rgba(60,60,60,0.3)'),
-                                border: isActive ? `2px solid rgba(255,230,120,0.8)` : '1px solid rgba(255,255,255,0.08)',
-                                ...(neonColor && !disabled ? glowStyle : {}),
-                                animation: isActive ? `neonPulse ${pulseDuration} ease-in-out infinite` : undefined
-                              }}
-                          >
-                            <span style={{ color: '#fff', fontWeight: isActive ? 700 : 400, fontSize: '8px', opacity: 0.7 }}>{disabled ? '—' : (safeRow + 1).toString().padStart(2, '0')}</span>
-                            <div className="w-3/4 h-0.5 mt-0.5" style={{ background: neonColor ? `linear-gradient(90deg, ${neonColor}, ${neonColor.replace(/\)0.95/g, '0.6')})` : 'transparent', borderRadius: 1 }} />
-                          </button>
+                        <button
+                          key={stepIdx}
+                          data-row={stepIdx}
+                          data-channel={chIdx}
+                          onClick={() => {
+                            const baseGlobal = (globalRow ?? 0) - currentRow;
+                            const targetGlobal = baseGlobal + stepIdx;
+                            onSeek?.(targetGlobal);
+                          }}
+                          className="flex-1 h-5 rounded transition-all duration-75 hover:opacity-90"
+                          style={{
+                            background: cellColor,
+                            ...cellGlow,
+                            transform: isActive ? 'scaleY(1.3)' : undefined,
+                            opacity: cellNote ? (isActive ? 1 : 0.75) : (isActive ? 0.6 : 0.3),
+                            minWidth: 4,
+                            maxWidth: 20,
+                          }}
+                          title={cellNote ? `${cellNote} @ row ${stepIdx + 1}` : `Empty @ row ${stepIdx + 1}`}
+                        />
                       );
-                    }))}
+                    })}
                   </div>
+                </div>
               );
-            })()
-          }
+            })}
+
+            {/* Playhead sweep line (vertical bar moving across all channels) */}
+            <div
+              style={{
+                position: 'absolute',
+                left: 'calc(4rem + 0.5rem)',
+                top: 0,
+                bottom: 0,
+                width: 2,
+                background: 'linear-gradient(180deg, rgba(255,230,120,0.8), rgba(255,230,120,0.3))',
+                boxShadow: '0 0 16px rgba(255,230,120,0.6), 0 0 32px rgba(255,230,120,0.3)',
+                pointerEvents: 'none',
+                zIndex: 10,
+                transform: `translateX(${((currentRow % patternLen) / Math.max(1, patternLen - 1)) * 100}%)`,
+                transition: 'transform 80ms ease-out',
+              }}
+            />
+          </div>
         </div>
         <div style={{ position: 'relative' }} ref={containerRef}>
           <div
