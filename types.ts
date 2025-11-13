@@ -1,10 +1,38 @@
-
 export interface ModuleInfo {
   title: string;
   order: number;
   row: number;
   bpm: number;
   numChannels: number;
+}
+
+// Media types for images/GIFs/videos used by the UI
+export type MediaKind = 'image' | 'gif' | 'video';
+
+export interface MediaItem {
+  /** stable id for the item (uuid or timestamp string) */
+  id: string;
+  /** Object URL or remote URL to the media resource */
+  url: string;
+  /** Original file name or URL filename for display */
+  fileName?: string;
+  /** MIME type (e.g. image/png, image/gif, video/mp4) */
+  mimeType?: string;
+  /** Derived kind: 'image' | 'gif' | 'video' */
+  kind: MediaKind;
+  /** Rendering prefs */
+  loop?: boolean; // defaults: false for images, true for gifs, false for video
+  muted?: boolean; // sensible default: true for autoplay overlays
+  fit?: 'contain' | 'cover';
+  /** Creation timestamp */
+  createdAt?: number;
+  /** Whether this url was created from a local File via URL.createObjectURL */
+  isObjectUrl?: boolean;
+}
+
+export interface MediaState {
+  media: MediaItem[];
+  activeMediaId?: string;
 }
 
 // A best-effort typing for the Emscripten module object
