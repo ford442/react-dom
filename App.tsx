@@ -17,7 +17,6 @@ export default function App() {
     isPlaying,
     isModuleLoaded,
     moduleInfo,
-    patternData,
     aiResponse,
     isAiLoading,
     loadModule,
