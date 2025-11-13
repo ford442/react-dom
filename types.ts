@@ -35,6 +35,27 @@ export interface MediaState {
   activeMediaId?: string;
 }
 
+// Pattern matrix cell with parsed information
+export interface PatternCell {
+  type: 'note' | 'effect' | 'instrument' | 'empty';
+  text: string;
+}
+
+// Pattern matrix for sequencer visualization: rows x channels cell grid
+export interface PatternMatrix {
+  order: number;
+  patternIndex: number;
+  numRows: number;
+  numChannels: number;
+  // rows[rowIndex][channelIndex] contains parsed cell info
+  rows: PatternCell[][];
+}
+
+export interface SequencerState {
+  matrix: PatternMatrix | null;
+  currentRow: number;
+}
+
 // A best-effort typing for the Emscripten module object
 export interface LibOpenMPT {
   onRuntimeInitialized: () => void;

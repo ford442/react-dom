@@ -1,6 +1,5 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { LibOpenMPT, ModuleInfo } from '../types';
+import type { LibOpenMPT, ModuleInfo, PatternMatrix } from '../types';
 import { ai } from '../lib/gemini';
 
 const SAMPLE_RATE = 48000;
@@ -19,12 +18,15 @@ export function useLibOpenMPT() {
   const [patternData, setPatternData] = useState<string>('... Waiting for module to play ...');
   const [aiResponse, setAiResponse] = useState<string>('');
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
+  const [sequencerMatrix, setSequencerMatrix] = useState<PatternMatrix | null>(null);
+  const [sequencerCurrentRow, setSequencerCurrentRow] = useState<number>(0);
 
   const libopenmptRef = useRef<LibOpenMPT | null>(null);
   const currentModulePtr = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const scriptNodeRef = useRef<ScriptProcessorNode | null>(null);
   const rowBufferRef = useRef<Record<string, string>>({});
+  const patternMatricesRef = useRef<Record<number, PatternMatrix>>({});
   const animationFrameHandle = useRef<number>(0);
   const moduleInfoRef = useRef(moduleInfo);
   const isPlayingRef = useRef(isPlaying);
@@ -62,6 +64,7 @@ export function useLibOpenMPT() {
   const preCachePatternData = useCallback((modPtr: number, lib: LibOpenMPT, title: string) => {
     setStatus("Caching pattern data...");
     rowBufferRef.current = {};
+    patternMatricesRef.current = {};
     setTimeout(() => {
         try {
             const numOrders = lib._openmpt_module_get_num_orders(modPtr);
@@ -72,18 +75,60 @@ export function useLibOpenMPT() {
                 const pattern = lib._openmpt_module_get_order_pattern(modPtr, o);
                 if (pattern >= lib._openmpt_module_get_num_patterns(modPtr)) continue;
                 const numRows = lib._openmpt_module_get_pattern_num_rows(modPtr, pattern);
-                
+
+                // initialize matrix rows
+                const matrixRows = Array.from({ length: numRows }, () => Array.from({ length: numChannels }, () => ({ type: 'empty' as const, text: '' })));
++
                 for (let r = 0; r < numRows; r++) {
-                    let line = "";
-                    for (let c = 0; c < numChannels; c++) {
-                        const commandPtr = lib._openmpt_module_format_pattern_row_channel(modPtr, pattern, r, c, 12, 1);
-                        const commandStr = lib.UTF8ToString(commandPtr);
-                        lib._openmpt_free_string(commandPtr);
-                        line += " " + commandStr.replace(/ /g, '&nbsp;') + " |";
-                    }
-                    rowBufferRef.current[`${o}-${r}`] = line;
-                }
-            }
+                     let line = "";
+                     for (let c = 0; c < numChannels; c++) {
+                         const commandPtr = lib._openmpt_module_format_pattern_row_channel(modPtr, pattern, r, c, 12, 1);
+                         const commandStr = lib.UTF8ToString(commandPtr);
+                         lib._openmpt_free_string(commandPtr);
+                         line += " " + commandStr.replace(/ /g, '&nbsp;') + " |";
+-
+-                        // Heuristic: mark cell active if command contains an alphanumeric char other than . or -
+-                        const hasEvent = /[A-Za-z0-9]/.test(commandStr.replace(/[\.\-\s]/g, ''));
+-                        matrixRows[r][c] = hasEvent;
++
++                        // Parse commandStr into a PatternCell (simple heuristics)
++                        const raw = (commandStr || '').trim();
++                        let cellType: 'note' | 'effect' | 'instrument' | 'empty' = 'empty';
++                        if (!raw || /^[-\.\s]+$/.test(raw)) {
++                            cellType = 'empty';
++                        } else if (/[A-Ga-g][#b]?\d/.test(raw)) {
++                            // e.g., C-4, A#3
++                            cellType = 'note';
++                        } else if (/^\d{1,3}$/.test(raw) || /^i\d+/i.test(raw)) {
++                            // pure numeric instrument ids
++                            cellType = 'instrument';
++                        } else if (/^[0-9A-Fa-f]{1,4}$/.test(raw) || /[A-Za-z]+=/.test(raw) || /[0-9A-Fa-f]{1,2}/.test(raw)) {
++                            cellType = 'effect';
++                        } else {
++                            // default to effect for other non-empty commands
++                            cellType = 'effect';
++                        }
++
++                        matrixRows[r][c] = { type: cellType, text: raw };
+                     }
+                     rowBufferRef.current[`${o}-${r}`] = line;
+                 }
+
+-                patternMatricesRef.current[o] = {
+-                    order: o,
+-                    patternIndex: pattern,
+-                    numRows,
+-                    numChannels,
+-                    rows: matrixRows,
+-                };
++                patternMatricesRef.current[o] = {
++                    order: o,
++                    patternIndex: pattern,
++                    numRows,
++                    numChannels,
++                    rows: matrixRows,
++                };
+             }
             setStatus(`Loaded "${title}". Ready to play.`);
             console.log("Pattern data cached.");
         } catch (e) {
@@ -105,6 +150,7 @@ export function useLibOpenMPT() {
         currentModulePtr.current = 0;
     }
     rowBufferRef.current = {};
+    patternMatricesRef.current = {};
     setIsModuleLoaded(false);
     setAiResponse('');
 
@@ -161,6 +207,15 @@ export function useLibOpenMPT() {
       const bpm = lib._openmpt_module_get_current_estimated_bpm(modPtr);
 
       setModuleInfo(prev => ({ ...prev, order, row, bpm: Math.round(bpm) }));
+
+      // update sequencer state from cached matrices
+      const matrix = patternMatricesRef.current[order] ?? null;
+      if (matrix) {
+        setSequencerMatrix(matrix);
+      } else {
+        setSequencerMatrix(null);
+      }
+      setSequencerCurrentRow(row);
 
       const currentPattern = lib._openmpt_module_get_order_pattern(modPtr, order);
       const numRows = lib._openmpt_module_get_pattern_num_rows(modPtr, currentPattern);
@@ -365,5 +420,5 @@ export function useLibOpenMPT() {
     }
   }, [isReady, processModuleData]);
 
-  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI };
+  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI, sequencerMatrix, sequencerCurrentRow };
 }

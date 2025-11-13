@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { Controls } from './components/Controls';
 import { InfoDisplay } from './components/InfoDisplay';
 import { PatternDisplay } from './components/PatternDisplay';
+import { PatternSequencer } from './components/PatternSequencer';
 import { AiInfoCard } from './components/AiInfoCard';
 import { GithubIcon } from './components/icons';
 import { MediaPanel } from './components/MediaPanel';
@@ -24,6 +25,8 @@ export default function App() {
     play,
     stopMusic,
     askAI,
+    sequencerMatrix,
+    sequencerCurrentRow,
   } = useLibOpenMPT();
 
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -95,6 +98,7 @@ export default function App() {
             </div>
             <AiInfoCard response={aiResponse} isLoading={isAiLoading} />
             <PatternDisplay data={patternData} numChannels={moduleInfo.numChannels} />
+            <PatternSequencer matrix={sequencerMatrix ?? null} currentRow={sequencerCurrentRow} />
 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
               <MediaPanel media={media} activeMediaId={activeMediaId} onSelect={(id) => { setActiveMediaId(id); setOverlayVisible(!!id); }} onRemove={removeMedia} />
