@@ -15,6 +15,8 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
   const [visibleRows, setVisibleRows] = useState<number>(16);
   const [repeatCount, setRepeatCount] = useState<number>(2);
   const [layout, setLayout] = useState<'4x32' | '8x16' | '2x64'>('4x32');
+  const [autoFollow, setAutoFollow] = useState<boolean>(true);
+  const [manualBank, setManualBank] = useState<number>(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playheadRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -84,6 +86,11 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
   if (layout === '2x64') { rowsLayout = 2; colsLayout = 64; }
   const computedCols = colsLayout;
   const computedRows = rowsLayout;
+  const gridCapacity = computedCols * computedRows;
+  const totalBanks = Math.max(1, Math.ceil(stepCount / gridCapacity));
+  const followBank = Math.floor((currentRow % Math.max(1, patternLen)) / gridCapacity);
+  const bank = autoFollow ? followBank : Math.min(totalBanks - 1, Math.max(0, manualBank));
+  const bankStart = bank * gridCapacity;
 
   // compute pulse duration: assume pulse per step (16th note). BPM -> ms per beat -> ms per 16th = (60000 / bpm) / 4
   const msPer16th = bpm > 0 ? (60000 / bpm) / 4 : 125; // fallback 125ms
@@ -115,26 +122,28 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
             const computedCols = colsLayout;
             return (
               <div className="grid gap-1 py-2 px-2 bg-black/40 rounded-lg" style={{ gridTemplateColumns: `repeat(${computedCols}, minmax(0, 1fr))` }}>
-                {Array.from({ length: Math.max(stepCount, rowsLayout * colsLayout) }).map((_, i) => {
-                  const rowIndex = i % patternLen;
+                {Array.from({ length: rowsLayout * colsLayout }).map((_, i) => {
+                  const rowIndex = bankStart + i;
                   const patternRows = matrix.rows || Array.from({ length: patternLen }, () => Array.from({ length: columns }, () => ({ type: 'empty', text: '' })));
-                  const cells = patternRows[rowIndex] || Array.from({ length: columns }, () => ({ type: 'empty', text: '' }));
+                  const disabled = rowIndex >= patternLen;
+                  const safeRow = ((rowIndex % Math.max(1, patternLen)) + Math.max(1, patternLen)) % Math.max(1, patternLen);
+                  const cells = disabled ? Array.from({ length: columns }, () => ({ type: 'empty', text: '' })) : (patternRows[safeRow] || Array.from({ length: columns }, () => ({ type: 'empty', text: '' })));
                   const hasNote = cells.some(c => c.type === 'note');
                   const hasEffect = cells.some(c => c.type === 'effect');
                   const hasInstr = cells.some(c => c.type === 'instrument');
-                  const isActive = rowIndex === (currentRow % patternLen);
+                  const isActive = !disabled && (safeRow === (currentRow % patternLen));
                   const neonColor = hasNote ? 'rgba(255,77,255,0.95)' : hasEffect ? 'rgba(50,214,255,0.95)' : hasInstr ? 'rgba(255,159,28,0.95)' : null;
                   const glowStyle = neonColor ? { boxShadow: `0 0 12px ${neonColor}, 0 0 28px ${neonColor.replace('0.95', '0.25')}` } : { boxShadow: 'none' };
-                  const handleClick = () => { const baseGlobal = (globalRow ?? 0) - currentRow; const targetGlobal = baseGlobal + rowIndex; onSeek?.(targetGlobal); };
+                  const handleClick = () => { if (disabled) return; const baseGlobal = (globalRow ?? 0) - currentRow; const targetGlobal = baseGlobal + safeRow; onSeek?.(targetGlobal); };
                   return (
                     <button
                       key={i}
                       onClick={handleClick}
-                      title={`Step ${rowIndex + 1}`}
-                      className={`w-full aspect-square rounded flex flex-col items-center justify-center text-[9px] font-mono ${isActive ? 'opacity-100' : 'opacity-80'} hover:opacity-100 transition-all duration-150`}
-                      style={{ background: neonColor || 'rgba(60,60,60,0.3)', border: isActive ? `2px solid rgba(255,230,120,0.8)` : '1px solid rgba(255,255,255,0.08)', ...(neonColor ? glowStyle : {}), animation: isActive ? `neonPulse ${pulseDuration} ease-in-out infinite` : undefined }}
+                      title={disabled ? '—' : `Row ${safeRow + 1}`}
+                      className={`w-full aspect-square rounded flex flex-col items-center justify-center text-[9px] font-mono ${disabled ? 'opacity-40' : (isActive ? 'opacity-100' : 'opacity-80')} hover:opacity-100 transition-all duration-150`}
+                      style={{ background: disabled ? 'rgba(30,30,30,0.3)' : (neonColor || 'rgba(60,60,60,0.3)'), border: isActive ? `2px solid rgba(255,230,120,0.8)` : '1px solid rgba(255,255,255,0.08)', ...(neonColor && !disabled ? glowStyle : {}), animation: isActive ? `neonPulse ${pulseDuration} ease-in-out infinite` : undefined }}
                     >
-                      <span style={{ color: '#fff', fontWeight: isActive ? 700 : 400, fontSize: '8px', opacity: 0.7 }}>{(rowIndex + 1).toString().padStart(2, '0')}</span>
+                      <span style={{ color: '#fff', fontWeight: isActive ? 700 : 400, fontSize: '8px', opacity: 0.7 }}>{disabled ? '—' : (safeRow + 1).toString().padStart(2, '0')}</span>
                       <div className="w-3/4 h-0.5 mt-0.5" style={{ background: neonColor ? `linear-gradient(90deg, ${neonColor}, ${neonColor.replace('0.95', '0.6')})` : 'transparent', borderRadius: 1 }} />
                     </button>
                   );
@@ -179,6 +188,20 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
               <option value="8x16">8 × 16</option>
               <option value="2x64">2 × 64</option>
             </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-400">Follow</label>
+            <input type="checkbox" checked={autoFollow} onChange={(e) => setAutoFollow(e.target.checked)} />
+            {!autoFollow && (
+              <div className="flex items-center gap-1">
+                <button className="px-2 py-1 bg-gray-800 rounded text-xs" onClick={() => setManualBank((b) => Math.max(0, b - 1))}>◀</button>
+                <span className="text-xs text-gray-400">{bank + 1}/{totalBanks}</span>
+                <button className="px-2 py-1 bg-gray-800 rounded text-xs" onClick={() => setManualBank((b) => Math.min(totalBanks - 1, b + 1))}>▶</button>
+              </div>
+            )}
+            {autoFollow && (
+              <span className="text-xs text-gray-400">{bank + 1}/{totalBanks}</span>
+            )}
           </div>
         </div>
       </div>
@@ -230,11 +253,12 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
               };
             };
 
-            const tiles = Math.max(stepCount, computedRows * computedCols);
-            return Array.from({ length: tiles }).map((_, i) => {
-              const rowIndex = i % patternLen;
-              const cells = patternRows[rowIndex] || [];
-              const isActive = (rowIndex === (currentRow % patternLen));
+            return Array.from({ length: gridCapacity }).map((_, i) => {
+              const rowIndex = bankStart + i;
+              const disabled = rowIndex >= patternLen;
+              const safeRow = ((rowIndex % Math.max(1, patternLen)) + Math.max(1, patternLen)) % Math.max(1, patternLen);
+              const cells = disabled ? [] : (patternRows[safeRow] || []);
+              const isActive = !disabled && (safeRow === (currentRow % patternLen));
 
               // Aggregate channel data
               const notes = cells.filter(c => /[A-G]#?-\d/.test(c.text || ''));
@@ -246,9 +270,7 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
 
               if (notes.length === 0) {
                 // Empty step
-                visualElements.push(
-                  <div key="empty" className="w-full h-6 rounded bg-black/40 border border-white/10" />
-                );
+                visualElements.push(<div key="empty" className="w-full h-6 rounded bg-black/40 border border-white/10" />);
               } else {
                 // Render notes with expression
                 notes.slice(0, 3).forEach((note, idx) => {
@@ -340,18 +362,33 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
                      />
                    );
                  });
-              }
+               }
 
-              return (
-                <div key={i} className={`flex flex-col gap-0.5 p-1 rounded ${isActive ? 'ring-1 ring-yellow-300/60' : ''} ${hasAnyEffect ? 'bg-purple-900/10' : ''}`} style={{ minHeight: 28 }}>
-                  {visualElements}
-                  <div className="text-[8px] text-gray-400 text-center mt-auto">{(rowIndex + 1).toString().padStart(2, '0')}</div>
-                </div>
-              );
-            });
-          })()}
-        </div>
-      </div>
+               // Compact per-channel band (indicates which channels have events on this row)
+               const channelBand = (
+                 <div className="w-full" style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, gap: 1 }}>
+                   {Array.from({ length: columns }).map((_, ci) => {
+                     const c = cells[ci];
+                     const active = !!c && c.type !== 'empty';
+                     const hue = Math.floor((ci / Math.max(1, columns)) * 360);
+                     const bg = active ? `hsl(${hue} 75% 60%)` : 'rgba(255,255,255,0.05)';
+                     const op = active ? 0.9 : 0.25;
+                     return <div key={ci} style={{ height: 3, background: bg, opacity: op, borderRadius: 1 }} />;
+                   })}
+                 </div>
+               );
+
+               return (
+                 <div key={i} className={`flex flex-col gap-0.5 p-1 rounded ${isActive ? 'ring-1 ring-yellow-300/60' : ''} ${hasAnyEffect ? 'bg-purple-900/10' : ''}`} style={{ minHeight: 28, opacity: disabled ? 0.4 : 1 }}>
+                   {channelBand}
+                   {visualElements}
+                   <div className="text-[8px] text-gray-400 text-center mt-auto">{disabled ? '—' : (safeRow + 1).toString().padStart(2, '0')}</div>
+                 </div>
+               );
+             });
+           })()}
+         </div>
+       </div>
 
       {/* song position slider */}
       <div className="mt-3 flex items-center gap-3">
