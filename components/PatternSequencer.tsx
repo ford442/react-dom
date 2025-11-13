@@ -113,7 +113,7 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
           const stepCount = Math.max(64, patternLen);
           return stepCount;
         })()})</div>
-        <div className="flex gap-1 overflow-x-auto py-2 px-2 bg-black/40 rounded-lg" style={{ maxWidth: '100%', scrollbarWidth: 'thin' }}>
+        <div className="grid grid-cols-32 gap-1 py-2 px-2 bg-black/40 rounded-lg" style={{ gridTemplateColumns: 'repeat(32, minmax(0, 1fr))' }}>
           {(() => {
             const patternLen = matrix.numRows || 64;
             const stepCount = Math.max(64, patternLen);
@@ -142,7 +142,7 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
                   key={i}
                   onClick={handleClick}
                   title={`Step ${rowIndex + 1}${hasNote ? ' [Note]' : ''}${hasEffect ? ' [Effect]' : ''}${hasInstr ? ' [Instr]' : ''}`}
-                  className={`flex-shrink-0 w-8 h-12 rounded flex flex-col items-center justify-center text-[9px] font-mono ${isActive ? 'opacity-100' : 'opacity-80'} hover:opacity-100 transition-all duration-150`}
+                  className={`w-full aspect-square rounded flex flex-col items-center justify-center text-[9px] font-mono ${isActive ? 'opacity-100' : 'opacity-80'} hover:opacity-100 transition-all duration-150`}
                   style={{
                     background: neonColor || 'rgba(60,60,60,0.3)',
                     border: isActive ? `2px solid rgba(255,230,120,0.8)` : '1px solid rgba(255,255,255,0.08)',
@@ -151,7 +151,7 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
                   }}
                 >
                   <span style={{ color: '#fff', fontWeight: isActive ? 700 : 400, fontSize: '8px', opacity: 0.7 }}>{(rowIndex + 1).toString().padStart(2, '0')}</span>
-                  <div className="w-full h-1 mt-1" style={{ background: neonColor ? `linear-gradient(90deg, ${neonColor}, ${neonColor.replace('0.95', '0.6')})` : 'transparent', borderRadius: 1 }} />
+                  <div className="w-3/4 h-0.5 mt-0.5" style={{ background: neonColor ? `linear-gradient(90deg, ${neonColor}, ${neonColor.replace('0.95', '0.6')})` : 'transparent', borderRadius: 1 }} />
                 </button>
               );
             });
