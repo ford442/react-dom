@@ -15,7 +15,6 @@ export function useLibOpenMPT() {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isModuleLoaded, setIsModuleLoaded] = useState<boolean>(false);
   const [moduleInfo, setModuleInfo] = useState<ModuleInfo>(INITIAL_MODULE_INFO);
-  const [patternData, setPatternData] = useState<string>('... Waiting for module to play ...');
   const [aiResponse, setAiResponse] = useState<string>('');
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [sequencerMatrix, setSequencerMatrix] = useState<PatternMatrix | null>(null);
@@ -57,7 +56,6 @@ export function useLibOpenMPT() {
       }
     }
     
-    setPatternData(ended ? '... Song Ended ...' : '... Stopped ...');
     if (ended) {
         setStatus(`Finished playing "${moduleInfoRef.current.title}".`);
     }
@@ -228,30 +226,6 @@ export function useLibOpenMPT() {
 
       const currentPattern = lib._openmpt_module_get_order_pattern(modPtr, order);
       const numRows = lib._openmpt_module_get_pattern_num_rows(modPtr, currentPattern);
-      let patternHtml = "";
-      const contextRows = 8;
-
-      for (let r = row - contextRows; r <= row + contextRows; r++) {
-        if (r < 0 || r >= numRows) {
-          patternHtml += "\n";
-          continue;
-        }
-        
-        const isCurrentRow = r === row;
-        const highlightClass = isCurrentRow ? 'text-yellow-300 bg-gray-700/50' : '';
-        let line = `<span class="${highlightClass}">`;
-        line += isCurrentRow ? "> " : "  ";
-        line += String(r).padStart(3, '0') + " |";
-        
-        const rowKey = `${order}-${r}`;
-        if (rowBufferRef.current[rowKey]) {
-          line += rowBufferRef.current[rowKey];
-        }
-        line += `</span>\n`;
-        patternHtml += line;
-      }
-      
-      setPatternData(patternHtml);
     } catch (e) {
       console.error("Error in UI update:", e);
     }
@@ -461,5 +435,5 @@ export function useLibOpenMPT() {
     }
   };
 
-  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI, sequencerMatrix, sequencerCurrentRow, sequencerGlobalRow, totalPatternRows, seekToStep };
+  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI, sequencerMatrix, sequencerCurrentRow, sequencerGlobalRow, totalPatternRows, seekToStep };
 }
