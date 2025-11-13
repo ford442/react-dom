@@ -258,7 +258,50 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
 
                   // Base color
                   const baseColor = `hsl(${hue}, 85%, ${lightness}%)`;
-                  const opacity = 0.85; // TODO: compute from volume
+
+                  // --- parse volume heuristic ---
+                  const parseVolume = (txt: string | undefined): number | null => {
+                    if (!txt) return null;
+                    // vNN explicit
+                    const m = txt.match(/[Vv](\d{1,3})/);
+                    if (m) {
+                      const v = Number(m[1]);
+                      if (!isNaN(v)) return Math.max(0, Math.min(64, v));
+                    }
+                    // plain 0-64 decimal
+                    const m2 = txt.match(/\b(\d{1,3})\b/);
+                    if (m2) {
+                      const v = Number(m2[1]);
+                      if (v >= 0 && v <= 64) return v;
+                      if (v >= 0 && v <= 255) return Math.round((v / 255) * 64);
+                    }
+                    return null;
+                  };
+
+                  // --- parse pan heuristic ---
+                  const parsePan = (txt: string | undefined): number | null => {
+                    if (!txt) return null;
+                    // look for 8xx hex
+                    const m = txt.match(/8([0-9A-Fa-f]{2})/);
+                    if (m) {
+                      const v = parseInt(m[1], 16);
+                      // map 0..255 -> -1..1
+                      return (v / 255) * 2 - 1;
+                    }
+                    const m2 = txt.match(/E8([0-9A-Fa-f])/i);
+                    if (m2) {
+                      const v = parseInt(m2[1], 16);
+                      return (v / 15) * 2 - 1;
+                    }
+                    return null;
+                  };
+
+                  const vol = parseVolume(note.text);
+                  // opacity: 0.25..1.0 mapped from 0..64
+                  const opacity = vol != null ? 0.25 + (vol / 64) * 0.75 : 0.85;
+                  // height scale: 0.6..1.2
+                  const heightScale = vol != null ? 0.6 + (vol / 64) * 0.6 : 1.0;
+                  const pan = parsePan(note.text) ?? 0; // -1..1
 
                   // Effect modifiers
                   let extraClass = '';
@@ -266,34 +309,37 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
                     background: baseColor,
                     opacity,
                     boxShadow: `0 0 8px ${baseColor}66`,
+                    transform: `translateX(${Math.round(pan * 18)}px) scaleY(${heightScale})`,
+                    transformOrigin: 'center',
                   };
 
-                  if (fx.hasPorta) {
-                    style.clipPath = 'polygon(0 0, 100% 20%, 100% 100%, 0 80%)'; // Slanted
-                  }
-                  if (fx.hasVibrato && isActive) {
-                    extraClass += ' animate-pulse';
-                    style.transform = 'scaleX(1.1)';
-                  }
-                  if (fx.hasTremolo && isActive) {
-                    extraClass += ' animate-pulse';
-                  }
-                  if (fx.hasRetrig) {
-                    style.boxShadow = `0 0 12px ${baseColor}, 2px 2px 0 ${baseColor}44, 4px 4px 0 ${baseColor}22`; // Ghost trail
-                  }
-                  if (fx.hasArp) {
-                    style.background = `linear-gradient(135deg, ${baseColor} 0%, ${baseColor} 33%, hsl(${hue + 30}, 85%, ${lightness}%) 66%, hsl(${hue + 60}, 85%, ${lightness}%) 100%)`;
-                  }
+                   if (fx.hasPorta) {
+                     style.clipPath = 'polygon(0 0, 100% 20%, 100% 100%, 0 80%)'; // Slanted
+                   }
+                   if (fx.hasVibrato && isActive) {
+                     extraClass += ' animate-pulse';
+                     // add small jitter overlay via CSS animation
+                     style.transform += ' scaleX(1.06)';
+                   }
+                   if (fx.hasTremolo && isActive) {
+                     extraClass += ' animate-pulse';
+                   }
+                   if (fx.hasRetrig) {
+                     style.boxShadow = `0 0 12px ${baseColor}, 2px 2px 0 ${baseColor}44, 4px 4px 0 ${baseColor}22`; // Ghost trail
+                   }
+                   if (fx.hasArp) {
+                     style.background = `linear-gradient(135deg, ${baseColor} 0%, ${baseColor} 33%, hsl(${hue + 30}, 85%, ${lightness}%) 66%, hsl(${hue + 60}, 85%, ${lightness}%) 100%)`;
+                   }
 
-                  visualElements.push(
-                    <div
-                      key={`note-${idx}`}
-                      className={`w-full h-1.5 rounded-sm ${extraClass}`}
-                      style={style}
-                      title={`${note.text} ${Object.keys(fx).filter(k => (fx as any)[k]).join(', ')}`}
-                    />
-                  );
-                });
+                   visualElements.push(
+                     <div
+                       key={`note-${idx}`}
+                       className={`w-full h-1.5 rounded-sm ${extraClass}`}
+                       style={style}
+                       title={`${note.text} ${Object.keys(fx).filter(k => (fx as any)[k]).join(', ')}`}
+                     />
+                   );
+                 });
               }
 
               return (
