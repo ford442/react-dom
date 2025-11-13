@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { LibOpenMPT, ModuleInfo, PatternMatrix } from '../types';
+import type { LibOpenMPT, ModuleInfo, PatternMatrix, PatternCell } from '../types';
 import { ai } from '../lib/gemini';
 
 const SAMPLE_RATE = 48000;
@@ -77,7 +77,9 @@ export function useLibOpenMPT() {
                 const numRows = lib._openmpt_module_get_pattern_num_rows(modPtr, pattern);
 
                 // initialize matrix rows
-                const matrixRows = Array.from({ length: numRows }, () => Array.from({ length: numChannels }, () => ({ type: 'empty' as const, text: '' })));
+                const matrixRows: PatternCell[][] = Array.from({ length: numRows }, () =>
+                    Array.from({ length: numChannels }, () => ({ type: 'empty', text: '' }))
+                );
 
                 for (let r = 0; r < numRows; r++) {
                      let line = "";
@@ -117,7 +119,7 @@ export function useLibOpenMPT() {
                     numChannels,
                     rows: matrixRows,
                 };
-            }             }
+            }
             setStatus(`Loaded "${title}". Ready to play.`);
             console.log("Pattern data cached.");
         } catch (e) {

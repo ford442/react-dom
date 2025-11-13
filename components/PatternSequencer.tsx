@@ -57,7 +57,6 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
     // smooth-center the container so the playhead stays roughly centered
     const container = containerRef.current;
     const centerOffset = Math.max(0, Math.floor(visibleRows / 2) * (cellSize + gap));
-    const desiredScrollTop = Math.max(0, Math.max(0, start) * (cellSize + gap));
     // Try to center on the current row
     const playPosInContainer = targetTop - centerOffset;
     const targetScroll = Math.max(0, playPosInContainer);
