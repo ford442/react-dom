@@ -205,7 +205,7 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
               };
               const match = note.match(/^([A-G]#?)-?(\d)?/i);
               if (!match) return 0;
-              const [, noteName, octave] = match;
+              const noteName = match[1];
               const baseHue = noteMap[noteName.toUpperCase()] ?? 0;
               return baseHue;
             };
