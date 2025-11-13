@@ -123,12 +123,16 @@ export function useLibOpenMPT() {
                  };
              }
              // compute total rows across orders
-            let total = 0;
-            for (let k = 0; k < Object.keys(patternMatricesRef.current).length; k++) {
-                const m = patternMatricesRef.current[k];
-                if (m) total += m.numRows;
-            }
-            setTotalPatternRows(total);
+             {
+               let total = 0;
+               const keys = Object.keys(patternMatricesRef.current);
+               for (let idx = 0; idx < keys.length; idx++) {
+                 const k = Number(keys[idx]);
+                 const m = patternMatricesRef.current[k];
+                 if (m) total += m.numRows;
+               }
+               setTotalPatternRows(total);
+             }
              setStatus(`Loaded "${title}". Ready to play.`);
              console.log("Pattern data cached.");
          } catch (e) {

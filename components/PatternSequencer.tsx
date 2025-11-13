@@ -75,10 +75,10 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
   const columns = matrix.numChannels;
 
   // prepare steps repeated across X
-  const steps: PatternCell[][] = display.rows || [];
+  const steps = (display.rows || []) as PatternCell[][];
   const repeatedSteps: PatternCell[][] = [];
   for (let r = 0; r < repeatCount; r++) {
-    for (let i = 0; i < steps.length; i++) repeatedSteps.push(steps[i]);
+    for (let i = 0; i < steps.length; i++) repeatedSteps.push(steps[i] as PatternCell[]);
   }
 
   // helper to map cell type to color (returns CSS color string)
@@ -98,7 +98,60 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
 
   return (
     <section className="bg-gradient-to-b from-black/60 via-gray-900/60 to-black/40 p-4 rounded-xl mb-4 border border-white/5 shadow-2xl">
-      <div className="flex items-center justify-between mb-3">
+      {/* Inject small CSS for neon pulse animation scoped to this component */}
+      <style>{`
+        @keyframes neonPulse {
+          0% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(255,255,255,0.06)); }
+          50% { transform: scale(1.12); filter: drop-shadow(0 0 22px rgba(255,255,255,0.14)); }
+          100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(255,255,255,0.06)); }
+        }
+      `}</style>
+       {/* 64-step compact button readout */}
+       <div className="mb-3 flex items-center gap-2">
+         <div className="text-xs text-gray-400 mr-2">Steps</div>
+         <div className="flex gap-2 overflow-x-auto py-1 px-1" style={{ maxWidth: '100%' }}>
+           {Array.from({ length: 64 }).map((_, i) => {
+             const patRows = display.rows || [];
+             const patLen = patRows.length || matrix.numRows || 64;
+             const rowIndex = i < patLen ? i % patLen : i % Math.max(1, patLen);
+             const cells = patRows[rowIndex] || Array.from({ length: columns }, () => ({ type: 'empty', text: '' }));
+             const hasNote = cells.some(c => c.type === 'note');
+             const hasEffect = cells.some(c => c.type === 'effect');
+             const hasInstr = cells.some(c => c.type === 'instrument');
+             const isActive = i === ((currentRow) % 64); // visual active per pattern
+             // neon colors
+             const neonColor = hasNote ? 'rgba(255,77,255,0.95)' : hasEffect ? 'rgba(50,214,255,0.95)' : hasInstr ? 'rgba(255,159,28,0.95)' : null;
+             const glowStyle = neonColor ? { boxShadow: `0 0 12px ${neonColor}, 0 0 28px ${neonColor.replace('0.95', '0.25')}` } : { boxShadow: 'none' };
+             const disabled = i >= patLen;
+             const handleClick = () => {
+               if (disabled) return;
+               // map to global: baseGlobal = globalRow - currentRow
+               const baseGlobal = (globalRow ?? 0) - currentRow;
+               const targetGlobal = baseGlobal + rowIndex;
+               onSeek?.(targetGlobal);
+             };
+
+             return (
+               <button
+                 key={i}
+                 onClick={handleClick}
+                 disabled={disabled}
+                 title={`Step ${i}${disabled ? ' (inactive)' : ''}`}
+                 className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-mono ${disabled ? 'opacity-30' : 'opacity-100'}`}
+                 style={{
+                   background: disabled ? 'rgba(255,255,255,0.03)' : undefined,
+                   border: isActive ? `1px solid rgba(255,230,120,0.6)` : undefined,
+                   ...(neonColor && !disabled ? glowStyle : {}),
+                   animation: isActive ? 'neonPulse 900ms ease-in-out infinite' : undefined,
+                 }}
+               >
+                 <span style={{ color: disabled ? 'rgba(255,255,255,0.5)' : '#fff', fontWeight: isActive ? 700 : 500 }}>{i + 1}</span>
+               </button>
+             );
+           })}
+         </div>
+       </div>
+     <div className="flex items-center justify-between mb-3">
         <div className="text-sm text-gray-300 font-semibold">Pattern Sequencer — Order {matrix.order} • Rows {matrix.numRows} • Ch {columns}</div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
