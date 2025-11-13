@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { useLibOpenMPT } from './hooks/useLibOpenMPT';
 import { Header } from './components/Header';
 import { Controls } from './components/Controls';
@@ -7,6 +6,9 @@ import { InfoDisplay } from './components/InfoDisplay';
 import { PatternDisplay } from './components/PatternDisplay';
 import { AiInfoCard } from './components/AiInfoCard';
 import { GithubIcon } from './components/icons';
+import { MediaPanel } from './components/MediaPanel';
+import { MediaOverlay } from './components/MediaOverlay';
+import type { MediaItem } from './types';
 
 export default function App() {
   const {
@@ -24,6 +26,46 @@ export default function App() {
     askAI,
   } = useLibOpenMPT();
 
+  const [media, setMedia] = useState<MediaItem[]>([]);
+  const [activeMediaId, setActiveMediaId] = useState<string | undefined>(undefined);
+  const [overlayVisible, setOverlayVisible] = useState<boolean>(false);
+
+  const addMediaFile = useCallback((file: File) => {
+    const url = URL.createObjectURL(file);
+    const kind: MediaItem['kind'] = file.type === 'video/mp4' || file.type.startsWith('video/') ? 'video' : (file.type === 'image/gif' ? 'gif' : 'image');
+    const item: MediaItem = {
+      id: String(Date.now()),
+      url,
+      fileName: file.name,
+      mimeType: file.type,
+      kind,
+      loop: kind === 'gif',
+      muted: true,
+      fit: 'contain',
+      createdAt: Date.now(),
+      isObjectUrl: true,
+    };
+    setMedia(prev => [item, ...prev]);
+    setActiveMediaId(item.id);
+    setOverlayVisible(true);
+  }, []);
+
+  const removeMedia = useCallback((id: string) => {
+    setMedia(prev => {
+      const found = prev.find(m => m.id === id);
+      if (found && found.isObjectUrl) {
+        try { URL.revokeObjectURL(found.url); } catch (e) { /* ignore */ }
+      }
+      return prev.filter(m => m.id !== id);
+    });
+    if (activeMediaId === id) {
+      setActiveMediaId(undefined);
+      setOverlayVisible(false);
+    }
+  }, [activeMediaId]);
+
+  const activeMedia = media.find(m => m.id === activeMediaId);
+
   return (
     <div className="min-h-screen p-4 md:p-8 flex flex-col">
       <main className="max-w-7xl mx-auto w-full flex-grow">
@@ -36,6 +78,7 @@ export default function App() {
           onFileSelected={loadModule}
           onPlay={play}
           onStop={stopMusic}
+          onMediaAdd={addMediaFile}
         />
 
         {isModuleLoaded && (
@@ -52,6 +95,12 @@ export default function App() {
             </div>
             <AiInfoCard response={aiResponse} isLoading={isAiLoading} />
             <PatternDisplay data={patternData} numChannels={moduleInfo.numChannels} />
+
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <MediaPanel media={media} activeMediaId={activeMediaId} onSelect={(id) => { setActiveMediaId(id); setOverlayVisible(!!id); }} onRemove={removeMedia} />
+            </div>
+
+            <MediaOverlay item={activeMedia} visible={overlayVisible} onClose={() => setOverlayVisible(false)} onUpdate={(partial) => { if (!activeMedia) return; setMedia(prev => prev.map(m => m.id === activeMedia.id ? { ...m, ...partial } : m)); }} />
           </>
         )}
 

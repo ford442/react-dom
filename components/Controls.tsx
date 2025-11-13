@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { PlayIcon, StopIcon, UploadIcon } from './icons';
 
@@ -9,6 +8,8 @@ interface ControlsProps {
   onFileSelected: (file: File) => void;
   onPlay: () => void;
   onStop: () => void;
+  // new prop: media add callback
+  onMediaAdd?: (file: File) => void;
 }
 
 export const Controls: React.FC<ControlsProps> = ({
@@ -18,11 +19,19 @@ export const Controls: React.FC<ControlsProps> = ({
   onFileSelected,
   onPlay,
   onStop,
+  onMediaAdd,
 }) => {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       onFileSelected(file);
+    }
+  };
+
+  const handleMediaFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && onMediaAdd) {
+      onMediaAdd(file);
     }
   };
 
@@ -39,7 +48,18 @@ export const Controls: React.FC<ControlsProps> = ({
           accept=".mod,.s3m,.it,.xm,.mo3"
         />
       </div>
-      
+
+      <div className="flex items-center gap-2">
+        <UploadIcon className="w-5 h-5 text-gray-400" />
+        <input
+          type="file"
+          id="media-input"
+          className="text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+          onChange={handleMediaFile}
+          accept=".png,.jpg,.jpeg,.gif,.mp4"
+        />
+      </div>
+
       <div className="flex gap-4">
         <button
           id="play-button"
@@ -51,7 +71,7 @@ export const Controls: React.FC<ControlsProps> = ({
           <PlayIcon className="w-5 h-5" />
           Play
         </button>
-        
+
         <button
           id="stop-button"
           className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
