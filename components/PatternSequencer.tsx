@@ -114,16 +114,19 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
         {
           (() => {
             // compute layout rows/cols
-            // compute layout rows/cols
             let rowsLayout = 4, colsLayout = 32;
             if (layout === '8x16') { rowsLayout = 8; colsLayout = 16; }
             if (layout === '2x64') { rowsLayout = 2; colsLayout = 64; }
-            // ensure colsLayout matches stepCount when patternLen > colsLayout*rowsLayout
-            const computedCols = colsLayout;
+            // we'll show previous/current/next banks so users see context
+            const displayBanks = [] as number[];
+            if (bank - 1 >= 0) displayBanks.push(bank - 1);
+            displayBanks.push(bank);
+            if (bank + 1 < totalBanks) displayBanks.push(bank + 1);
+            const colsForRender = colsLayout * displayBanks.length;
             return (
-              <div className="grid gap-1 py-2 px-2 bg-black/40 rounded-lg" style={{ gridTemplateColumns: `repeat(${computedCols}, minmax(0, 1fr))` }}>
-                {Array.from({ length: rowsLayout * colsLayout }).map((_, i) => {
-                  const rowIndex = bankStart + i;
+              <div className="grid gap-1 py-2 px-2 bg-black/40 rounded-lg" style={{ gridTemplateColumns: `repeat(${colsForRender}, minmax(0, 1fr))` }}>
+                {displayBanks.flatMap((b) => Array.from({ length: rowsLayout * colsLayout }).map((_, idx) => {
+                  const rowIndex = b * (rowsLayout * colsLayout) + idx;
                   const patternRows = matrix.rows || Array.from({ length: patternLen }, () => Array.from({ length: columns }, () => ({ type: 'empty', text: '' })));
                   const disabled = rowIndex >= patternLen;
                   const safeRow = ((rowIndex % Math.max(1, patternLen)) + Math.max(1, patternLen)) % Math.max(1, patternLen);
@@ -132,27 +135,31 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
                   const hasEffect = cells.some(c => c.type === 'effect');
                   const hasInstr = cells.some(c => c.type === 'instrument');
                   const isActive = !disabled && (safeRow === (currentRow % patternLen));
-                  const neonColor = hasNote ? 'rgba(255,77,255,0.95)' : hasEffect ? 'rgba(50,214,255,0.95)' : hasInstr ? 'rgba(255,159,28,0.95)' : null;
-                  const glowStyle = neonColor ? { boxShadow: `0 0 12px ${neonColor}, 0 0 28px ${neonColor.replace('0.95', '0.25')}` } : { boxShadow: 'none' };
+                  // compute dominant note for coloring (use first note or instrument fallback)
+                  const firstNote = cells.find(c => /[A-G]#?-\d/.test(c.text || ''))?.text || '';
+                  const noteHue = firstNote ? noteToHue(firstNote) : null;
+                  const noteLight = firstNote ? octaveToLightness(firstNote) : 50;
+                  const neonColor = noteHue != null ? `hsl(${noteHue} 85% ${noteLight}%)` : hasEffect ? 'rgba(50,214,255,0.95)' : hasInstr ? 'rgba(255,159,28,0.95)' : null;
+                  const glowStyle = neonColor ? { boxShadow: `0 0 12px ${neonColor}66, 0 0 28px ${neonColor}33` } : { boxShadow: 'none' };
                   const handleClick = () => { if (disabled) return; const baseGlobal = (globalRow ?? 0) - currentRow; const targetGlobal = baseGlobal + safeRow; onSeek?.(targetGlobal); };
                   return (
                     <button
-                      key={i}
+                      key={`${b}-${idx}`}
                       onClick={handleClick}
                       title={disabled ? '—' : `Row ${safeRow + 1}`}
                       className={`w-full aspect-square rounded flex flex-col items-center justify-center text-[9px] font-mono ${disabled ? 'opacity-40' : (isActive ? 'opacity-100' : 'opacity-80')} hover:opacity-100 transition-all duration-150`}
-                      style={{ background: disabled ? 'rgba(30,30,30,0.3)' : (neonColor || 'rgba(60,60,60,0.3)'), border: isActive ? `2px solid rgba(255,230,120,0.8)` : '1px solid rgba(255,255,255,0.08)', ...(neonColor && !disabled ? glowStyle : {}), animation: isActive ? `neonPulse ${pulseDuration} ease-in-out infinite` : undefined }}
+                      style={{ background: disabled ? 'rgba(30,30,30,0.3)' : (neonColor ? `linear-gradient(180deg, ${neonColor}, rgba(10,10,10,0.12))` : 'rgba(60,60,60,0.3)'), border: isActive ? `2px solid rgba(255,230,120,0.8)` : '1px solid rgba(255,255,255,0.08)', ...(neonColor && !disabled ? glowStyle : {}), animation: isActive ? `neonPulse ${pulseDuration} ease-in-out infinite` : undefined }}
                     >
                       <span style={{ color: '#fff', fontWeight: isActive ? 700 : 400, fontSize: '8px', opacity: 0.7 }}>{disabled ? '—' : (safeRow + 1).toString().padStart(2, '0')}</span>
-                      <div className="w-3/4 h-0.5 mt-0.5" style={{ background: neonColor ? `linear-gradient(90deg, ${neonColor}, ${neonColor.replace('0.95', '0.6')})` : 'transparent', borderRadius: 1 }} />
+                      <div className="w-3/4 h-0.5 mt-0.5" style={{ background: neonColor ? `linear-gradient(90deg, ${neonColor}, ${neonColor.replace(/\)0.95/g, '0.6')})` : 'transparent', borderRadius: 1 }} />
                     </button>
                   );
-                })}
-              </div>
-            );
-          })()
-        }
-      </div>
+                }))}
+               </div>
+             );
+           })()
+         }
+       </div>
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm text-gray-300 font-semibold">Pattern Sequencer — Order {matrix.order} • Rows {matrix.numRows} • Ch {columns}</div>
         <div className="flex items-center gap-3">
