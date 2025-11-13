@@ -9,169 +9,212 @@ interface PatternSequencerProps {
 export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, currentRow }) => {
   const [cellSize, setCellSize] = useState<number>(14); // px
   const [visibleRows, setVisibleRows] = useState<number>(16);
+  const [repeatCount, setRepeatCount] = useState<number>(2);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playheadRef = useRef<HTMLDivElement | null>(null);
-  const scrollAnimRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
 
   // derive display matrix slice
   const display = useMemo(() => {
     if (!matrix) return { rows: [], numChannels: 0, numRows: 0, order: 0 };
     const { rows, numChannels, numRows, order } = matrix;
-    // center currentRow in visibleRows
+    // For horizontal display, we render a slice of steps (rows) and allow repeating across X axis
     let start = Math.max(0, currentRow - Math.floor(visibleRows / 2));
     if (start + visibleRows > numRows) start = Math.max(0, numRows - visibleRows);
     const slice = rows.slice(start, start + visibleRows);
     return { rows: slice, numChannels, numRows, order, start };
   }, [matrix, currentRow, visibleRows]);
 
-  // when currentRow changes, smoothly center the playhead
+  // when currentRow changes, move playhead horizontally and optionally center view (no vertical scroll)
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // compute positions
-    const gap = 2; // same as grid gap
-    const headerOffset = cellSize + gap; // header row height
+    const gap = 6; // larger gaps for breathing room in horizontal layout
+    const headerOffset = cellSize + gap; // left labels column width
     const start = display.start ?? 0;
-    const idx = currentRow - start;
 
-    if (idx < 0 || !Number.isFinite(idx) || idx >= (display.rows?.length ?? 0)) {
-      // current row is outside the displayed slice; still try to smooth-scroll so row moves into view
-      // targetScroll = (currentRow - Math.floor(visibleRows/2))*(cellSize+gap)
-      const idealStart = Math.max(0, currentRow - Math.floor(visibleRows / 2));
-      const targetScroll = Math.max(0, idealStart * (cellSize + gap));
-      smoothScrollTo(containerRef.current, targetScroll, 300);
-      // hide playhead if outside
-      if (playheadRef.current) playheadRef.current.style.opacity = '0';
-      return;
-    }
+    // total steps rendered per repeat
+    const stepsPerRepeat = display.rows?.length ?? 0;
+    if (stepsPerRepeat === 0) return;
 
-    // visible index within sliced rows
-    const targetTop = headerOffset + idx * (cellSize + gap);
+    // compute visible index within the repeated sequence
+    const visibleIndex = ((currentRow - start) % stepsPerRepeat + stepsPerRepeat) % stepsPerRepeat; // 0..stepsPerRepeat-1
+    // choose the middle repeat instance so playhead stays near center visually
+    const middleRepeat = Math.floor(repeatCount / 2);
+    const targetIndex = visibleIndex + middleRepeat * stepsPerRepeat;
 
-    // move playhead via CSS transform for smoothness
+    const stepSpan = cellSize + gap;
+    const targetLeft = headerOffset + targetIndex * stepSpan;
+
     if (playheadRef.current) {
-      playheadRef.current.style.transform = `translateY(${targetTop}px)`;
+      // apply smooth transform; CSS transition handles animation
+      playheadRef.current.style.transform = `translateX(${targetLeft}px)`;
       playheadRef.current.style.opacity = '1';
     }
 
-    // smooth-center the container so the playhead stays roughly centered
-    const container = containerRef.current;
-    const centerOffset = Math.max(0, Math.floor(visibleRows / 2) * (cellSize + gap));
-    // Try to center on the current row
-    const playPosInContainer = targetTop - centerOffset;
-    const targetScroll = Math.max(0, playPosInContainer);
-
-    smoothScrollTo(container, targetScroll, 300);
-
     return () => {
-      if (scrollAnimRef.current) {
-        cancelAnimationFrame(scrollAnimRef.current);
-        scrollAnimRef.current = null;
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
       }
     };
-  }, [currentRow, cellSize, visibleRows, display.start, display.rows]);
-
-  // helper: smooth scroll a container to a target position
-  const smoothScrollTo = (container: HTMLElement, target: number, duration = 300) => {
-    if (!container) return;
-    if (scrollAnimRef.current) cancelAnimationFrame(scrollAnimRef.current);
-    const start = container.scrollTop;
-    const change = target - start;
-    const startTime = performance.now();
-
-    const animate = (now: number) => {
-      const elapsed = now - startTime;
-      const t = Math.min(1, elapsed / duration);
-      // easeInOutQuad
-      const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-      container.scrollTop = start + change * eased;
-      if (t < 1) {
-        scrollAnimRef.current = requestAnimationFrame(animate);
-      } else {
-        scrollAnimRef.current = null;
-      }
-    };
-    scrollAnimRef.current = requestAnimationFrame(animate);
-  };
+  }, [currentRow, cellSize, visibleRows, display.start, display.rows, repeatCount]);
 
   if (!matrix) {
     return (
-      <section className="bg-gray-900 p-3 rounded-lg mb-4 text-sm text-gray-400">No pattern data available.</section>
+      <section className="bg-gradient-to-br from-gray-900 to-black p-4 rounded-xl mb-4 text-sm text-gray-400 border border-white/4 shadow-lg">
+        No pattern data available.
+      </section>
     );
   }
 
   const columns = matrix.numChannels;
 
-  // helper to map cell type to color
+  // prepare steps repeated across X
+  const steps = display.rows || [];
+  const repeatedSteps: typeof steps = [] as any;
+  for (let r = 0; r < repeatCount; r++) {
+    for (let i = 0; i < steps.length; i++) repeatedSteps.push(steps[i]);
+  }
+
+  // helper to map cell type to color (returns CSS color string)
   const colorFor = (type: string, ci: number) => {
     const hue = Math.floor((ci / Math.max(1, columns)) * 360);
     switch (type) {
       case 'note':
-        return `hsl(${(hue + 320) % 360}deg 85% 55%)`; // pink/magenta range
+        return `linear-gradient(180deg, hsl(${(hue + 320) % 360}deg 85% 60%), hsl(${(hue + 300) % 360}deg 85% 45%))`;
       case 'effect':
-        return `hsl(${(hue + 180) % 360}deg 80% 55%)`; // cyan/teal range
+        return `linear-gradient(180deg, hsl(${(hue + 180) % 360}deg 80% 60%), hsl(${(hue + 160) % 360}deg 80% 45%))`;
       case 'instrument':
-        return `hsl(${(hue + 30) % 360}deg 90% 50%)`; // orange/yellow range
+        return `linear-gradient(180deg, hsl(${(hue + 30) % 360}deg 90% 60%), hsl(${(hue + 10) % 360}deg 90% 45%))`;
       default:
         return 'transparent';
     }
   };
 
   return (
-    <section className="bg-black p-3 rounded-lg shadow-inner mb-4">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-sm text-gray-300">Pattern Sequencer — Order {matrix.order} • Rows {matrix.numRows} • Ch {columns}</div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-gray-400">Rows</label>
-          <select value={visibleRows} onChange={(e) => setVisibleRows(Number(e.target.value))} className="text-sm bg-gray-800 text-white p-1 rounded">
-            <option value={8}>8</option>
-            <option value={16}>16</option>
-            <option value={32}>32</option>
-            <option value={64}>64</option>
-            <option value={matrix.numRows}>Full</option>
-          </select>
-          <label className="text-xs text-gray-400">Size</label>
-          <input type="range" min={8} max={28} value={cellSize} onChange={(e) => setCellSize(Number(e.target.value))} />
+    <section className="bg-gradient-to-b from-black/60 via-gray-900/60 to-black/40 p-4 rounded-xl mb-4 border border-white/5 shadow-2xl">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-sm text-gray-300 font-semibold">Pattern Sequencer — Order {matrix.order} • Rows {matrix.numRows} • Ch {columns}</div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-400">Rows</label>
+            <select value={visibleRows} onChange={(e) => setVisibleRows(Number(e.target.value))} className="text-sm bg-gray-800 text-white p-1 rounded">
+              <option value={8}>8</option>
+              <option value={16}>16</option>
+              <option value={32}>32</option>
+              <option value={64}>64</option>
+              <option value={matrix.numRows}>Full</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-400">Repeats</label>
+            <select value={repeatCount} onChange={(e) => setRepeatCount(Number(e.target.value))} className="text-sm bg-gray-800 text-white p-1 rounded">
+              <option value={1}>1</option>
+              <option value={2}>2</option>
+              <option value={3}>3</option>
+              <option value={4}>4</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-400">Size</label>
+            <input type="range" min={8} max={28} value={cellSize} onChange={(e) => setCellSize(Number(e.target.value))} className="accent-purple-500" />
+          </div>
         </div>
       </div>
 
-      <div className="flex gap-3 items-center mb-2">
-        <div className="flex items-center gap-2 text-xs text-gray-300">
-          <span className="inline-block w-3 h-3 rounded" style={{ background: 'linear-gradient(90deg,#ff4dff,#ff66cc)' }} /> <span>Note</span>
-          <span className="inline-block w-3 h-3 rounded ml-2" style={{ background: 'linear-gradient(90deg,#32d6ff,#2ad6c6)' }} /> <span>Effect</span>
-          <span className="inline-block w-3 h-3 rounded ml-2" style={{ background: 'linear-gradient(90deg,#ff9f1c,#ffd27a)' }} /> <span>Instrument</span>
+      <div className="flex gap-3 items-center mb-3">
+        <div className="flex items-center gap-3 text-xs text-gray-300">
+          <span className="inline-block w-3 h-3 rounded-full" style={{ background: 'linear-gradient(90deg,#ff4dff,#ff66cc)' }} /> <span>Note</span>
+          <span className="inline-block w-3 h-3 rounded-full ml-2" style={{ background: 'linear-gradient(90deg,#32d6ff,#2ad6c6)' }} /> <span>Effect</span>
+          <span className="inline-block w-3 h-3 rounded-full ml-2" style={{ background: 'linear-gradient(90deg,#ff9f1c,#ffd27a)' }} /> <span>Instrument</span>
         </div>
       </div>
 
-      <div ref={containerRef} style={{ maxHeight: visibleRows * (cellSize + 4) + 24, overflow: 'auto', position: 'relative' }}>
-        {/* playhead overlay */}
-        <div ref={playheadRef} style={{ position: 'absolute', left: 0, right: 0, height: cellSize + 2, pointerEvents: 'none', transform: 'translateY(0px)', transition: 'transform 220ms cubic-bezier(.22,.9,.3,1), opacity 180ms ease-out', opacity: 0 }}>
-          <div style={{ height: '100%', width: '100%', background: 'linear-gradient(90deg, rgba(255,255,0,0.06), rgba(255,255,0,0.02))', borderRadius: 6 }} />
+      <div ref={containerRef} style={{ overflow: 'hidden', position: 'relative' }}>
+        {/* playhead overlay (horizontal) */}
+        <div
+          ref={playheadRef}
+          style={{
+            position: 'absolute',
+            top: 6,
+            height: columns * (cellSize + 6) + 8,
+            pointerEvents: 'none',
+            transform: 'translateX(0px)',
+            transition: 'transform 220ms cubic-bezier(.22,.9,.3,1), opacity 160ms ease-out',
+            opacity: 0,
+            filter: 'drop-shadow(0 6px 18px rgba(255,200,60,0.06))',
+            zIndex: 30,
+          }}
+        >
+          <div style={{ height: '100%', width: '100%', background: 'linear-gradient(180deg, rgba(255,200,60,0.06), rgba(255,200,60,0.02))', borderRadius: 8, backdropFilter: 'blur(2px)' }} />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns + 1}, ${cellSize}px)`, gap: 2 }}>
-          {/* header first blank cell */}
-          <div style={{ width: cellSize, height: cellSize }} />
-          {Array.from({ length: columns }).map((_, ci) => (
-            <div key={ci} className="text-center text-xs text-gray-400" style={{ width: cellSize }}>{`C${ci + 1}`}</div>
-          ))}
+        <div style={{ display: 'grid', gridAutoFlow: 'column', gridTemplateRows: `repeat(${columns + 1}, ${cellSize}px)`, gap: 6 }}>
+          {/* first column: channel labels (occupies first column slot) */}
+          <div style={{ display: 'grid', gridRow: `1 / span ${columns + 1}`, gap: 6 }}>
+            <div style={{ width: cellSize, height: cellSize }} />
+            {Array.from({ length: columns }).map((_, ci) => (
+              <div
+                key={ci}
+                className="text-center text-xs text-gray-300 bg-gray-900/40 rounded-md flex items-center justify-center"
+                style={{ width: cellSize, height: cellSize }}
+              >
+                {`C${ci + 1}`}
+              </div>
+            ))}
+          </div>
 
-          {display.rows.map((row, ri) => {
-            const globalRow = (display.start ?? 0) + ri;
-            const isPlay = globalRow === currentRow;
+          {/* steps as columns */}
+          {repeatedSteps.map((row, stepIdx) => {
+            const stepNumber = (display.start ?? 0) + (stepIdx % (display.rows.length || 1));
+            const isPlay = (stepNumber === currentRow);
             return (
-              <React.Fragment key={ri}>
-                <div style={{ width: cellSize, height: cellSize, display: 'flex', alignItems: 'center', justifyContent: 'center' }} className={`text-xs ${isPlay ? 'text-yellow-300 font-bold' : 'text-gray-400'}`}>{String(globalRow).padStart(2, '0')}</div>
+              <div key={stepIdx} style={{ display: 'grid', gridTemplateRows: `repeat(${columns + 1}, ${cellSize}px)`, gap: 6 }}>
+                <div
+                  style={{ width: cellSize, height: cellSize, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  className={`text-xs ${isPlay ? 'text-yellow-300 font-semibold' : 'text-gray-400'}`}
+                >
+                  <div className="px-1 py-[1px] rounded bg-black/40">{String(stepNumber).padStart(2, '0')}</div>
+                </div>
                 {row.map((cell, ci) => {
                   const bg = colorFor(cell.type, ci);
-                  const boxShadow = cell.type !== 'empty' ? `0 0 8px ${bg}66` : 'none';
+                  const boxShadow = cell.type !== 'empty' ? `0 6px 18px ${bg === 'transparent' ? 'rgba(0,0,0,0.0)' : 'rgba(0,0,0,0.08)'}` : 'none';
                   const border = cell.type === 'empty' ? '1px solid rgba(255,255,255,0.03)' : 'none';
-                  const opacity = isPlay ? 1 : 0.9;
+                  const opacity = isPlay ? 1 : 0.95;
                   return (
-                    <div key={ci} title={`ch ${ci + 1} r ${globalRow} — ${cell.text || 'empty'}`} style={{ width: cellSize, height: cellSize, background: bg, border, boxShadow, borderRadius: 4, opacity }} />
+                    <div
+                      key={ci}
+                      title={`ch ${ci + 1} r ${stepNumber} — ${cell.text || 'empty'}`}
+                      style={{
+                        width: cellSize,
+                        height: cellSize,
+                        background: bg,
+                        border,
+                        boxShadow,
+                        borderRadius: 6,
+                        opacity,
+                        transition: 'transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: cell.type === 'empty' ? 'default' : 'pointer',
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.06)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 10px 30px rgba(0,0,0,0.18)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; (e.currentTarget as HTMLElement).style.boxShadow = boxShadow as any; }}
+                    >
+                      {/* small indicator for note/effect */}
+                      {cell.type !== 'empty' && (
+                        <div className="text-[9px] font-mono text-black/80" style={{ padding: '0 2px', background: 'rgba(255,255,255,0.85)', borderRadius: 2 }}>
+                          {cell.text || ''}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
-              </React.Fragment>
+              </div>
             );
           })}
         </div>

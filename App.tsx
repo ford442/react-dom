@@ -27,6 +27,9 @@ export default function App() {
     askAI,
     sequencerMatrix,
     sequencerCurrentRow,
+    sequencerGlobalRow,
+    totalPatternRows,
+    seekToStep,
   } = useLibOpenMPT();
 
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -98,7 +101,7 @@ export default function App() {
             </div>
             <AiInfoCard response={aiResponse} isLoading={isAiLoading} />
             <PatternDisplay data={patternData} numChannels={moduleInfo.numChannels} />
-            <PatternSequencer matrix={sequencerMatrix ?? null} currentRow={sequencerCurrentRow} />
+            <PatternSequencer matrix={sequencerMatrix ?? null} currentRow={sequencerCurrentRow} globalRow={sequencerGlobalRow} totalRows={totalPatternRows} onSeek={seekToStep} />
 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
               <MediaPanel media={media} activeMediaId={activeMediaId} onSelect={(id) => { setActiveMediaId(id); setOverlayVisible(!!id); }} onRemove={removeMedia} />

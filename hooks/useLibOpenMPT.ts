@@ -20,6 +20,8 @@ export function useLibOpenMPT() {
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [sequencerMatrix, setSequencerMatrix] = useState<PatternMatrix | null>(null);
   const [sequencerCurrentRow, setSequencerCurrentRow] = useState<number>(0);
+  const [sequencerGlobalRow, setSequencerGlobalRow] = useState<number>(0);
+  const [totalPatternRows, setTotalPatternRows] = useState<number>(0);
 
   const libopenmptRef = useRef<LibOpenMPT | null>(null);
   const currentModulePtr = useRef<number>(0);
@@ -113,21 +115,28 @@ export function useLibOpenMPT() {
                  }
 
                 patternMatricesRef.current[o] = {
-                    order: o,
-                    patternIndex: pattern,
-                    numRows,
-                    numChannels,
-                    rows: matrixRows,
-                };
-            }
-            setStatus(`Loaded "${title}". Ready to play.`);
-            console.log("Pattern data cached.");
-        } catch (e) {
-            console.error("Failed to cache pattern data:", e);
-            setStatus("Error: Failed to cache patterns. See console.");
-        }
-    }, 50);
-  }, []);
+                     order: o,
+                     patternIndex: pattern,
+                     numRows,
+                     numChannels,
+                     rows: matrixRows,
+                 };
+             }
+             // compute total rows across orders
++            let total = 0;
++            for (let k = 0; k < Object.keys(patternMatricesRef.current).length; k++) {
++                const m = patternMatricesRef.current[k];
++                if (m) total += m.numRows;
++            }
++            setTotalPatternRows(total);
+             setStatus(`Loaded "${title}". Ready to play.`);
+             console.log("Pattern data cached.");
+         } catch (e) {
+             console.error("Failed to cache pattern data:", e);
+             setStatus("Error: Failed to cache patterns. See console.");
+         }
+     }, 50);
+   }, []);
 
   const processModuleData = useCallback(async (fileData: Uint8Array, fileName: string) => {
     if (!libopenmptRef.current) return;
@@ -207,6 +216,15 @@ export function useLibOpenMPT() {
         setSequencerMatrix(null);
       }
       setSequencerCurrentRow(row);
+
+      // compute global row index (sum of rows in earlier orders + current row)
+      let global = 0;
+      for (let i = 0; i < order; i++) {
+        const m = patternMatricesRef.current[i];
+        if (m) global += m.numRows;
+      }
+      global += row;
+      setSequencerGlobalRow(global);
 
       const currentPattern = lib._openmpt_module_get_order_pattern(modPtr, order);
       const numRows = lib._openmpt_module_get_pattern_num_rows(modPtr, currentPattern);
@@ -411,5 +429,37 @@ export function useLibOpenMPT() {
     }
   }, [isReady, processModuleData]);
 
-  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI, sequencerMatrix, sequencerCurrentRow };
+  const seekToStep = (stepIndex: number) => {
+    const lib = libopenmptRef.current;
+    const modPtr = currentModulePtr.current;
+    if (!lib || modPtr === 0) return;
+
+    // find order and row for the given stepIndex
+    let acc = 0;
+    let targetOrder = 0;
+    let targetRow = 0;
+    const numOrders = lib._openmpt_module_get_num_orders(modPtr);
+    for (let o = 0; o < numOrders; o++) {
+      const m = patternMatricesRef.current[o];
+      const rows = m ? m.numRows : lib._openmpt_module_get_pattern_num_rows(modPtr, lib._openmpt_module_get_order_pattern(modPtr, o));
+      if (stepIndex < acc + rows) {
+        targetOrder = o;
+        targetRow = stepIndex - acc;
+        break;
+      }
+      acc += rows;
+    }
+
+    try {
+      lib._openmpt_module_set_position_order_row(modPtr, targetOrder, targetRow);
+      // update UI state immediately
+      setModuleInfo(prev => ({ ...prev, order: targetOrder, row: targetRow }));
+      setSequencerCurrentRow(targetRow);
+      setSequencerGlobalRow(stepIndex);
+    } catch (e) {
+      console.error('Failed to seek:', e);
+    }
+  };
+
+  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI, sequencerMatrix, sequencerCurrentRow, sequencerGlobalRow, totalPatternRows, seekToStep };
 }
