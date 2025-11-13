@@ -71,18 +71,13 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
     };
   }, [currentRow, cellSize, visibleRows, display.start, display.rows, repeatCount]);
 
-  if (!matrix) {
-    return (
-      <section className="bg-gradient-to-br from-gray-900 to-black p-4 rounded-xl mb-4 text-sm text-gray-400 border border-white/4 shadow-lg">
-        No pattern data available.
-      </section>
-    );
-  }
+  // Do not early-return when `matrix` is null — keep hooks order stable.
+  // We'll render an empty-state later in the JSX when matrix is not provided.
 
-  const columns = matrix.numChannels;
+  const columns = matrix?.numChannels ?? 0;
 
-  // compute layout grid (rows x cols) for step display
-  const patternLen = matrix.numRows || 64;
+  // compute layout grid (rows x cols) for step display (use defaults when matrix is null)
+  const patternLen = matrix?.numRows ?? 64;
   const stepCount = Math.max(64, patternLen);
   let rowsLayout = 4, colsLayout = 32;
   if (layout === '8x16') { rowsLayout = 8; colsLayout = 16; }
@@ -118,91 +113,37 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
     return 35 + (octave * 8); // Range 35-90%
   };
 
-  // Smooth playhead animation effect
-  useEffect(() => {
-    if (!playheadRef.current || !containerRef.current) return;
-    const now = performance.now();
-    const prev = prevRowRef.current;
-    const prevTime = prevRowTimeRef.current;
-    // update avgRowMs if we have a previous timing
-    if (prev != null && prevTime != null) {
-      const observed = now - prevTime;
-      const prevAvg = avgRowMsRef.current ?? observed;
-      avgRowMsRef.current = prevAvg * 0.85 + observed * 0.15;
-    }
+  // Pre-compute tiles to avoid complex inline rendering
+  const patternTiles = useMemo(() => {
+    if (!matrix) return null;
 
-    // find start and end elements
-    const startRow = prev != null ? prev : currentRow;
-    const endRow = currentRow;
-    const startElem = containerRef.current.querySelector(`[data-row="${startRow}"]`) as HTMLElement | null;
-    const endElem = containerRef.current.querySelector(`[data-row="${endRow}"]`) as HTMLElement | null;
+    // compute layout rows/cols
+    let rowsLayout = 4, colsLayout = 32;
+    if (layout === '8x16') { rowsLayout = 8; colsLayout = 16; }
+    if (layout === '2x64') { rowsLayout = 2; colsLayout = 64; }
 
-    const targetDuration = avgRowMsRef.current ?? (parseInt(pulseDuration) || 200);
-    const duration = Math.max(80, targetDuration);
-    const rectToRelative = (el: HTMLElement | null) => {
-      if (!el || !containerRef.current) return null;
-      const cont = containerRef.current.getBoundingClientRect();
-      const r = el.getBoundingClientRect();
-      return { x: r.left - cont.left, y: r.top - cont.top, w: r.width, h: r.height };
-    };
+    // we'll show previous/current/next banks so users see context
+    const displayBanks = [] as number[];
+    if (bank - 1 >= 0) displayBanks.push(bank - 1);
+    displayBanks.push(bank);
+    if (bank + 1 < totalBanks) displayBanks.push(bank + 1);
+    const colsForRender = colsLayout * displayBanks.length;
 
-    const s = rectToRelative(startElem);
-    const e = rectToRelative(endElem);
+    const patternRows = matrix.rows || Array.from({ length: patternLen }, () => Array.from({ length: columns }, () => ({ type: 'empty', text: '' })));
 
-    if (!e) {
-      // no target — hide playhead
-      playheadRef.current.style.opacity = '0';
-      prevRowRef.current = currentRow;
-      prevRowTimeRef.current = now;
-      return;
-    }
+    return { displayBanks, colsForRender, rowsLayout, colsLayout, patternRows };
+  }, [matrix, layout, bank, totalBanks, patternLen, columns]);
 
-    // set start to current playhead position if available
-    let startX = e.x, startY = e.y, startW = e.w, startH = e.h;
-    if (s) { startX = s.x; startY = s.y; startW = s.w; startH = s.h; }
+  // After all hooks/memos have been created, short-circuit render when no matrix is present.
+  if (!matrix) {
+    return (
+      <section className="bg-gradient-to-br from-gray-900 to-black p-4 rounded-xl mb-4 text-sm text-gray-400 border border-white/4 shadow-lg">
+        No pattern data available.
+      </section>
+    );
+  }
 
-    const endX = e.x; const endY = e.y; const endW = e.w; const endH = e.h;
-
-    const startTime = performance.now();
-    animRef.current = { startX, startY, endX, endY, startTime, duration };
-
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    const step = () => {
-      const a = animRef.current;
-      if (!a) return;
-      const t = (performance.now() - a.startTime) / a.duration;
-      const u = Math.min(1, Math.max(0, t));
-      // ease
-      const ease = (u < 0.5) ? (2 * u * u) : (1 - Math.pow(-2 * u + 2, 2) / 2);
-      const cx = a.startX + (a.endX - a.startX) * ease;
-      const cy = a.startY + (a.endY - a.startY) * ease;
-      // size lerp
-      const cw = startW + (endW - startW) * ease;
-      const ch = startH + (endH - startH) * ease;
-      if (playheadRef.current) {
-        playheadRef.current.style.transform = `translate(${cx}px, ${cy}px)`;
-        playheadRef.current.style.width = `${Math.round(cw)}px`;
-        playheadRef.current.style.height = `${Math.round(ch)}px`;
-        playheadRef.current.style.opacity = '0.92';
-      }
-      if (u < 1) {
-        rafRef.current = requestAnimationFrame(step);
-      } else {
-        animRef.current = null;
-        rafRef.current = null;
-      }
-    };
-    rafRef.current = requestAnimationFrame(step);
-
-    prevRowRef.current = currentRow;
-    prevRowTimeRef.current = now;
-
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); rafRef.current = null; };
-  }, [currentRow, pulseDuration]);
-
-  // (no per-channel color helper needed here; expressive readout uses token colors)
-
-  return (
+   return (
     <section className="bg-gradient-to-b from-black/60 via-gray-900/60 to-black/40 p-4 rounded-xl mb-4 border border-white/5 shadow-2xl">
       {/* Inject small CSS for neon pulse animation scoped to this component */}
       <style>{`
