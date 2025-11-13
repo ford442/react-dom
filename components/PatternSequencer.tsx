@@ -1,18 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { PatternMatrix } from '../types';
+import type { PatternMatrix, PatternCell } from '../types';
 
 interface PatternSequencerProps {
   matrix: PatternMatrix | null;
   currentRow: number;
+  globalRow?: number;
+  totalRows?: number;
+  onSeek?: (stepIndex: number) => void;
 }
 
-export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, currentRow }) => {
+export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, currentRow, globalRow = 0, totalRows = 0, onSeek }) => {
   const [cellSize, setCellSize] = useState<number>(14); // px
   const [visibleRows, setVisibleRows] = useState<number>(16);
   const [repeatCount, setRepeatCount] = useState<number>(2);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playheadRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
+  const seekTimeout = useRef<number | null>(null);
 
   // derive display matrix slice
   const display = useMemo(() => {
@@ -71,8 +75,8 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
   const columns = matrix.numChannels;
 
   // prepare steps repeated across X
-  const steps = display.rows || [];
-  const repeatedSteps: typeof steps = [] as any;
+  const steps: PatternCell[][] = display.rows || [];
+  const repeatedSteps: PatternCell[][] = [];
   for (let r = 0; r < repeatCount; r++) {
     for (let i = 0; i < steps.length; i++) repeatedSteps.push(steps[i]);
   }
@@ -218,6 +222,29 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
             );
           })}
         </div>
+      </div>
+      {/* song position slider */}
+      <div className="mt-3 flex items-center gap-3">
+        <div className="text-xs text-gray-400">Pos</div>
+        <input
+          type="range"
+          min={0}
+          max={Math.max(0, totalRows - 1)}
+          value={Math.min(globalRow, Math.max(0, totalRows - 1))}
+          onChange={(e) => {
+            const val = Number(e.target.value);
+            if (seekTimeout.current) {
+              window.clearTimeout(seekTimeout.current);
+            }
+            // debounce seek: 150ms
+            seekTimeout.current = window.setTimeout(() => {
+              onSeek?.(val);
+              seekTimeout.current = null;
+            }, 150);
+          }}
+          className="w-full"
+        />
+        <div className="text-xs text-gray-300">{globalRow}/{totalRows}</div>
       </div>
     </section>
   );
