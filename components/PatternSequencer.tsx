@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { PatternMatrix, PatternCell } from '../types';
+import type { PatternMatrix } from '../types';
 
 interface PatternSequencerProps {
   matrix: PatternMatrix | null;
@@ -13,6 +13,7 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
   const [cellSize, setCellSize] = useState<number>(14); // px
   const [visibleRows, setVisibleRows] = useState<number>(16);
   const [repeatCount, setRepeatCount] = useState<number>(2);
+  const [layout, setLayout] = useState<'4x32' | '8x16' | '2x64'>('4x32');
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playheadRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -74,27 +75,16 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
 
   const columns = matrix.numChannels;
 
-  // prepare steps repeated across X
-  const steps = (display.rows || []) as PatternCell[][];
-  const repeatedSteps: PatternCell[][] = [];
-  for (let r = 0; r < repeatCount; r++) {
-    for (let i = 0; i < steps.length; i++) repeatedSteps.push(steps[i] as PatternCell[]);
-  }
+  // compute layout grid (rows x cols) for step display
+  const patternLen = matrix.numRows || 64;
+  const stepCount = Math.max(64, patternLen);
+  let rowsLayout = 4, colsLayout = 32;
+  if (layout === '8x16') { rowsLayout = 8; colsLayout = 16; }
+  if (layout === '2x64') { rowsLayout = 2; colsLayout = 64; }
+  const computedCols = colsLayout;
+  const computedRows = rowsLayout;
 
-  // helper to map cell type to color (returns CSS color string)
-  const colorFor = (type: string, ci: number) => {
-    const hue = Math.floor((ci / Math.max(1, columns)) * 360);
-    switch (type) {
-      case 'note':
-        return `linear-gradient(180deg, hsl(${(hue + 320) % 360}deg 85% 60%), hsl(${(hue + 300) % 360}deg 85% 45%))`;
-      case 'effect':
-        return `linear-gradient(180deg, hsl(${(hue + 180) % 360}deg 80% 60%), hsl(${(hue + 160) % 360}deg 80% 45%))`;
-      case 'instrument':
-        return `linear-gradient(180deg, hsl(${(hue + 30) % 360}deg 90% 60%), hsl(${(hue + 10) % 360}deg 90% 45%))`;
-      default:
-        return 'transparent';
-    }
-  };
+  // (no per-channel color helper needed here; expressive readout uses token colors)
 
   return (
     <section className="bg-gradient-to-b from-black/60 via-gray-900/60 to-black/40 p-4 rounded-xl mb-4 border border-white/5 shadow-2xl">
@@ -108,55 +98,46 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
       `}</style>
       {/* compact step readout mapped to module pattern length (at least 64) */}
       <div className="mb-3 flex flex-col gap-2">
-        <div className="text-xs text-gray-400">Pattern Steps ({(() => {
-          const patternLen = matrix.numRows || 64;
-          const stepCount = Math.max(64, patternLen);
-          return stepCount;
-        })()})</div>
-        <div className="grid grid-cols-32 gap-1 py-2 px-2 bg-black/40 rounded-lg" style={{ gridTemplateColumns: 'repeat(32, minmax(0, 1fr))' }}>
-          {(() => {
-            const patternLen = matrix.numRows || 64;
-            const stepCount = Math.max(64, patternLen);
-            const patternRows = matrix.rows || Array.from({ length: patternLen }, () => Array.from({ length: columns }, () => ({ type: 'empty', text: '' })));
-            // current row within the pattern
-            const curWithin = currentRow % patternLen;
-            return Array.from({ length: stepCount }).map((_, i) => {
-              const rowIndex = i % patternLen;
-              const cells = patternRows[rowIndex] || Array.from({ length: columns }, () => ({ type: 'empty', text: '' }));
-              const hasNote = cells.some(c => c.type === 'note');
-              const hasEffect = cells.some(c => c.type === 'effect');
-              const hasInstr = cells.some(c => c.type === 'instrument');
-              const isActive = rowIndex === curWithin; // active if this pattern row matches current
-              const neonColor = hasNote ? 'rgba(255,77,255,0.95)' : hasEffect ? 'rgba(50,214,255,0.95)' : hasInstr ? 'rgba(255,159,28,0.95)' : null;
-              const glowStyle = neonColor ? { boxShadow: `0 0 12px ${neonColor}, 0 0 28px ${neonColor.replace('0.95', '0.25')}` } : { boxShadow: 'none' };
-
-              const handleClick = () => {
-                // Map click to global target in the current order block
-                const baseGlobal = (globalRow ?? 0) - currentRow; // start of current order block
-                const targetGlobal = baseGlobal + rowIndex;
-                onSeek?.(targetGlobal);
-              };
-
-              return (
-                <button
-                  key={i}
-                  onClick={handleClick}
-                  title={`Step ${rowIndex + 1}${hasNote ? ' [Note]' : ''}${hasEffect ? ' [Effect]' : ''}${hasInstr ? ' [Instr]' : ''}`}
-                  className={`w-full aspect-square rounded flex flex-col items-center justify-center text-[9px] font-mono ${isActive ? 'opacity-100' : 'opacity-80'} hover:opacity-100 transition-all duration-150`}
-                  style={{
-                    background: neonColor || 'rgba(60,60,60,0.3)',
-                    border: isActive ? `2px solid rgba(255,230,120,0.8)` : '1px solid rgba(255,255,255,0.08)',
-                    ...(neonColor ? glowStyle : {}),
-                    animation: isActive ? 'neonPulse 900ms ease-in-out infinite' : undefined,
-                  }}
-                >
-                  <span style={{ color: '#fff', fontWeight: isActive ? 700 : 400, fontSize: '8px', opacity: 0.7 }}>{(rowIndex + 1).toString().padStart(2, '0')}</span>
-                  <div className="w-3/4 h-0.5 mt-0.5" style={{ background: neonColor ? `linear-gradient(90deg, ${neonColor}, ${neonColor.replace('0.95', '0.6')})` : 'transparent', borderRadius: 1 }} />
-                </button>
-              );
-            });
-          })()}
-        </div>
+        <div className="text-xs text-gray-400">Pattern Steps ({stepCount})</div>
+        {
+          (() => {
+            // compute layout rows/cols
+            // compute layout rows/cols
+            let rowsLayout = 4, colsLayout = 32;
+            if (layout === '8x16') { rowsLayout = 8; colsLayout = 16; }
+            if (layout === '2x64') { rowsLayout = 2; colsLayout = 64; }
+            // ensure colsLayout matches stepCount when patternLen > colsLayout*rowsLayout
+            const computedCols = colsLayout;
+            return (
+              <div className="grid gap-1 py-2 px-2 bg-black/40 rounded-lg" style={{ gridTemplateColumns: `repeat(${computedCols}, minmax(0, 1fr))` }}>
+                {Array.from({ length: Math.max(stepCount, rowsLayout * colsLayout) }).map((_, i) => {
+                  const rowIndex = i % patternLen;
+                  const patternRows = matrix.rows || Array.from({ length: patternLen }, () => Array.from({ length: columns }, () => ({ type: 'empty', text: '' })));
+                  const cells = patternRows[rowIndex] || Array.from({ length: columns }, () => ({ type: 'empty', text: '' }));
+                  const hasNote = cells.some(c => c.type === 'note');
+                  const hasEffect = cells.some(c => c.type === 'effect');
+                  const hasInstr = cells.some(c => c.type === 'instrument');
+                  const isActive = rowIndex === (currentRow % patternLen);
+                  const neonColor = hasNote ? 'rgba(255,77,255,0.95)' : hasEffect ? 'rgba(50,214,255,0.95)' : hasInstr ? 'rgba(255,159,28,0.95)' : null;
+                  const glowStyle = neonColor ? { boxShadow: `0 0 12px ${neonColor}, 0 0 28px ${neonColor.replace('0.95', '0.25')}` } : { boxShadow: 'none' };
+                  const handleClick = () => { const baseGlobal = (globalRow ?? 0) - currentRow; const targetGlobal = baseGlobal + rowIndex; onSeek?.(targetGlobal); };
+                  return (
+                    <button
+                      key={i}
+                      onClick={handleClick}
+                      title={`Step ${rowIndex + 1}`}
+                      className={`w-full aspect-square rounded flex flex-col items-center justify-center text-[9px] font-mono ${isActive ? 'opacity-100' : 'opacity-80'} hover:opacity-100 transition-all duration-150`}
+                      style={{ background: neonColor || 'rgba(60,60,60,0.3)', border: isActive ? `2px solid rgba(255,230,120,0.8)` : '1px solid rgba(255,255,255,0.08)', ...(neonColor ? glowStyle : {}), animation: isActive ? 'neonPulse 900ms ease-in-out infinite' : undefined }}
+                    >
+                      <span style={{ color: '#fff', fontWeight: isActive ? 700 : 400, fontSize: '8px', opacity: 0.7 }}>{(rowIndex + 1).toString().padStart(2, '0')}</span>
+                      <div className="w-3/4 h-0.5 mt-0.5" style={{ background: neonColor ? `linear-gradient(90deg, ${neonColor}, ${neonColor.replace('0.95', '0.6')})` : 'transparent', borderRadius: 1 }} />
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()
+        }
       </div>
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm text-gray-300 font-semibold">Pattern Sequencer — Order {matrix.order} • Rows {matrix.numRows} • Ch {columns}</div>
@@ -186,6 +167,14 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
             <label className="text-xs text-gray-400">Size</label>
             <input type="range" min={8} max={28} value={cellSize} onChange={(e) => setCellSize(Number(e.target.value))} className="accent-purple-500" />
           </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-400">Layout</label>
+            <select value={layout} onChange={(e) => setLayout(e.target.value as any)} className="text-sm bg-gray-800 text-white p-1 rounded">
+              <option value="4x32">4 × 32</option>
+              <option value="8x16">8 × 16</option>
+              <option value="2x64">2 × 64</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -197,92 +186,46 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
         </div>
       </div>
 
-      <div ref={containerRef} style={{ overflow: 'hidden', position: 'relative' }}>
-        {/* playhead overlay (horizontal) */}
-        <div
-          ref={playheadRef}
-          style={{
-            position: 'absolute',
-            top: 6,
-            height: columns * (cellSize + 6) + 8,
-            pointerEvents: 'none',
-            transform: 'translateX(0px)',
-            transition: 'transform 220ms cubic-bezier(.22,.9,.3,1), opacity 160ms ease-out',
-            opacity: 0,
-            filter: 'drop-shadow(0 6px 18px rgba(255,200,60,0.06))',
-            zIndex: 30,
-          }}
-        >
-          <div style={{ height: '100%', width: '100%', background: 'linear-gradient(180deg, rgba(255,200,60,0.06), rgba(255,200,60,0.02))', borderRadius: 8, backdropFilter: 'blur(2px)' }} />
-        </div>
+      <div className="mt-4 p-3 bg-black/30 rounded-lg">
+        <div className="text-sm text-gray-300 mb-2">Expressive Readout</div>
+        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${computedCols}, minmax(0, 1fr))` }}>
+          {(() => {
+            const patternRows = matrix.rows || Array.from({ length: patternLen }, () => Array.from({ length: columns }, () => ({ type: 'empty', text: '' })));
 
-        <div style={{ display: 'grid', gridAutoFlow: 'column', gridTemplateRows: `repeat(${columns + 1}, ${cellSize}px)`, gap: 6 }}>
-          {/* first column: channel labels (occupies first column slot) */}
-          <div style={{ display: 'grid', gridRow: `1 / span ${columns + 1}`, gap: 6 }}>
-            <div style={{ width: cellSize, height: cellSize }} />
-            {Array.from({ length: columns }).map((_, ci) => (
-              <div
-                key={ci}
-                className="text-center text-xs text-gray-300 bg-gray-900/40 rounded-md flex items-center justify-center"
-                style={{ width: cellSize, height: cellSize }}
-              >
-                {`C${ci + 1}`}
-              </div>
-            ))}
-          </div>
+            // hashing helper to pick a color for a string
+            const colorForString = (s: string) => {
+              let h = 0;
+              for (let i = 0; i < s.length; i++) h = (h << 5) - h + s.charCodeAt(i);
+              const hue = Math.abs(h) % 360;
+              return `hsl(${hue} 85% 60%)`;
+            };
 
-          {/* steps as columns */}
-          {repeatedSteps.map((row, stepIdx) => {
-            const stepNumber = (display.start ?? 0) + (stepIdx % (display.rows.length || 1));
-            const isPlay = (stepNumber === currentRow);
-            return (
-              <div key={stepIdx} style={{ display: 'grid', gridTemplateRows: `repeat(${columns + 1}, ${cellSize}px)`, gap: 6 }}>
-                <div
-                  style={{ width: cellSize, height: cellSize, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  className={`text-xs ${isPlay ? 'text-yellow-300 font-semibold' : 'text-gray-400'}`}
-                >
-                  <div className="px-1 py-[1px] rounded bg-black/40">{String(stepNumber).padStart(2, '0')}</div>
+            // render tiles equal to grid capacity (rows * cols) or the stepCount, whichever is larger
+            const tiles = Math.max(stepCount, computedRows * computedCols);
+            return Array.from({ length: tiles }).map((_, i) => {
+              const rowIndex = i % patternLen;
+              const cells = patternRows[rowIndex] || [];
+              // collect unique non-empty token texts (notes/instruments/effects)
+              const tokens = Array.from(new Set(cells.map(c => (c.text || '').trim()).filter(t => t && t !== '.' && t !== '-'))).slice(0, 8);
+              const isActive = (rowIndex === (currentRow % patternLen));
+
+              return (
+                <div key={i} className={`flex flex-col items-center justify-start p-1 rounded ${isActive ? 'ring-2 ring-yellow-300' : ''}`}>
+                  <div className="flex gap-1 items-center justify-center" style={{ minHeight: 12 }}>
+                    {tokens.length === 0 ? (
+                      <div className="w-3 h-3 rounded bg-black/40 border border-white/10" />
+                    ) : tokens.map((t, idx) => (
+                      <div key={idx} title={t} className="w-3 h-3 rounded-full" style={{ background: colorForString(t), boxShadow: `0 0 6px ${colorForString(t)}66` }} />
+                    ))}
+                  </div>
+                  <div className="text-[9px] text-gray-300 mt-1">{(rowIndex + 1).toString().padStart(2, '0')}</div>
                 </div>
-                {row.map((cell, ci) => {
-                  const bg = colorFor(cell.type, ci);
-                  const boxShadow = cell.type !== 'empty' ? `0 6px 18px ${bg === 'transparent' ? 'rgba(0,0,0,0.0)' : 'rgba(0,0,0,0.08)'}` : 'none';
-                  const border = cell.type === 'empty' ? '1px solid rgba(255,255,255,0.03)' : 'none';
-                  const opacity = isPlay ? 1 : 0.95;
-                  return (
-                    <div
-                      key={ci}
-                      title={`ch ${ci + 1} r ${stepNumber} — ${cell.text || 'empty'}`}
-                      style={{
-                        width: cellSize,
-                        height: cellSize,
-                        background: bg,
-                        border,
-                        boxShadow,
-                        borderRadius: 6,
-                        opacity,
-                        transition: 'transform 140ms ease, box-shadow 140ms ease, opacity 140ms ease',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: cell.type === 'empty' ? 'default' : 'pointer',
-                      }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1.06)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 10px 30px rgba(0,0,0,0.18)'; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'scale(1)'; (e.currentTarget as HTMLElement).style.boxShadow = boxShadow as any; }}
-                    >
-                      {/* small indicator for note/effect */}
-                      {cell.type !== 'empty' && (
-                        <div className="text-[9px] font-mono text-black/80" style={{ padding: '0 2px', background: 'rgba(255,255,255,0.85)', borderRadius: 2 }}>
-                          {cell.text || ''}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       </div>
+
       {/* song position slider */}
       <div className="mt-3 flex items-center gap-3">
         <div className="text-xs text-gray-400">Pos</div>
