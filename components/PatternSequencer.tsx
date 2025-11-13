@@ -22,10 +22,6 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playheadRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
-  const prevRowRef = useRef<number | null>(null);
-  const prevRowTimeRef = useRef<number | null>(null);
-  const avgRowMsRef = useRef<number | null>(null);
-  const animRef = useRef<{ startX: number; startY: number; endX: number; endY: number; startTime: number; duration: number } | null>(null);
 
   // 2. Always run useMemo, even if matrix is null (return safe defaults inside)
   const display = useMemo(() => {
