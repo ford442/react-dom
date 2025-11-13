@@ -106,52 +106,54 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
           100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(255,255,255,0.06)); }
         }
       `}</style>
-       {/* 64-step compact button readout */}
-       <div className="mb-3 flex items-center gap-2">
-         <div className="text-xs text-gray-400 mr-2">Steps</div>
-         <div className="flex gap-2 overflow-x-auto py-1 px-1" style={{ maxWidth: '100%' }}>
-           {Array.from({ length: 64 }).map((_, i) => {
-             const patRows = display.rows || [];
-             const patLen = patRows.length || matrix.numRows || 64;
-             const rowIndex = i < patLen ? i % patLen : i % Math.max(1, patLen);
-             const cells = patRows[rowIndex] || Array.from({ length: columns }, () => ({ type: 'empty', text: '' }));
-             const hasNote = cells.some(c => c.type === 'note');
-             const hasEffect = cells.some(c => c.type === 'effect');
-             const hasInstr = cells.some(c => c.type === 'instrument');
-             const isActive = i === ((currentRow) % 64); // visual active per pattern
-             // neon colors
-             const neonColor = hasNote ? 'rgba(255,77,255,0.95)' : hasEffect ? 'rgba(50,214,255,0.95)' : hasInstr ? 'rgba(255,159,28,0.95)' : null;
-             const glowStyle = neonColor ? { boxShadow: `0 0 12px ${neonColor}, 0 0 28px ${neonColor.replace('0.95', '0.25')}` } : { boxShadow: 'none' };
-             const disabled = i >= patLen;
-             const handleClick = () => {
-               if (disabled) return;
-               // map to global: baseGlobal = globalRow - currentRow
-               const baseGlobal = (globalRow ?? 0) - currentRow;
-               const targetGlobal = baseGlobal + rowIndex;
-               onSeek?.(targetGlobal);
-             };
+      {/* compact step readout mapped to module pattern length (at least 64) */}
+      <div className="mb-3 flex items-center gap-2">
+        <div className="text-xs text-gray-400 mr-2">Steps</div>
+        <div className="flex gap-2 overflow-x-auto py-1 px-1" style={{ maxWidth: '100%' }}>
+          {(() => {
+            const patternLen = matrix.numRows || 64;
+            const stepCount = Math.max(64, patternLen);
+            const patternRows = matrix.rows || Array.from({ length: patternLen }, () => Array.from({ length: columns }, () => ({ type: 'empty', text: '' })));
+            // current row within the pattern
+            const curWithin = currentRow % patternLen;
+            return Array.from({ length: stepCount }).map((_, i) => {
+              const rowIndex = i % patternLen;
+              const cells = patternRows[rowIndex] || Array.from({ length: columns }, () => ({ type: 'empty', text: '' }));
+              const hasNote = cells.some(c => c.type === 'note');
+              const hasEffect = cells.some(c => c.type === 'effect');
+              const hasInstr = cells.some(c => c.type === 'instrument');
+              const isActive = rowIndex === curWithin; // active if this pattern row matches current
+              const neonColor = hasNote ? 'rgba(255,77,255,0.95)' : hasEffect ? 'rgba(50,214,255,0.95)' : hasInstr ? 'rgba(255,159,28,0.95)' : null;
+              const glowStyle = neonColor ? { boxShadow: `0 0 12px ${neonColor}, 0 0 28px ${neonColor.replace('0.95', '0.25')}` } : { boxShadow: 'none' };
 
-             return (
-               <button
-                 key={i}
-                 onClick={handleClick}
-                 disabled={disabled}
-                 title={`Step ${i}${disabled ? ' (inactive)' : ''}`}
-                 className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-mono ${disabled ? 'opacity-30' : 'opacity-100'}`}
-                 style={{
-                   background: disabled ? 'rgba(255,255,255,0.03)' : undefined,
-                   border: isActive ? `1px solid rgba(255,230,120,0.6)` : undefined,
-                   ...(neonColor && !disabled ? glowStyle : {}),
-                   animation: isActive ? 'neonPulse 900ms ease-in-out infinite' : undefined,
-                 }}
-               >
-                 <span style={{ color: disabled ? 'rgba(255,255,255,0.5)' : '#fff', fontWeight: isActive ? 700 : 500 }}>{i + 1}</span>
-               </button>
-             );
-           })}
-         </div>
-       </div>
-     <div className="flex items-center justify-between mb-3">
+              const handleClick = () => {
+                // Map click to global target in the current order block
+                const baseGlobal = (globalRow ?? 0) - currentRow; // start of current order block
+                const targetGlobal = baseGlobal + rowIndex;
+                onSeek?.(targetGlobal);
+              };
+
+              return (
+                <button
+                  key={i}
+                  onClick={handleClick}
+                  title={`Step ${rowIndex + 1}`}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-mono ${isActive ? '' : 'opacity-90'}`}
+                  style={{
+                    background: 'transparent',
+                    border: isActive ? `1px solid rgba(255,230,120,0.6)` : '1px solid rgba(255,255,255,0.03)',
+                    ...(neonColor ? glowStyle : {}),
+                    animation: isActive ? 'neonPulse 900ms ease-in-out infinite' : undefined,
+                  }}
+                >
+                  <span style={{ color: '#fff', fontWeight: isActive ? 700 : 500 }}>{(rowIndex + 1).toString().padStart(2, '0')}</span>
+                </button>
+              );
+            });
+          })()}
+        </div>
+      </div>
+      <div className="flex items-center justify-between mb-3">
         <div className="text-sm text-gray-300 font-semibold">Pattern Sequencer — Order {matrix.order} • Rows {matrix.numRows} • Ch {columns}</div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
