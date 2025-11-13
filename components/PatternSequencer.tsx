@@ -192,38 +192,114 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
       </div>
 
       <div className="mt-4 p-3 bg-black/30 rounded-lg">
-        <div className="text-sm text-gray-300 mb-2">Expressive Readout</div>
-        <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${computedCols}, minmax(0, 1fr))` }}>
+        <div className="text-sm text-gray-300 mb-2">Expressive Visualizer</div>
+        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${computedCols}, minmax(0, 1fr))` }}>
           {(() => {
             const patternRows = matrix.rows || Array.from({ length: patternLen }, () => Array.from({ length: columns }, () => ({ type: 'empty', text: '' })));
 
-            // hashing helper to pick a color for a string
-            const colorForString = (s: string) => {
-              let h = 0;
-              for (let i = 0; i < s.length; i++) h = (h << 5) - h + s.charCodeAt(i);
-              const hue = Math.abs(h) % 360;
-              return `hsl(${hue} 85% 60%)`;
+            // Note to hue mapping (12 semitones around color wheel)
+            const noteToHue = (note: string): number => {
+              const noteMap: Record<string, number> = {
+                'C': 0, 'C#': 30, 'D': 60, 'D#': 90, 'E': 120, 'F': 150,
+                'F#': 180, 'G': 210, 'G#': 240, 'A': 270, 'A#': 300, 'B': 330
+              };
+              const match = note.match(/^([A-G]#?)-?(\d)?/i);
+              if (!match) return 0;
+              const [, noteName, octave] = match;
+              const baseHue = noteMap[noteName.toUpperCase()] ?? 0;
+              return baseHue;
             };
 
-            // render tiles equal to grid capacity (rows * cols) or the stepCount, whichever is larger
+            // Octave to lightness (higher octave = brighter/more saturated)
+            const octaveToLightness = (note: string): number => {
+              const match = note.match(/-(\d)/);
+              if (!match) return 50;
+              const octave = parseInt(match[1], 10);
+              return 35 + (octave * 8); // Range 35-90%
+            };
+
+            // Parse effects for visual modifiers
+            const parseEffects = (text: string): { hasPorta: boolean; hasVibrato: boolean; hasTremolo: boolean; hasRetrig: boolean; hasArp: boolean } => {
+              const t = text.toUpperCase();
+              return {
+                hasPorta: /[123][\dA-F]{2}/.test(t),
+                hasVibrato: /4[\dA-F]{2}/.test(t),
+                hasTremolo: /7[\dA-F]{2}/.test(t),
+                hasRetrig: /E9[\dA-F]/.test(t),
+                hasArp: /0[1-9A-F]{2}/.test(t)
+              };
+            };
+
             const tiles = Math.max(stepCount, computedRows * computedCols);
             return Array.from({ length: tiles }).map((_, i) => {
               const rowIndex = i % patternLen;
               const cells = patternRows[rowIndex] || [];
-              // collect unique non-empty token texts (notes/instruments/effects)
-              const tokens = Array.from(new Set(cells.map(c => (c.text || '').trim()).filter(t => t && t !== '.' && t !== '-'))).slice(0, 8);
               const isActive = (rowIndex === (currentRow % patternLen));
 
+              // Aggregate channel data
+              const notes = cells.filter(c => /[A-G]#?-\d/.test(c.text || ''));
+              const effects = cells.map(c => parseEffects(c.text || ''));
+              const hasAnyEffect = effects.some(e => e.hasPorta || e.hasVibrato || e.hasTremolo || e.hasRetrig || e.hasArp);
+
+              // Compute visual properties
+              let visualElements: JSX.Element[] = [];
+
+              if (notes.length === 0) {
+                // Empty step
+                visualElements.push(
+                  <div key="empty" className="w-full h-6 rounded bg-black/40 border border-white/10" />
+                );
+              } else {
+                // Render notes with expression
+                notes.slice(0, 3).forEach((note, idx) => {
+                  const hue = noteToHue(note.text || '');
+                  const lightness = octaveToLightness(note.text || '');
+                  const fx = effects[cells.indexOf(note)];
+
+                  // Base color
+                  const baseColor = `hsl(${hue}, 85%, ${lightness}%)`;
+                  const opacity = 0.85; // TODO: compute from volume
+
+                  // Effect modifiers
+                  let extraClass = '';
+                  let style: React.CSSProperties = {
+                    background: baseColor,
+                    opacity,
+                    boxShadow: `0 0 8px ${baseColor}66`,
+                  };
+
+                  if (fx.hasPorta) {
+                    style.clipPath = 'polygon(0 0, 100% 20%, 100% 100%, 0 80%)'; // Slanted
+                  }
+                  if (fx.hasVibrato && isActive) {
+                    extraClass += ' animate-pulse';
+                    style.transform = 'scaleX(1.1)';
+                  }
+                  if (fx.hasTremolo && isActive) {
+                    extraClass += ' animate-pulse';
+                  }
+                  if (fx.hasRetrig) {
+                    style.boxShadow = `0 0 12px ${baseColor}, 2px 2px 0 ${baseColor}44, 4px 4px 0 ${baseColor}22`; // Ghost trail
+                  }
+                  if (fx.hasArp) {
+                    style.background = `linear-gradient(135deg, ${baseColor} 0%, ${baseColor} 33%, hsl(${hue + 30}, 85%, ${lightness}%) 66%, hsl(${hue + 60}, 85%, ${lightness}%) 100%)`;
+                  }
+
+                  visualElements.push(
+                    <div
+                      key={`note-${idx}`}
+                      className={`w-full h-1.5 rounded-sm ${extraClass}`}
+                      style={style}
+                      title={`${note.text} ${Object.keys(fx).filter(k => (fx as any)[k]).join(', ')}`}
+                    />
+                  );
+                });
+              }
+
               return (
-                <div key={i} className={`flex flex-col items-center justify-start p-1 rounded ${isActive ? 'ring-2 ring-yellow-300' : ''}`}>
-                  <div className="flex gap-1 items-center justify-center" style={{ minHeight: 12 }}>
-                    {tokens.length === 0 ? (
-                      <div className="w-3 h-3 rounded bg-black/40 border border-white/10" />
-                    ) : tokens.map((t, idx) => (
-                      <div key={idx} title={t} className="w-3 h-3 rounded-full" style={{ background: colorForString(t), boxShadow: `0 0 6px ${colorForString(t)}66` }} />
-                    ))}
-                  </div>
-                  <div className="text-[9px] text-gray-300 mt-1">{(rowIndex + 1).toString().padStart(2, '0')}</div>
+                <div key={i} className={`flex flex-col gap-0.5 p-1 rounded ${isActive ? 'ring-1 ring-yellow-300/60' : ''} ${hasAnyEffect ? 'bg-purple-900/10' : ''}`} style={{ minHeight: 28 }}>
+                  {visualElements}
+                  <div className="text-[8px] text-gray-400 text-center mt-auto">{(rowIndex + 1).toString().padStart(2, '0')}</div>
                 </div>
               );
             });
