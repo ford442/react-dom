@@ -7,9 +7,10 @@ interface PatternSequencerProps {
   globalRow?: number;
   totalRows?: number;
   onSeek?: (stepIndex: number) => void;
+  bpm?: number;
 }
 
-export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, currentRow, globalRow = 0, totalRows = 0, onSeek }) => {
+export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, currentRow, globalRow = 0, totalRows = 0, onSeek, bpm = 120 }) => {
   const [cellSize, setCellSize] = useState<number>(14); // px
   const [visibleRows, setVisibleRows] = useState<number>(16);
   const [repeatCount, setRepeatCount] = useState<number>(2);
@@ -84,6 +85,10 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
   const computedCols = colsLayout;
   const computedRows = rowsLayout;
 
+  // compute pulse duration: assume pulse per step (16th note). BPM -> ms per beat -> ms per 16th = (60000 / bpm) / 4
+  const msPer16th = bpm > 0 ? (60000 / bpm) / 4 : 125; // fallback 125ms
+  const pulseDuration = `${Math.max(80, Math.round(msPer16th))}ms`; // clamp minimum for visibility
+
   // (no per-channel color helper needed here; expressive readout uses token colors)
 
   return (
@@ -127,7 +132,7 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
                       onClick={handleClick}
                       title={`Step ${rowIndex + 1}`}
                       className={`w-full aspect-square rounded flex flex-col items-center justify-center text-[9px] font-mono ${isActive ? 'opacity-100' : 'opacity-80'} hover:opacity-100 transition-all duration-150`}
-                      style={{ background: neonColor || 'rgba(60,60,60,0.3)', border: isActive ? `2px solid rgba(255,230,120,0.8)` : '1px solid rgba(255,255,255,0.08)', ...(neonColor ? glowStyle : {}), animation: isActive ? 'neonPulse 900ms ease-in-out infinite' : undefined }}
+                      style={{ background: neonColor || 'rgba(60,60,60,0.3)', border: isActive ? `2px solid rgba(255,230,120,0.8)` : '1px solid rgba(255,255,255,0.08)', ...(neonColor ? glowStyle : {}), animation: isActive ? `neonPulse ${pulseDuration} ease-in-out infinite` : undefined }}
                     >
                       <span style={{ color: '#fff', fontWeight: isActive ? 700 : 400, fontSize: '8px', opacity: 0.7 }}>{(rowIndex + 1).toString().padStart(2, '0')}</span>
                       <div className="w-3/4 h-0.5 mt-0.5" style={{ background: neonColor ? `linear-gradient(90deg, ${neonColor}, ${neonColor.replace('0.95', '0.6')})` : 'transparent', borderRadius: 1 }} />

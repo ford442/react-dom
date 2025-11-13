@@ -3,7 +3,6 @@ import { useLibOpenMPT } from './hooks/useLibOpenMPT';
 import { Header } from './components/Header';
 import { Controls } from './components/Controls';
 import { InfoDisplay } from './components/InfoDisplay';
-import { PatternDisplay } from './components/PatternDisplay';
 import { PatternSequencer } from './components/PatternSequencer';
 import { AiInfoCard } from './components/AiInfoCard';
 import { GithubIcon } from './components/icons';
@@ -100,8 +99,7 @@ export default function App() {
               </button>
             </div>
             <AiInfoCard response={aiResponse} isLoading={isAiLoading} />
-            <PatternDisplay data={patternData} numChannels={moduleInfo.numChannels} />
-            <PatternSequencer matrix={sequencerMatrix ?? null} currentRow={sequencerCurrentRow} globalRow={sequencerGlobalRow} totalRows={totalPatternRows} onSeek={seekToStep} />
+            <PatternSequencer matrix={sequencerMatrix ?? null} currentRow={sequencerCurrentRow} globalRow={sequencerGlobalRow} totalRows={totalPatternRows} onSeek={seekToStep} bpm={moduleInfo.bpm} />
 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
               <MediaPanel media={media} activeMediaId={activeMediaId} onSelect={(id) => { setActiveMediaId(id); setOverlayVisible(!!id); }} onRemove={removeMedia} />
