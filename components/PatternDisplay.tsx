@@ -20,7 +20,7 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ data, numChannel
         </div>
         <pre 
           id="pattern-display" 
-          className="font-mono text-sm text-green-400 h-96"
+          className="font-mono text-sm text-green-400 h-96 step-pattern-background"
           dangerouslySetInnerHTML={{ __html: data }}
         />
       </div>

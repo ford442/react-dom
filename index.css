@@ -40,3 +40,26 @@ button:disabled {
   /* FIX: Replaced '@apply bg-gray-500' with plain CSS */
   background-color: #6b7280;
 }
+
+/* Background pattern for 16-step display */
+.step-pattern-background {
+  position: relative;
+  background-image: 
+    repeating-linear-gradient(
+      0deg,
+      rgba(59, 130, 246, 0.05) 0px,
+      rgba(59, 130, 246, 0.05) 2px,
+      transparent 2px,
+      transparent 23px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(99, 102, 241, 0.15) 0px,
+      rgba(99, 102, 241, 0.15) 3px,
+      transparent 3px,
+      transparent 92px
+    );
+  background-position: 0 0;
+  background-size: 100% 23px, 100% 92px;
+  padding: 0.5rem;
+}
