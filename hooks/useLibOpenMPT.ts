@@ -216,10 +216,10 @@ export function useLibOpenMPT() {
 
       setModuleInfo(prev => ({ ...prev, order, row, bpm: Math.round(bpm) }));
       setPlaybackSeconds(seconds);
-+
-+      const rowsPerSecondEstimate = ((bpm || moduleInfoRef.current.bpm || 120) / 60) * DEFAULT_ROWS_PER_BEAT;
-+      const fractionalRowGlobal = rowsPerSecondEstimate > 0 ? seconds * rowsPerSecondEstimate : row;
-+      setPlaybackRowFraction(fractionalRowGlobal);
+
+      const rowsPerSecondEstimate = ((bpm || moduleInfoRef.current.bpm || 120) / 60) * DEFAULT_ROWS_PER_BEAT;
+      const fractionalRowGlobal = rowsPerSecondEstimate > 0 ? seconds * rowsPerSecondEstimate : row;
+      setPlaybackRowFraction(fractionalRowGlobal);
 
       // update sequencer state from cached matrices
       const matrix = patternMatricesRef.current[order] ?? null;
