@@ -112,8 +112,8 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({
         canvas.width = pixelW;
         canvas.height = pixelH;
         // ensure CSS size matches our measured/clamped size
-        canvas.style.width = `${w}px`;
-        canvas.style.height = `${h}px`;
+        // canvas.style.width = `${w}px`;
+        // canvas.style.height = `${h}px`;
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
@@ -144,10 +144,13 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({
           ctx.moveTo(x + radius, y0);
           ctx.lineTo(x + cellW - radius, y0);
           ctx.quadraticCurveTo(x + cellW, y0, x + cellW, y0 + radius);
-          ctx.lineTo(x + cellW, y0 + y1 - radius);
-          ctx.quadraticCurveTo(x + cellW, y0 + y1, x + cellW - radius, y0 + y1);
-          ctx.lineTo(x + radius, y0 + y1);
-          ctx.quadraticCurveTo(x, y0 + y1, x, y0 + y1 - radius);
+
+          // FIX: Use y1 (the calculated end coordinate) directly, not y0 + y1
+          ctx.lineTo(x + cellW, y1 - radius);
+          ctx.quadraticCurveTo(x + cellW, y1, x + cellW - radius, y1);
+          ctx.lineTo(x + radius, y1);
+          ctx.quadraticCurveTo(x, y1, x, y1 - radius);
+
           ctx.lineTo(x, y0 + radius);
           ctx.quadraticCurveTo(x, y0, x + radius, y0);
           ctx.closePath();
