@@ -99,11 +99,21 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({
       const ctx = canvas.getContext('2d');
       if (!ctx) { requestAnimationFrame(draw); return; }
       const dpr = window.devicePixelRatio || 1;
-      const w = Math.max(1, canvas.clientWidth);
-      const h = Math.max(1, canvas.clientHeight);
-      if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
-        canvas.width = Math.floor(w * dpr);
-        canvas.height = Math.floor(h * dpr);
+      // Use bounding rect to get CSS pixel size and clamp to a safe maximum to prevent runaway canvas sizes
+      const rect = canvas.getBoundingClientRect();
+      const cssWidthRaw = rect.width || canvas.clientWidth || 1;
+      const cssHeightRaw = rect.height || canvas.clientHeight || 1;
+      const MAX_CSS = 8000; // cap to avoid huge GPU/DOM allocations
+      const w = Math.max(1, Math.min(cssWidthRaw, MAX_CSS));
+      const h = Math.max(1, Math.min(cssHeightRaw, MAX_CSS));
+      const pixelW = Math.max(1, Math.floor(w * dpr));
+      const pixelH = Math.max(1, Math.floor(h * dpr));
+      if (canvas.width !== pixelW || canvas.height !== pixelH) {
+        canvas.width = pixelW;
+        canvas.height = pixelH;
+        // ensure CSS size matches our measured/clamped size
+        canvas.style.width = `${w}px`;
+        canvas.style.height = `${h}px`;
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
