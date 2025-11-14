@@ -9,7 +9,7 @@ interface PatternSequencerProps {
   bpm?: number;
   playbackSeconds?: number;
   playbackRowFraction?: number;
-  rowsPerBeat?: number; // configurable approximation, default 4
+  rowsPerBeat?: number;
 }
 
 interface NoteDuration {
@@ -19,231 +19,160 @@ interface NoteDuration {
   note: string;
 }
 
-export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, currentRow, totalRows: _totalRows = 0, onSeek, bpm: _bpm = 120, playbackSeconds = 0, playbackRowFraction, rowsPerBeat = 4 }) => {
-  // 1. Defined all hooks unconditionally at the top
-  const [cellSize] = useState<number>(14); // px
-  const [visibleRows] = useState<number>(16);
-  const [repeatCount] = useState<number>(2);
-  const [layout] = useState<'4x32' | '8x16' | '2x64'>('4x32');
-  const [autoFollow] = useState<boolean>(true);
-  const [manualBank] = useState<number>(0);
+const CELL_SIZE = 14;
+const VISIBLE_ROWS = 16;
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const playheadRef = useRef<HTMLDivElement | null>(null);
-  const rafRef = useRef<number | null>(null);
-  // single overlay canvas for visible rows
-  const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const barAlphaRef = useRef<Map<string, number>>(new Map());
-  const playheadXRef = useRef<number>(0);
-  const idleTimeoutRef = useRef<number | null>(null);
-  const lastRowRef = useRef<number | null>(null);
+const noteToHue = (note: string): number => {
+  const map: Record<string, number> = { C: 0, 'C#': 30, D: 60, 'D#': 90, E: 120, F: 150, 'F#': 180, G: 210, 'G#': 240, A: 270, 'A#': 300, B: 330 };
+  const match = note.match(/^([A-G]#?)/i);
+  return match ? map[match[1].toUpperCase()] ?? 200 : 200;
+};
+
+export const PatternSequencer: React.FC<PatternSequencerProps> = ({
+  matrix,
+  currentRow,
+  totalRows: _totalRows = 0,
+  onSeek,
+  bpm = 120,
+  playbackSeconds = 0,
+  playbackRowFraction,
+  rowsPerBeat = 4,
+}) => {
+  const overlayRef = useRef<HTMLCanvasElement | null>(null);
+  const playheadYRef = useRef<number>(0);
+  const alphaMapRef = useRef<Map<string, number>>(new Map());
   const lastTimeRef = useRef<number | null>(null);
-  const isVisibleRef = useRef<boolean>(true);
-  const [hoverTip, setHoverTip] = useState<{x:number,y:number,text:string}|null>(null);
+  const [hoverTip, setHoverTip] = useState<{ x: number; y: number; text: string } | null>(null);
 
-  // Calculate note durations
-  const noteDurations = useMemo(() => {
-    if (!matrix) return [];
-    const durations: NoteDuration[] = [];
-    const { rows, numChannels, numRows } = matrix;
-    for (let ch = 0; ch < numChannels; ch++) {
-      let currentNote: string | null = null;
-      let startRow = -1;
-      for (let r = 0; r < numRows; r++) {
-        const cell = rows[r][ch];
-        const raw = (cell.text || '').trim();
-        if (cell.type === 'note' && raw && raw !== '===' && raw !== '---') {
-          if (currentNote && startRow !== -1) {
-            durations.push({ channel: ch, startRow, endRow: r - 1, note: currentNote });
-          }
-          currentNote = raw;
-          startRow = r;
-        } else if (raw === '===' || raw === '---') {
-          // Note-off
-          if (currentNote && startRow !== -1) {
-            durations.push({ channel: ch, startRow, endRow: r - 1, note: currentNote });
-            currentNote = null;
-            startRow = -1;
-          }
-        }
-      }
-      if (currentNote && startRow !== -1) {
-        durations.push({ channel: ch, startRow, endRow: numRows - 1, note: currentNote });
-      }
-    }
-    return durations;
-  }, [matrix]);
-
-  // Precompute durations grouped by channel to avoid per-frame filtering
+  // durations by channel
   const durationsByChannel = useMemo(() => {
     const map = new Map<number, NoteDuration[]>();
-    for (const d of noteDurations as NoteDuration[]) {
-      const arr = map.get(d.channel) || [];
-      arr.push(d);
-      map.set(d.channel, arr);
+    if (!matrix) return map;
+    const { rows, numChannels, numRows } = matrix;
+    for (let ch = 0; ch < numChannels; ch++) {
+      let active: NoteDuration | null = null;
+      const channelRows: NoteDuration[] = [];
+      for (let r = 0; r < numRows; r++) {
+        const raw = (rows[r][ch].text || '').trim();
+        const isNote = rows[r][ch].type === 'note' && raw && raw !== '===' && raw !== '---';
+        if (isNote) {
+          if (!active || active.note !== raw) {
+            active = { channel: ch, startRow: r, endRow: r, note: raw };
+            channelRows.push(active);
+          } else {
+            active.endRow = r;
+          }
+        } else if (raw === '===' || raw === '---') {
+          active = null;
+        }
+      }
+      map.set(ch, channelRows);
     }
     return map;
-  }, [noteDurations]);
+  }, [matrix]);
 
-  // 2. Always run useMemo, even if matrix is null (return safe defaults inside)
   const display = useMemo(() => {
-    if (!matrix) return { rows: [], numChannels: 0, numRows: 0, order: 0, start: 0 };
-    const { rows, numChannels, numRows, order } = matrix;
-    let start = Math.max(0, currentRow - Math.floor(visibleRows / 2));
-    if (start + visibleRows > numRows) start = Math.max(0, numRows - visibleRows);
-    const slice = rows.slice(start, start + visibleRows);
-    return { rows: slice, numChannels, numRows, order, start };
-  }, [matrix, currentRow, visibleRows]);
+    if (!matrix) return { rows: [], numChannels: 0, start: 0, numRows: 0 };
+    const { rows, numChannels, numRows } = matrix;
+    let start = Math.max(0, currentRow - Math.floor(VISIBLE_ROWS / 2));
+    if (start + VISIBLE_ROWS > numRows) start = Math.max(0, numRows - VISIBLE_ROWS);
+    return { rows: rows.slice(start, start + VISIBLE_ROWS), numChannels, start, numRows };
+  }, [matrix, currentRow]);
 
-  // 3. Always run useEffect
   useEffect(() => {
-    if (!containerRef.current) return;
+    const canvas = overlayRef.current;
+    if (!canvas || !matrix) return;
 
-    const gap = 6;
-    const headerOffset = cellSize + gap;
-    const start = display.start ?? 0;
-    const stepsPerRepeat = display.rows?.length ?? 0;
-
-    if (stepsPerRepeat === 0) return;
-
-    const visibleIndex = ((currentRow - start) % stepsPerRepeat + stepsPerRepeat) % stepsPerRepeat;
-    const middleRepeat = Math.floor(repeatCount / 2);
-    const targetIndex = visibleIndex + middleRepeat * stepsPerRepeat;
-
-    const stepSpan = cellSize + gap;
-    const targetLeft = headerOffset + targetIndex * stepSpan;
-
-    if (playheadRef.current) {
-      playheadRef.current.style.transform = `translateX(${targetLeft}px)`;
-      playheadRef.current.style.opacity = '1';
-    }
-
-    return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-  }, [currentRow, cellSize, visibleRows, display.start, display.rows, repeatCount]);
-
-  // Animated draw loop for note duration bars (smooth opacity interpolation, rounded bars, playhead)
-  useEffect(() => {
     let running = true;
-    let raf = 0;
-    const alphaMap = barAlphaRef.current;
+    const alphaMap = alphaMapRef.current;
 
-    // Resize handling
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { /* trigger redraw on resize via rAF */ }) : null;
-    let overlay = overlayCanvasRef.current;
-    if (overlay && ro) ro.observe(overlay);
-
-    // Visibility handling: pause when not visible
-    const io = typeof IntersectionObserver !== 'undefined' && overlay ? new IntersectionObserver((entries) => {
-      for (const e of entries) { isVisibleRef.current = e.isIntersecting; }
-    }, { threshold: 0.05 }) : null;
-    if (overlay && io) io.observe(overlay);
-
-    const step = (time?: number) => {
+    const draw = (time: number) => {
       if (!running) return;
-      if (typeof document !== 'undefined' && (document.hidden || !isVisibleRef.current)) { raf = requestAnimationFrame(step); return; }
-
-      const now = typeof time === 'number' ? time : (performance.now ? performance.now() : Date.now());
+      const now = typeof time === 'number' ? time : performance.now();
       const last = lastTimeRef.current ?? now - 16;
       const dt = Math.max(1, Math.min(1000, now - last));
       lastTimeRef.current = now;
 
-      // compute frame-independent smoothing factors
-      const alphaSmoothing = 1 - Math.exp(-dt / 80); // faster smoothing for alphas
-      const playheadSmoothing = 1 - Math.exp(-dt / 120);
+      const alphaBlend = 1 - Math.exp(-dt / 80);
+      const playheadBlend = 1 - Math.exp(-dt / 120);
 
-      // draw duration bars per channel, clipped to visible rows
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { requestAnimationFrame(draw); return; }
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.max(1, canvas.clientWidth);
+      const h = Math.max(1, canvas.clientHeight);
+      if (canvas.width !== Math.floor(w * dpr) || canvas.height !== Math.floor(h * dpr)) {
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      const cols = matrix.numChannels;
+      const visibleStart = display.start;
+      const visibleLen = display.rows.length || VISIBLE_ROWS;
+      const cellW = cols > 0 ? w / cols : w;
+      const cellH = visibleLen > 0 ? h / visibleLen : CELL_SIZE;
+
       const activeKeys = new Set<string>();
-      for (const [ch, durations] of durationsByChannel.entries()) {
-        for (let i = 0; i < durations.length; i++) {
-          const d = durations[i];
-          // skip if not overlapping with visible slice
-          if (d.endRow < display.start || d.startRow >= display.start + display.rows.length) continue;
+      for (const [ch, entries] of durationsByChannel.entries()) {
+        for (const d of entries) {
+          if (d.endRow < visibleStart || d.startRow >= visibleStart + visibleLen) continue;
           const key = `${ch}-${d.startRow}`;
           activeKeys.add(key);
-          const target = (currentRow >= d.startRow && currentRow <= d.endRow) ? 0.65 : 0.28;
-          const cur = alphaMap.get(key) ?? 0;
-          const next = cur + (target - cur) * alphaSmoothing;
-          alphaMap.set(key, next);
+          const target = currentRow >= d.startRow && currentRow <= d.endRow ? 0.7 : 0.3;
+          const current = alphaMap.get(key) ?? 0;
+          const alpha = current + (target - current) * alphaBlend;
+          alphaMap.set(key, alpha);
 
-          const x = ch * cellSize;
-          const y0 = Math.max(0, d.startRow - display.start) * cellSize;
-          const y1 = Math.min(d.endRow, display.start + display.rows.length - 1) - display.start + 1;
-          const heightPx = Math.max(cellSize, y1 * cellSize);
+          const x = ch * cellW;
+          const y0 = (d.startRow - visibleStart) * cellH;
+          const y1 = (Math.min(d.endRow, visibleStart + visibleLen - 1) - visibleStart + 1) * cellH;
+          const radius = Math.min(6, cellW / 4, y1 / 2);
 
-          const radius = Math.min(6, cellSize / 4, heightPx / 2);
           ctx.beginPath();
           ctx.moveTo(x + radius, y0);
-          ctx.lineTo(x + cellSize - radius, y0);
-          ctx.quadraticCurveTo(x + cellSize, y0, x + cellSize, y0 + radius);
-          ctx.lineTo(x + cellSize, y0 + heightPx - radius);
-          ctx.quadraticCurveTo(x + cellSize, y0 + heightPx, x + cellSize - radius, y0 + heightPx);
-          ctx.lineTo(x + radius, y0 + heightPx);
-          ctx.quadraticCurveTo(x, y0 + heightPx, x, y0 + heightPx - radius);
+          ctx.lineTo(x + cellW - radius, y0);
+          ctx.quadraticCurveTo(x + cellW, y0, x + cellW, y0 + radius);
+          ctx.lineTo(x + cellW, y0 + y1 - radius);
+          ctx.quadraticCurveTo(x + cellW, y0 + y1, x + cellW - radius, y0 + y1);
+          ctx.lineTo(x + radius, y0 + y1);
+          ctx.quadraticCurveTo(x, y0 + y1, x, y0 + y1 - radius);
           ctx.lineTo(x, y0 + radius);
           ctx.quadraticCurveTo(x, y0, x + radius, y0);
           ctx.closePath();
 
           const hue = noteToHue(d.note);
-          const grad = ctx.createLinearGradient(x, y0, x + cellSize, y0 + heightPx);
-          grad.addColorStop(0, `hsla(${hue},92%,60%,${next})`);
-          grad.addColorStop(1, `hsla(${(hue+30)%360},78%,48%,${Math.max(0.06, next*0.9)})`);
-          ctx.fillStyle = grad;
-          if (next > 0.5) {
-            ctx.save();
-            ctx.shadowBlur = Math.min(16, Math.max(4, Math.min(cellSize, heightPx) * 0.06));
-            ctx.shadowColor = `hsla(${hue},90%,60%,${Math.min(0.6, next*0.9)})`;
-            ctx.fill();
-            ctx.restore();
-          } else {
-            ctx.fill();
-          }
+          const gradient = ctx.createLinearGradient(x, y0, x + cellW, y0 + y1);
+          gradient.addColorStop(0, `hsla(${hue},92%,60%,${alpha})`);
+          gradient.addColorStop(1, `hsla(${(hue + 30) % 360},78%,48%,${Math.max(0.06, alpha * 0.9)})`);
+          ctx.fillStyle = gradient;
+          ctx.fill();
         }
       }
 
-      // fade out and cleanup removed keys (draw small faded markers)
       for (const key of Array.from(alphaMap.keys())) {
         if (!activeKeys.has(key)) {
-          const cur = alphaMap.get(key) ?? 0;
-          const next = cur + (0 - cur) * 0.12;
-          if (next <= 0.01) {
-            alphaMap.delete(key);
-          } else {
-            alphaMap.set(key, next);
-            const parts = key.split('-');
-            const ch = Number(parts[0]);
-            const start = Number(parts[1]);
-            if (start >= display.start && start < display.start + display.rows.length) {
-              const x = ch * cellSize;
-              const y0 = (start - display.start) * cellSize;
-              ctx.fillStyle = `hsla(200,30%,50%,${next*0.12})`;
-              ctx.fillRect(x + cellSize*0.2, y0 + cellSize*0.2, cellSize*0.6, Math.max(1, cellSize*0.6));
-            }
-          }
+          const current = alphaMap.get(key) ?? 0;
+          const alpha = current + (0 - current) * 0.12;
+          if (alpha <= 0.01) alphaMap.delete(key);
+          else alphaMap.set(key, alpha);
         }
       }
 
-      // compute playhead row from playbackTimeSeconds and bpm (approximate)
-      const bpm = _bpm || 120;
-      const rowsPerSecond = (bpm / 60) * rowsPerBeat; // approximate conversion
+      const rowsPerSecond = (bpm / 60) * rowsPerBeat;
       const fallbackRow = rowsPerSecond > 0 ? playbackSeconds * rowsPerSecond : 0;
-      const playheadRowFloat = typeof playbackRowFraction === 'number' ? playbackRowFraction : fallbackRow;
-      // clamp/wrap into module rows
-      const totalRowsInModule = matrix?.numRows ?? 1;
-      const normalizedRow = totalRowsInModule > 0 ? (playheadRowFloat % totalRowsInModule + totalRowsInModule) % totalRowsInModule : 0;
-      // render smooth playhead line at fractional row position relative to visible start
-      const rel = normalizedRow - display.start;
-      if (rel >= -1 && rel < display.rows.length + 1) {
-        const targetY = (rel + 0.5) * cellSize;
-        const curY = playheadXRef.current ?? targetY;
-        const nextY = curY + (targetY - curY) * playheadSmoothing;
-        playheadXRef.current = nextY;
+      const playheadRow = typeof playbackRowFraction === 'number' ? playbackRowFraction : fallbackRow;
+      const totalRowsInModule = matrix.numRows || 1;
+      const normalizedRow = (playheadRow % totalRowsInModule + totalRowsInModule) % totalRowsInModule;
+      const relative = normalizedRow - visibleStart;
+      if (relative >= -1 && relative <= visibleLen + 1) {
+        const targetY = (relative + 0.5) * cellH;
+        const currentY = playheadYRef.current || targetY;
+        const nextY = currentY + (targetY - currentY) * playheadBlend;
+        playheadYRef.current = nextY;
         ctx.save();
-        ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
         ctx.lineWidth = Math.max(1, Math.min(2, h * 0.0015));
         ctx.beginPath();
         ctx.moveTo(0, nextY);
@@ -252,156 +181,77 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
         ctx.restore();
       }
 
-      raf = requestAnimationFrame(step);
+      requestAnimationFrame(draw);
     };
 
-    raf = requestAnimationFrame(step);
+    requestAnimationFrame(draw);
+    return () => { running = false; };
+  }, [matrix, display, durationsByChannel, currentRow, bpm, rowsPerBeat, playbackSeconds, playbackRowFraction]);
 
-    return () => {
-      running = false;
-      cancelAnimationFrame(raf);
-      lastTimeRef.current = null;
-      if (idleTimeoutRef.current) { clearTimeout(idleTimeoutRef.current); idleTimeoutRef.current = null; }
-      if (ro) ro.disconnect();
-      if (io) io.disconnect();
-    };
-  }, [noteDurations, matrix, currentRow, noteToHue, durationsByChannel, _bpm, playbackSeconds, rowsPerBeat]);
-
-  // mouse handlers for tooltip
   useEffect(() => {
-    const canvas = overlayCanvasRef.current;
-    if (!canvas) return;
-    const onMove = (ev: MouseEvent) => {
+    const canvas = overlayRef.current;
+    if (!canvas || !matrix) return;
+    const handleMove = (ev: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
       const x = ev.clientX - rect.left;
       const y = ev.clientY - rect.top;
-      const cols = matrix?.numChannels ?? 0;
-      const visibleStart = display.start ?? 0;
-      const visibleLen = display.rows?.length ?? 0;
-      const w = Math.max(1, canvas.clientWidth);
-      const h = Math.max(1, canvas.clientHeight);
+      const cols = matrix.numChannels;
+      const visibleStart = display.start;
+      const visibleLen = display.rows.length || VISIBLE_ROWS;
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
       const cellW = cols > 0 ? w / cols : w;
-      const cellH = visibleLen > 0 ? h / visibleLen : cellSize;
-      const ch = Math.floor(x / cellW);
-      const rowIdx = Math.floor(y / cellH) + visibleStart;
-      const durations = durationsByChannel.get(ch) || [];
-      const found = durations.find(d => rowIdx >= d.startRow && rowIdx <= d.endRow);
-      if (found) {
-        setHoverTip({ x: ev.clientX + 8, y: ev.clientY + 8, text: `${found.note} • ${found.endRow - found.startRow + 1} rows` });
-      } else {
-        setHoverTip(null);
-      }
+      const cellH = visibleLen > 0 ? h / visibleLen : CELL_SIZE;
+      const channel = Math.floor(x / cellW);
+      const rowIndex = Math.floor(y / cellH) + visibleStart;
+      const match = (durationsByChannel.get(channel) || []).find(d => rowIndex >= d.startRow && rowIndex <= d.endRow);
+      if (match) setHoverTip({ x: ev.clientX + 8, y: ev.clientY + 8, text: `${match.note} • ${match.endRow - match.startRow + 1} rows` });
+      else setHoverTip(null);
     };
-    const onLeave = () => setHoverTip(null);
-    canvas.addEventListener('mousemove', onMove);
-    canvas.addEventListener('mouseleave', onLeave);
+    const handleLeave = () => setHoverTip(null);
+    canvas.addEventListener('mousemove', handleMove);
+    canvas.addEventListener('mouseleave', handleLeave);
     return () => {
-      canvas.removeEventListener('mousemove', onMove);
-      canvas.removeEventListener('mouseleave', onLeave);
+      canvas.removeEventListener('mousemove', handleMove);
+      canvas.removeEventListener('mouseleave', handleLeave);
     };
-  }, [durationsByChannel, matrix, display, cellSize]);
+  }, [matrix, display, durationsByChannel]);
 
-  const handleSeek = (stepIndex: number) => {
+  const handleSeek = (row: number) => {
     if (!matrix) return;
-    const { numRows } = matrix;
-    const clampedIndex = Math.max(0, Math.min(stepIndex, numRows - 1));
-    if (clampedIndex !== currentRow) {
-      onSeek?.(clampedIndex);
-    }
+    const clamped = Math.max(0, Math.min(row, matrix.numRows - 1));
+    onSeek?.(clamped);
   };
 
-  // Render
-  const { rows, numChannels, numRows, order, start } = display;
-  const totalSteps = Math.ceil((totalRows || 0) / visibleRows) * visibleRows;
-
   return (
-    <div
-      ref={containerRef}
-      className="relative w-full overflow-hidden"
-      style={{ paddingTop: `${cellSize}px`, paddingBottom: `${cellSize}px` }}
-    >
-      <div
-        ref={playheadRef}
-        className="absolute left-0 top-0 w-full pointer-events-none"
-        style={{ height: `${cellSize}px`, transform: 'translateY(0)', opacity: 0 }}
-      >
-        <div className="w-full h-[2px] bg-white/80" />
-      </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] gap-0.5">
-        {Array.from({ length: numChannels }).map((_, ch) => (
+    <div className="relative" style={{ paddingTop: CELL_SIZE, paddingBottom: CELL_SIZE }}>
+      <div className="grid" style={{ gridTemplateColumns: `repeat(${display.numChannels}, minmax(0, 1fr))` }}>
+        {Array.from({ length: display.numChannels }).map((_, ch) => (
           <div key={ch} className="relative">
-            {rows.map((row, r) => {
+            {display.rows.map((row, rowIdx) => {
               const cell = row[ch];
-              const raw = (cell.text || '').trim();
-              const isNote = cell.type === 'note' && raw && raw !== '===' && raw !== '---';
-              const isRest = raw === '---';
-              const isSelected = currentRow === r + start;
-              const isActive = isSelected || (isNote && currentRow > r + start);
-              const isOff = !isNote && !isSelected && !isActive;
-
+              const raw = (cell?.text || '').trim();
+              const isNote = cell?.type === 'note' && raw && raw !== '===' && raw !== '---';
+              const isSelected = currentRow === rowIdx + display.start;
               return (
                 <div
-                  key={r}
-                  className={`
-                    h-[${cellSize}px] flex items-center justify-center
-                    ${isSelected ? 'bg-blue-500/20' : ''}
-                    ${isActive ? 'bg-green-500/20' : ''}
-                    ${isOff ? 'opacity-50' : ''}
-                  `}
-                  style={{ pointerEvents: isOff ? 'none' : 'auto' }}
-                  onClick={() => {
-                    if (isNote) {
-                      // TODO: Edit note
-                    } else {
-                      handleSeek(r + start);
-                    }
-                  }}
+                  key={`${rowIdx}-${ch}`}
+                  className={`h-[${CELL_SIZE}px] flex items-center justify-center ${isSelected ? 'bg-blue-500/30' : ''}`}
+                  onClick={() => handleSeek(rowIdx + display.start)}
                 >
                   {isNote && (
-                    <div
-                      className="absolute inset-0 rounded"
-                      style={{
-                        background: `conic-gradient(
-                          ${noteToHue(raw)}, 0deg, 90deg, transparent 90deg, transparent 180deg, ${noteToHue(raw)} 180deg, ${noteToHue(raw)} 270deg, transparent 270deg, transparent 360deg
-                        )`,
-                        opacity: 0.7,
-                      }}
-                    />
+                    <div className="absolute inset-0 rounded" style={{ background: `conic-gradient(hsl(${noteToHue(raw)} 92% 60%), transparent)`, opacity: 0.7 }} />
                   )}
-                  <div className="pointer-events-none">
-                    {isNote ? raw : isRest ? '—' : ''}
-                  </div>
+                  <span className="pointer-events-none text-xs">{isNote ? raw : ''}</span>
                 </div>
               );
             })}
           </div>
         ))}
       </div>
-      {/* overlay canvas sits above the grid for drawing duration bars and playhead */}
-      <canvas ref={overlayCanvasRef} className="absolute inset-0 pointer-events-auto" />
-      {totalRows > visibleRows && (
-        <div className="absolute inset-0 pointer-events-none">
-          <div
-            className="absolute left-0 top-0 w-full h-full"
-            style={{
-              background:
-                'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 100%)',
-            }}
-          />
-          <div
-            className="absolute right-0 top-0 w-2 h-full"
-            style={{
-              background:
-                'linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 100%)',
-            }}
-          />
-        </div>
-      )}
+      <canvas ref={overlayRef} className="absolute inset-0 pointer-events-auto" />
       {hoverTip && (
-        <div
-          className="absolute pointer-events-none rounded bg-black/80 text-white text-xs py-1 px-2"
-          style={{ left: hoverTip.x, top: hoverTip.y, transform: 'translate(-50%, -100%)' }}
-        >
+        <div className="absolute pointer-events-none bg-black/80 text-white text-xs py-1 px-2 rounded" style={{ left: hoverTip.x, top: hoverTip.y, transform: 'translate(-50%, -100%)' }}>
           {hoverTip.text}
         </div>
       )}

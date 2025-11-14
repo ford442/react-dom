@@ -103,7 +103,7 @@ export default function AudioPlayer({ src, onTimeUpdate }: { src?: string, onTim
     if (!dragging) return;
     seekTo(e.clientX);
   };
-  const onPointerUp: React.PointerEventHandler = (e) => {
+  const onPointerUp: React.PointerEventHandler = () => {
     setDragging(false);
   };
 

@@ -35,8 +35,6 @@ export function useLibOpenMPT() {
   const animationFrameHandle = useRef<number>(0);
   const moduleInfoRef = useRef(moduleInfo);
   const isPlayingRef = useRef(isPlaying);
-  const lastKnownRowRef = useRef<number>(0);
-  const rowStartTimeRef = useRef<number>(0);
 
   useEffect(() => {
     moduleInfoRef.current = moduleInfo;
@@ -217,6 +215,11 @@ export function useLibOpenMPT() {
       const bpm = lib._openmpt_module_get_current_estimated_bpm(modPtr);
 
       setModuleInfo(prev => ({ ...prev, order, row, bpm: Math.round(bpm) }));
+      setPlaybackSeconds(seconds);
++
++      const rowsPerSecondEstimate = ((bpm || moduleInfoRef.current.bpm || 120) / 60) * DEFAULT_ROWS_PER_BEAT;
++      const fractionalRowGlobal = rowsPerSecondEstimate > 0 ? seconds * rowsPerSecondEstimate : row;
++      setPlaybackRowFraction(fractionalRowGlobal);
 
       // update sequencer state from cached matrices
       const matrix = patternMatricesRef.current[order] ?? null;
