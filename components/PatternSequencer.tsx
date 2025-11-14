@@ -4,13 +4,22 @@ import type { PatternMatrix } from '../types';
 interface PatternSequencerProps {
   matrix: PatternMatrix | null;
   currentRow: number;
-  globalRow?: number;
   totalRows?: number;
   onSeek?: (stepIndex: number) => void;
   bpm?: number;
+  playbackSeconds?: number;
+  playbackRowFraction?: number;
+  rowsPerBeat?: number; // configurable approximation, default 4
 }
 
-export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, currentRow, globalRow = 0, totalRows: _totalRows = 0, onSeek, bpm: _bpm = 120 }) => {
+interface NoteDuration {
+  channel: number;
+  startRow: number;
+  endRow: number;
+  note: string;
+}
+
+export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, currentRow, totalRows: _totalRows = 0, onSeek, bpm: _bpm = 120, playbackSeconds = 0, playbackRowFraction, rowsPerBeat = 4 }) => {
   // 1. Defined all hooks unconditionally at the top
   const [cellSize] = useState<number>(14); // px
   const [visibleRows] = useState<number>(16);
@@ -22,6 +31,59 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playheadRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
+  // single overlay canvas for visible rows
+  const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const barAlphaRef = useRef<Map<string, number>>(new Map());
+  const playheadXRef = useRef<number>(0);
+  const idleTimeoutRef = useRef<number | null>(null);
+  const lastRowRef = useRef<number | null>(null);
+  const lastTimeRef = useRef<number | null>(null);
+  const isVisibleRef = useRef<boolean>(true);
+  const [hoverTip, setHoverTip] = useState<{x:number,y:number,text:string}|null>(null);
+
+  // Calculate note durations
+  const noteDurations = useMemo(() => {
+    if (!matrix) return [];
+    const durations: NoteDuration[] = [];
+    const { rows, numChannels, numRows } = matrix;
+    for (let ch = 0; ch < numChannels; ch++) {
+      let currentNote: string | null = null;
+      let startRow = -1;
+      for (let r = 0; r < numRows; r++) {
+        const cell = rows[r][ch];
+        const raw = (cell.text || '').trim();
+        if (cell.type === 'note' && raw && raw !== '===' && raw !== '---') {
+          if (currentNote && startRow !== -1) {
+            durations.push({ channel: ch, startRow, endRow: r - 1, note: currentNote });
+          }
+          currentNote = raw;
+          startRow = r;
+        } else if (raw === '===' || raw === '---') {
+          // Note-off
+          if (currentNote && startRow !== -1) {
+            durations.push({ channel: ch, startRow, endRow: r - 1, note: currentNote });
+            currentNote = null;
+            startRow = -1;
+          }
+        }
+      }
+      if (currentNote && startRow !== -1) {
+        durations.push({ channel: ch, startRow, endRow: numRows - 1, note: currentNote });
+      }
+    }
+    return durations;
+  }, [matrix]);
+
+  // Precompute durations grouped by channel to avoid per-frame filtering
+  const durationsByChannel = useMemo(() => {
+    const map = new Map<number, NoteDuration[]>();
+    for (const d of noteDurations as NoteDuration[]) {
+      const arr = map.get(d.channel) || [];
+      arr.push(d);
+      map.set(d.channel, arr);
+    }
+    return map;
+  }, [noteDurations]);
 
   // 2. Always run useMemo, even if matrix is null (return safe defaults inside)
   const display = useMemo(() => {
@@ -64,199 +126,285 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
     };
   }, [currentRow, cellSize, visibleRows, display.start, display.rows, repeatCount]);
 
-  // Helpers (not hooks)
-  const columns = matrix?.numChannels ?? 0;
-  const patternLen = matrix?.numRows ?? 64;
-  const stepCount = Math.max(64, patternLen);
+  // Animated draw loop for note duration bars (smooth opacity interpolation, rounded bars, playhead)
+  useEffect(() => {
+    let running = true;
+    let raf = 0;
+    const alphaMap = barAlphaRef.current;
 
-  let rowsLayout = 4, colsLayout = 32;
-  if (layout === '8x16') { rowsLayout = 8; colsLayout = 16; }
-  if (layout === '2x64') { rowsLayout = 2; colsLayout = 64; }
+    // Resize handling
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { /* trigger redraw on resize via rAF */ }) : null;
+    let overlay = overlayCanvasRef.current;
+    if (overlay && ro) ro.observe(overlay);
 
-  const gridCapacity = colsLayout * rowsLayout;
-  const totalBanks = Math.max(1, Math.ceil(stepCount / gridCapacity));
-  const followBank = Math.floor((currentRow % Math.max(1, patternLen)) / gridCapacity);
-  const bank = autoFollow ? followBank : Math.min(totalBanks - 1, Math.max(0, manualBank));
-  // BPM calculation removed; per-channel display uses smooth CSS transitions
+    // Visibility handling: pause when not visible
+    const io = typeof IntersectionObserver !== 'undefined' && overlay ? new IntersectionObserver((entries) => {
+      for (const e of entries) { isVisibleRef.current = e.isIntersecting; }
+    }, { threshold: 0.05 }) : null;
+    if (overlay && io) io.observe(overlay);
 
-  const noteToHue = (note: string): number => {
-    const noteMap: Record<string, number> = {
-      'C': 0, 'C#': 30, 'D': 60, 'D#': 90, 'E': 120, 'F': 150,
-      'F#': 180, 'G': 210, 'G#': 240, 'A': 270, 'A#': 300, 'B': 330
+    const step = (time?: number) => {
+      if (!running) return;
+      if (typeof document !== 'undefined' && (document.hidden || !isVisibleRef.current)) { raf = requestAnimationFrame(step); return; }
+
+      const now = typeof time === 'number' ? time : (performance.now ? performance.now() : Date.now());
+      const last = lastTimeRef.current ?? now - 16;
+      const dt = Math.max(1, Math.min(1000, now - last));
+      lastTimeRef.current = now;
+
+      // compute frame-independent smoothing factors
+      const alphaSmoothing = 1 - Math.exp(-dt / 80); // faster smoothing for alphas
+      const playheadSmoothing = 1 - Math.exp(-dt / 120);
+
+      // draw duration bars per channel, clipped to visible rows
+      const activeKeys = new Set<string>();
+      for (const [ch, durations] of durationsByChannel.entries()) {
+        for (let i = 0; i < durations.length; i++) {
+          const d = durations[i];
+          // skip if not overlapping with visible slice
+          if (d.endRow < display.start || d.startRow >= display.start + display.rows.length) continue;
+          const key = `${ch}-${d.startRow}`;
+          activeKeys.add(key);
+          const target = (currentRow >= d.startRow && currentRow <= d.endRow) ? 0.65 : 0.28;
+          const cur = alphaMap.get(key) ?? 0;
+          const next = cur + (target - cur) * alphaSmoothing;
+          alphaMap.set(key, next);
+
+          const x = ch * cellSize;
+          const y0 = Math.max(0, d.startRow - display.start) * cellSize;
+          const y1 = Math.min(d.endRow, display.start + display.rows.length - 1) - display.start + 1;
+          const heightPx = Math.max(cellSize, y1 * cellSize);
+
+          const radius = Math.min(6, cellSize / 4, heightPx / 2);
+          ctx.beginPath();
+          ctx.moveTo(x + radius, y0);
+          ctx.lineTo(x + cellSize - radius, y0);
+          ctx.quadraticCurveTo(x + cellSize, y0, x + cellSize, y0 + radius);
+          ctx.lineTo(x + cellSize, y0 + heightPx - radius);
+          ctx.quadraticCurveTo(x + cellSize, y0 + heightPx, x + cellSize - radius, y0 + heightPx);
+          ctx.lineTo(x + radius, y0 + heightPx);
+          ctx.quadraticCurveTo(x, y0 + heightPx, x, y0 + heightPx - radius);
+          ctx.lineTo(x, y0 + radius);
+          ctx.quadraticCurveTo(x, y0, x + radius, y0);
+          ctx.closePath();
+
+          const hue = noteToHue(d.note);
+          const grad = ctx.createLinearGradient(x, y0, x + cellSize, y0 + heightPx);
+          grad.addColorStop(0, `hsla(${hue},92%,60%,${next})`);
+          grad.addColorStop(1, `hsla(${(hue+30)%360},78%,48%,${Math.max(0.06, next*0.9)})`);
+          ctx.fillStyle = grad;
+          if (next > 0.5) {
+            ctx.save();
+            ctx.shadowBlur = Math.min(16, Math.max(4, Math.min(cellSize, heightPx) * 0.06));
+            ctx.shadowColor = `hsla(${hue},90%,60%,${Math.min(0.6, next*0.9)})`;
+            ctx.fill();
+            ctx.restore();
+          } else {
+            ctx.fill();
+          }
+        }
+      }
+
+      // fade out and cleanup removed keys (draw small faded markers)
+      for (const key of Array.from(alphaMap.keys())) {
+        if (!activeKeys.has(key)) {
+          const cur = alphaMap.get(key) ?? 0;
+          const next = cur + (0 - cur) * 0.12;
+          if (next <= 0.01) {
+            alphaMap.delete(key);
+          } else {
+            alphaMap.set(key, next);
+            const parts = key.split('-');
+            const ch = Number(parts[0]);
+            const start = Number(parts[1]);
+            if (start >= display.start && start < display.start + display.rows.length) {
+              const x = ch * cellSize;
+              const y0 = (start - display.start) * cellSize;
+              ctx.fillStyle = `hsla(200,30%,50%,${next*0.12})`;
+              ctx.fillRect(x + cellSize*0.2, y0 + cellSize*0.2, cellSize*0.6, Math.max(1, cellSize*0.6));
+            }
+          }
+        }
+      }
+
+      // compute playhead row from playbackTimeSeconds and bpm (approximate)
+      const bpm = _bpm || 120;
+      const rowsPerSecond = (bpm / 60) * rowsPerBeat; // approximate conversion
+      const fallbackRow = rowsPerSecond > 0 ? playbackSeconds * rowsPerSecond : 0;
+      const playheadRowFloat = typeof playbackRowFraction === 'number' ? playbackRowFraction : fallbackRow;
+      // clamp/wrap into module rows
+      const totalRowsInModule = matrix?.numRows ?? 1;
+      const normalizedRow = totalRowsInModule > 0 ? (playheadRowFloat % totalRowsInModule + totalRowsInModule) % totalRowsInModule : 0;
+      // render smooth playhead line at fractional row position relative to visible start
+      const rel = normalizedRow - display.start;
+      if (rel >= -1 && rel < display.rows.length + 1) {
+        const targetY = (rel + 0.5) * cellSize;
+        const curY = playheadXRef.current ?? targetY;
+        const nextY = curY + (targetY - curY) * playheadSmoothing;
+        playheadXRef.current = nextY;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+        ctx.lineWidth = Math.max(1, Math.min(2, h * 0.0015));
+        ctx.beginPath();
+        ctx.moveTo(0, nextY);
+        ctx.lineTo(w, nextY);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      raf = requestAnimationFrame(step);
     };
-    const match = (note || '').match(/^([A-G]#?)-?(\d)?/i);
-    if (!match) return 0;
-    const noteName = match[1];
-    return noteMap[noteName.toUpperCase()] ?? 0;
+
+    raf = requestAnimationFrame(step);
+
+    return () => {
+      running = false;
+      cancelAnimationFrame(raf);
+      lastTimeRef.current = null;
+      if (idleTimeoutRef.current) { clearTimeout(idleTimeoutRef.current); idleTimeoutRef.current = null; }
+      if (ro) ro.disconnect();
+      if (io) io.disconnect();
+    };
+  }, [noteDurations, matrix, currentRow, noteToHue, durationsByChannel, _bpm, playbackSeconds, rowsPerBeat]);
+
+  // mouse handlers for tooltip
+  useEffect(() => {
+    const canvas = overlayCanvasRef.current;
+    if (!canvas) return;
+    const onMove = (ev: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = ev.clientX - rect.left;
+      const y = ev.clientY - rect.top;
+      const cols = matrix?.numChannels ?? 0;
+      const visibleStart = display.start ?? 0;
+      const visibleLen = display.rows?.length ?? 0;
+      const w = Math.max(1, canvas.clientWidth);
+      const h = Math.max(1, canvas.clientHeight);
+      const cellW = cols > 0 ? w / cols : w;
+      const cellH = visibleLen > 0 ? h / visibleLen : cellSize;
+      const ch = Math.floor(x / cellW);
+      const rowIdx = Math.floor(y / cellH) + visibleStart;
+      const durations = durationsByChannel.get(ch) || [];
+      const found = durations.find(d => rowIdx >= d.startRow && rowIdx <= d.endRow);
+      if (found) {
+        setHoverTip({ x: ev.clientX + 8, y: ev.clientY + 8, text: `${found.note} • ${found.endRow - found.startRow + 1} rows` });
+      } else {
+        setHoverTip(null);
+      }
+    };
+    const onLeave = () => setHoverTip(null);
+    canvas.addEventListener('mousemove', onMove);
+    canvas.addEventListener('mouseleave', onLeave);
+    return () => {
+      canvas.removeEventListener('mousemove', onMove);
+      canvas.removeEventListener('mouseleave', onLeave);
+    };
+  }, [durationsByChannel, matrix, display, cellSize]);
+
+  const handleSeek = (stepIndex: number) => {
+    if (!matrix) return;
+    const { numRows } = matrix;
+    const clampedIndex = Math.max(0, Math.min(stepIndex, numRows - 1));
+    if (clampedIndex !== currentRow) {
+      onSeek?.(clampedIndex);
+    }
   };
 
-  const octaveToLightness = (note: string): number => {
-    const match = (note || '').match(/-(\d)/);
-    if (!match) return 50;
-    const octave = parseInt(match[1], 10);
-    return 35 + (octave * 8);
-  };
-
-  // 4. Always run this useMemo too
-  const patternTiles = useMemo(() => {
-    if (!matrix) return null;
-
-    let rLayout = 4, cLayout = 32;
-    if (layout === '8x16') { rLayout = 8; cLayout = 16; }
-    if (layout === '2x64') { rLayout = 2; cLayout = 64; }
-
-    const displayBanks = [] as number[];
-    if (bank - 1 >= 0) displayBanks.push(bank - 1);
-    displayBanks.push(bank);
-    if (bank + 1 < totalBanks) displayBanks.push(bank + 1);
-    const colsForRender = cLayout * displayBanks.length;
-
-    const patternRows = matrix.rows || Array.from({ length: patternLen }, () => Array.from({ length: columns }, () => ({ type: 'empty', text: '' })));
-
-    return { displayBanks, colsForRender, rLayout, cLayout, patternRows };
-  }, [matrix, layout, bank, totalBanks, patternLen, columns]);
-
-  // 5. Finally, conditional rendering logic at the very end
-  if (!matrix || !patternTiles) {
-    return (
-        <section className="bg-gradient-to-br from-gray-900 to-black p-4 rounded-xl mb-4 text-sm text-gray-400 border border-white/4 shadow-lg">
-          No pattern data available.
-        </section>
-    );
-  }
+  // Render
+  const { rows, numChannels, numRows, order, start } = display;
+  const totalSteps = Math.ceil((totalRows || 0) / visibleRows) * visibleRows;
 
   return (
-      <section className="bg-gradient-to-b from-black/60 via-gray-900/60 to-black/40 p-4 rounded-xl mb-4 border border-white/5 shadow-2xl">
-        <style>{`
-        @keyframes neonPulse {
-          0% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(255,255,255,0.06)); }
-          50% { transform: scale(1.12); filter: drop-shadow(0 0 22px rgba(255,255,255,0.14)); }
-          100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(255,255,255,0.06)); }
-        }
-      `}</style>
-        {/* Futuristic per-channel sequencer display */}
-        <div className="mb-4 flex flex-col gap-3 relative">
-          <div className="text-xs text-gray-400 flex items-center justify-between">
-            <span>Multi-Channel Pattern Sequencer — {columns} Channels × {patternLen} Steps</span>
-            <span className="text-gray-500">Row {currentRow + 1}/{patternLen}</span>
-          </div>
-
-          {/* Per-channel sequencer strips */}
-          <div className="relative bg-black/60 rounded-xl p-4 border border-white/5 shadow-2xl overflow-x-auto" style={{ maxHeight: '60vh' }}>
-            {Array.from({ length: columns }).map((_, chIdx) => {
-              const { patternRows } = patternTiles;
+    <div
+      ref={containerRef}
+      className="relative w-full overflow-hidden"
+      style={{ paddingTop: `${cellSize}px`, paddingBottom: `${cellSize}px` }}
+    >
+      <div
+        ref={playheadRef}
+        className="absolute left-0 top-0 w-full pointer-events-none"
+        style={{ height: `${cellSize}px`, transform: 'translateY(0)', opacity: 0 }}
+      >
+        <div className="w-full h-[2px] bg-white/80" />
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] gap-0.5">
+        {Array.from({ length: numChannels }).map((_, ch) => (
+          <div key={ch} className="relative">
+            {rows.map((row, r) => {
+              const cell = row[ch];
+              const raw = (cell.text || '').trim();
+              const isNote = cell.type === 'note' && raw && raw !== '===' && raw !== '---';
+              const isRest = raw === '---';
+              const isSelected = currentRow === r + start;
+              const isActive = isSelected || (isNote && currentRow > r + start);
+              const isOff = !isNote && !isSelected && !isActive;
 
               return (
-                <div key={chIdx} className="flex items-center gap-2 mb-2 last:mb-0">
-                  {/* Channel label */}
-                  <div className="flex-shrink-0 w-16 text-right pr-2">
-                    <div className="text-xs font-mono text-gray-400">CH {(chIdx + 1).toString().padStart(2, '0')}</div>
-                  </div>
-
-                  {/* Step strip for this channel */}
-                  <div className="flex-1 flex gap-0.5 relative" style={{ minWidth: 0 }}>
-                    {Array.from({ length: patternLen }).map((_, stepIdx) => {
-                      const cells = patternRows[stepIdx] || Array.from({ length: columns }, () => ({ type: 'empty', text: '' }));
-                      const cell = cells[chIdx];
-                      const cellNote = cell && /[A-G]#?-/i.test(cell.text || '') ? cell.text : '';
-                      const isActive = stepIdx === (currentRow % patternLen);
-
-                      let cellColor = 'rgba(60,60,70,0.3)'; // empty/dim
-                      let cellGlow = {};
-
-                      if (cellNote) {
-                        const hue = noteToHue(cellNote);
-                        const light = octaveToLightness(cellNote);
-                        cellColor = `hsl(${hue} 85% ${light}%)`;
-
-                        if (isActive) {
-                          // Active step: brightest neon glow
-                          cellGlow = { boxShadow: `0 0 16px hsl(${hue} 95% ${light + 5}%)AA, 0 0 32px hsl(${hue} 90% ${light}%)66` };
-                        } else {
-                          // Inactive but has note: subtle glow
-                          cellGlow = { boxShadow: `0 0 6px ${cellColor}55` };
-                        }
-                      } else if (isActive) {
-                        // Active but empty: white/neutral glow
-                        cellColor = 'rgba(255,255,255,0.15)';
-                        cellGlow = { boxShadow: '0 0 12px rgba(255,255,255,0.4)' };
-                      }
-
-                      return (
-                        <button
-                          key={stepIdx}
-                          data-row={stepIdx}
-                          data-channel={chIdx}
-                          onClick={() => {
-                            const baseGlobal = (globalRow ?? 0) - currentRow;
-                            const targetGlobal = baseGlobal + stepIdx;
-                            onSeek?.(targetGlobal);
-                          }}
-                          className="flex-1 h-5 rounded transition-all duration-75 hover:opacity-90"
-                          style={{
-                            background: cellColor,
-                            ...cellGlow,
-                            transform: isActive ? 'scaleY(1.3)' : undefined,
-                            opacity: cellNote ? (isActive ? 1 : 0.75) : (isActive ? 0.6 : 0.3),
-                            minWidth: 4,
-                            maxWidth: 20,
-                          }}
-                          title={cellNote ? `${cellNote} @ row ${stepIdx + 1}` : `Empty @ row ${stepIdx + 1}`}
-                        />
-                      );
-                    })}
+                <div
+                  key={r}
+                  className={`
+                    h-[${cellSize}px] flex items-center justify-center
+                    ${isSelected ? 'bg-blue-500/20' : ''}
+                    ${isActive ? 'bg-green-500/20' : ''}
+                    ${isOff ? 'opacity-50' : ''}
+                  `}
+                  style={{ pointerEvents: isOff ? 'none' : 'auto' }}
+                  onClick={() => {
+                    if (isNote) {
+                      // TODO: Edit note
+                    } else {
+                      handleSeek(r + start);
+                    }
+                  }}
+                >
+                  {isNote && (
+                    <div
+                      className="absolute inset-0 rounded"
+                      style={{
+                        background: `conic-gradient(
+                          ${noteToHue(raw)}, 0deg, 90deg, transparent 90deg, transparent 180deg, ${noteToHue(raw)} 180deg, ${noteToHue(raw)} 270deg, transparent 270deg, transparent 360deg
+                        )`,
+                        opacity: 0.7,
+                      }}
+                    />
+                  )}
+                  <div className="pointer-events-none">
+                    {isNote ? raw : isRest ? '—' : ''}
                   </div>
                 </div>
               );
             })}
-
-            {/* Playhead sweep line (vertical bar moving across all channels) */}
-            <div
-              style={{
-                position: 'absolute',
-                left: 'calc(4rem + 0.5rem)',
-                top: 0,
-                bottom: 0,
-                width: 2,
-                background: 'linear-gradient(180deg, rgba(255,230,120,0.8), rgba(255,230,120,0.3))',
-                boxShadow: '0 0 16px rgba(255,230,120,0.6), 0 0 32px rgba(255,230,120,0.3)',
-                pointerEvents: 'none',
-                zIndex: 10,
-                transform: `translateX(${((currentRow % patternLen) / Math.max(1, patternLen - 1)) * 100}%)`,
-                transition: 'transform 80ms ease-out',
-              }}
-            />
           </div>
-        </div>
-        <div style={{ position: 'relative' }} ref={containerRef}>
+        ))}
+      </div>
+      {/* overlay canvas sits above the grid for drawing duration bars and playhead */}
+      <canvas ref={overlayCanvasRef} className="absolute inset-0 pointer-events-auto" />
+      {totalRows > visibleRows && (
+        <div className="absolute inset-0 pointer-events-none">
           <div
-              ref={playheadRef}
-              style={{
-                position: 'absolute',
-                pointerEvents: 'none',
-                transition: 'none',
-                transform: 'translate(0px,0px)',
-                zIndex: 60,
-                opacity: 0,
-                borderRadius: 6,
-                boxShadow: '0 8px 30px rgba(255,200,60,0.06)',
-                border: '2px solid rgba(255,230,120,0.2)',
-                background: 'transparent'
-              }}
+            className="absolute left-0 top-0 w-full h-full"
+            style={{
+              background:
+                'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 100%)',
+            }}
+          />
+          <div
+            className="absolute right-0 top-0 w-2 h-full"
+            style={{
+              background:
+                'linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 100%)',
+            }}
           />
         </div>
-        <div className="mt-3 flex items-center gap-3">
-          <div className="text-xs text-gray-400">Pos</div>
-          <input
-              type="range"
-              min={0}
-              max={Math.max(0, (_totalRows || 0) - 1)}
-              value={Math.min(globalRow, Math.max(0, (_totalRows || 0) - 1))}
-              onChange={e => onSeek?.(Number(e.target.value))}
-              className="w-full"
-          />
-          <div className="text-xs text-gray-300">{globalRow}/{_totalRows}</div>
+      )}
+      {hoverTip && (
+        <div
+          className="absolute pointer-events-none rounded bg-black/80 text-white text-xs py-1 px-2"
+          style={{ left: hoverTip.x, top: hoverTip.y, transform: 'translate(-50%, -100%)' }}
+        >
+          {hoverTip.text}
         </div>
-      </section>
+      )}
+    </div>
   );
 };

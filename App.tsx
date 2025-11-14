@@ -9,6 +9,7 @@ import { GithubIcon } from './components/icons';
 import { MediaPanel } from './components/MediaPanel';
 import { MediaOverlay } from './components/MediaOverlay';
 import type { MediaItem } from './types';
+import AudioPlayer from './components/AudioPlayer';
 
 export default function App() {
   const {
@@ -25,9 +26,10 @@ export default function App() {
     askAI,
     sequencerMatrix,
     sequencerCurrentRow,
-    sequencerGlobalRow,
     totalPatternRows,
     seekToStep,
+    playbackSeconds,
+    playbackRowFraction,
   } = useLibOpenMPT();
 
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -85,6 +87,11 @@ export default function App() {
           onMediaAdd={addMediaFile}
         />
 
+        {/* Beautified audio player for preview and controls */}
+        <div className="mt-6">
+          <AudioPlayer src={undefined} />
+        </div>
+
         {isModuleLoaded && (
           <>
             <InfoDisplay moduleInfo={moduleInfo} />
@@ -98,7 +105,7 @@ export default function App() {
               </button>
             </div>
             <AiInfoCard response={aiResponse} isLoading={isAiLoading} />
-            <PatternSequencer matrix={sequencerMatrix ?? null} currentRow={sequencerCurrentRow} globalRow={sequencerGlobalRow} totalRows={totalPatternRows} onSeek={seekToStep} bpm={moduleInfo.bpm} />
+            <PatternSequencer matrix={sequencerMatrix ?? null} currentRow={sequencerCurrentRow} totalRows={totalPatternRows} onSeek={seekToStep} bpm={moduleInfo.bpm} playbackSeconds={playbackSeconds} playbackRowFraction={playbackRowFraction} />
 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
               <MediaPanel media={media} activeMediaId={activeMediaId} onSelect={(id) => { setActiveMediaId(id); setOverlayVisible(!!id); }} onRemove={removeMedia} />

@@ -7,6 +7,7 @@ const BUFFER_SIZE = 4096;
 const INITIAL_STATUS = "Loading library...";
 const INITIAL_MODULE_INFO: ModuleInfo = { title: '...', order: 0, row: 0, bpm: 0, numChannels: 0 };
 const DEFAULT_MODULE_URL = 'https://raw.githubusercontent.com/deskjet/chiptunes/master/mods/4mat/4-mat_-_space_debris.mod';
+const DEFAULT_ROWS_PER_BEAT = 4;
 
 
 export function useLibOpenMPT() {
@@ -22,6 +23,8 @@ export function useLibOpenMPT() {
   const [sequencerCurrentRow, setSequencerCurrentRow] = useState<number>(0);
   const [sequencerGlobalRow, setSequencerGlobalRow] = useState<number>(0);
   const [totalPatternRows, setTotalPatternRows] = useState<number>(0);
+  const [playbackSeconds, setPlaybackSeconds] = useState<number>(0);
+  const [playbackRowFraction, setPlaybackRowFraction] = useState<number>(0);
 
   const libopenmptRef = useRef<LibOpenMPT | null>(null);
   const currentModulePtr = useRef<number>(0);
@@ -32,6 +35,8 @@ export function useLibOpenMPT() {
   const animationFrameHandle = useRef<number>(0);
   const moduleInfoRef = useRef(moduleInfo);
   const isPlayingRef = useRef(isPlaying);
+  const lastKnownRowRef = useRef<number>(0);
+  const rowStartTimeRef = useRef<number>(0);
 
   useEffect(() => {
     moduleInfoRef.current = moduleInfo;
@@ -208,6 +213,7 @@ export function useLibOpenMPT() {
 
       const order = lib._openmpt_module_get_current_order(modPtr);
       const row = lib._openmpt_module_get_current_row(modPtr);
+      const seconds = lib._openmpt_module_get_position_seconds(modPtr);
       const bpm = lib._openmpt_module_get_current_estimated_bpm(modPtr);
 
       setModuleInfo(prev => ({ ...prev, order, row, bpm: Math.round(bpm) }));
@@ -465,5 +471,5 @@ export function useLibOpenMPT() {
     }
   };
 
-  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI, sequencerMatrix, sequencerCurrentRow, sequencerGlobalRow, totalPatternRows, seekToStep };
+  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI, sequencerMatrix, sequencerCurrentRow, sequencerGlobalRow, totalPatternRows, seekToStep, playbackSeconds, playbackRowFraction };
 }
