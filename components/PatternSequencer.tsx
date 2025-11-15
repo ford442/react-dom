@@ -125,6 +125,14 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
     );
   }
 
+  const cellWidth = 16;
+  const cellHeight = 20;
+  const cellGap = 2;
+  const labelWidth = 60;
+  const headerHeight = 40;
+  const channelHeight = cellHeight + 8;
+  const totalHeight = headerHeight + (columns * channelHeight) + 80;
+
   return (
       <section className="bg-gradient-to-b from-black/60 via-gray-900/60 to-black/40 p-4 rounded-xl mb-4 border border-white/5 shadow-2xl">
         <style>{`
@@ -133,130 +141,145 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
           50% { transform: scale(1.12); filter: drop-shadow(0 0 22px rgba(255,255,255,0.14)); }
           100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(255,255,255,0.06)); }
         }
+        .svg-pattern-container {
+          overflow-x: auto;
+          overflow-y: auto;
+          max-height: 60vh;
+        }
       `}</style>
-        {/* Futuristic per-channel sequencer display */}
         <div className="mb-4 flex flex-col gap-3 relative">
-          <div className="text-xs text-gray-400 flex items-center justify-between">
-            <span>Multi-Channel Pattern Sequencer — {columns} Channels × {patternLen} Steps</span>
-            <span className="text-gray-500">Row {currentRow + 1}/{patternLen}</span>
-          </div>
+          {/* SVG-based per-channel sequencer display */}
+          <svg width="100%" height={totalHeight} xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${labelWidth + patternLen * (cellWidth + cellGap) + 100} ${totalHeight}`} preserveAspectRatio="xMidYMin meet">
+            <defs>
+              <filter id="neonGlow">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+              <linearGradient id="playheadGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style={{ stopColor: 'rgba(255,230,120,0.8)', stopOpacity: 1 }} />
+                <stop offset="100%" style={{ stopColor: 'rgba(255,230,120,0.3)', stopOpacity: 1 }} />
+              </linearGradient>
+            </defs>
 
-          {/* Per-channel sequencer strips */}
-          <div className="relative bg-black/60 rounded-xl p-4 border border-white/5 shadow-2xl overflow-x-auto" style={{ maxHeight: '60vh' }}>
-            {Array.from({ length: columns }).map((_, chIdx) => {
-              const { patternRows } = patternTiles;
+            {/* Header */}
+            <text x="10" y="20" fill="#9ca3af" fontSize="12">
+              Multi-Channel Pattern Sequencer — {columns} Channels × {patternLen} Steps
+            </text>
+            <text x={labelWidth + patternLen * (cellWidth + cellGap) + 80} y="20" fill="#6b7280" fontSize="12" textAnchor="end">
+              Row {currentRow + 1}/{patternLen}
+            </text>
 
-              return (
-                <div key={chIdx} className="flex items-center gap-2 mb-2 last:mb-0">
-                  {/* Channel label */}
-                  <div className="flex-shrink-0 w-16 text-right pr-2">
-                    <div className="text-xs font-mono text-gray-400">CH {(chIdx + 1).toString().padStart(2, '0')}</div>
-                  </div>
+            {/* Channel strips */}
+            <g transform={`translate(0, ${headerHeight})`}>
+              {Array.from({ length: columns }).map((_, chIdx) => {
+                const { patternRows } = patternTiles;
+                const yPos = chIdx * channelHeight;
 
-                  {/* Step strip for this channel */}
-                  <div className="flex-1 flex gap-0.5 relative" style={{ minWidth: 0 }}>
+                return (
+                  <g key={chIdx} transform={`translate(0, ${yPos})`}>
+                    {/* Channel label */}
+                    <text 
+                      x={labelWidth - 10} 
+                      y={cellHeight / 2 + 4} 
+                      fill="#9ca3af" 
+                      fontSize="11" 
+                      fontFamily="monospace"
+                      textAnchor="end"
+                    >
+                      CH {(chIdx + 1).toString().padStart(2, '0')}
+                    </text>
+
+                    {/* Step cells */}
                     {Array.from({ length: patternLen }).map((_, stepIdx) => {
                       const cells = patternRows[stepIdx] || Array.from({ length: columns }, () => ({ type: 'empty', text: '' }));
                       const cell = cells[chIdx];
                       const cellNote = cell && /[A-G]#?-/i.test(cell.text || '') ? cell.text : '';
                       const isActive = stepIdx === (currentRow % patternLen);
+                      const xPos = labelWidth + stepIdx * (cellWidth + cellGap);
 
-                      let cellColor = 'rgba(60,60,70,0.3)'; // empty/dim
-                      let cellGlow = {};
+                      let cellColor = 'rgba(60,60,70,0.3)';
+                      let opacity = 0.3;
+                      let glowFilter = '';
 
                       if (cellNote) {
                         const hue = noteToHue(cellNote);
                         const light = octaveToLightness(cellNote);
                         cellColor = `hsl(${hue} 85% ${light}%)`;
-
-                        if (isActive) {
-                          // Active step: brightest neon glow
-                          cellGlow = { boxShadow: `0 0 16px hsl(${hue} 95% ${light + 5}%)AA, 0 0 32px hsl(${hue} 90% ${light}%)66` };
-                        } else {
-                          // Inactive but has note: subtle glow
-                          cellGlow = { boxShadow: `0 0 6px ${cellColor}55` };
-                        }
+                        opacity = isActive ? 1 : 0.75;
+                        glowFilter = isActive ? 'url(#neonGlow)' : '';
                       } else if (isActive) {
-                        // Active but empty: white/neutral glow
                         cellColor = 'rgba(255,255,255,0.15)';
-                        cellGlow = { boxShadow: '0 0 12px rgba(255,255,255,0.4)' };
+                        opacity = 0.6;
                       }
 
+                      const scaleY = isActive ? 1.3 : 1;
+                      const adjustedHeight = cellHeight * scaleY;
+                      const yOffset = (cellHeight - adjustedHeight) / 2;
+
                       return (
-                        <button
+                        <rect
                           key={stepIdx}
-                          data-row={stepIdx}
-                          data-channel={chIdx}
+                          x={xPos}
+                          y={yOffset}
+                          width={cellWidth}
+                          height={adjustedHeight}
+                          rx="2"
+                          fill={cellColor}
+                          opacity={opacity}
+                          filter={glowFilter}
+                          style={{ cursor: 'pointer', transition: 'all 75ms ease-out' }}
                           onClick={() => {
                             const baseGlobal = (globalRow ?? 0) - currentRow;
                             const targetGlobal = baseGlobal + stepIdx;
                             onSeek?.(targetGlobal);
                           }}
-                          className="flex-1 h-5 rounded transition-all duration-75 hover:opacity-90"
-                          style={{
-                            background: cellColor,
-                            ...cellGlow,
-                            transform: isActive ? 'scaleY(1.3)' : undefined,
-                            opacity: cellNote ? (isActive ? 1 : 0.75) : (isActive ? 0.6 : 0.3),
-                            minWidth: 4,
-                            maxWidth: 20,
-                          }}
-                          title={cellNote ? `${cellNote} @ row ${stepIdx + 1}` : `Empty @ row ${stepIdx + 1}`}
-                        />
+                        >
+                          <title>{cellNote ? `${cellNote} @ row ${stepIdx + 1}` : `Empty @ row ${stepIdx + 1}`}</title>
+                        </rect>
                       );
                     })}
-                  </div>
-                </div>
-              );
-            })}
+                  </g>
+                );
+              })}
 
-            {/* Playhead sweep line (vertical bar moving across all channels) */}
-            <div
-              style={{
-                position: 'absolute',
-                left: 'calc(4rem + 0.5rem)',
-                top: 0,
-                bottom: 0,
-                width: 2,
-                background: 'linear-gradient(180deg, rgba(255,230,120,0.8), rgba(255,230,120,0.3))',
-                boxShadow: '0 0 16px rgba(255,230,120,0.6), 0 0 32px rgba(255,230,120,0.3)',
-                pointerEvents: 'none',
-                zIndex: 10,
-                transform: `translateX(${((currentRow % patternLen) / Math.max(1, patternLen - 1)) * 100}%)`,
-                transition: 'transform 80ms ease-out',
-              }}
-            />
-          </div>
+              {/* Playhead sweep line */}
+              <line
+                x1={labelWidth + ((currentRow % patternLen) * (cellWidth + cellGap)) + cellWidth / 2}
+                y1="0"
+                x2={labelWidth + ((currentRow % patternLen) * (cellWidth + cellGap)) + cellWidth / 2}
+                y2={columns * channelHeight}
+                stroke="url(#playheadGradient)"
+                strokeWidth="2"
+                style={{ 
+                  pointerEvents: 'none',
+                  filter: 'drop-shadow(0 0 8px rgba(255,230,120,0.6))',
+                  transition: 'all 80ms ease-out'
+                }}
+              />
+            </g>
+          </svg>
         </div>
-        <div style={{ position: 'relative' }} ref={containerRef}>
-          <div
-              ref={playheadRef}
-              style={{
-                position: 'absolute',
-                pointerEvents: 'none',
-                transition: 'none',
-                transform: 'translate(0px,0px)',
-                zIndex: 60,
-                opacity: 0,
-                borderRadius: 6,
-                boxShadow: '0 8px 30px rgba(255,200,60,0.06)',
-                border: '2px solid rgba(255,230,120,0.2)',
-                background: 'transparent'
-              }}
-          />
-        </div>
-        <div className="mt-3 flex items-center gap-3">
-          <div className="text-xs text-gray-400">Pos</div>
-          <input
+
+        {/* Position slider using SVG */}
+        <svg width="100%" height="40" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 40" preserveAspectRatio="none">
+          <text x="10" y="20" fill="#9ca3af" fontSize="12">Pos</text>
+          <foreignObject x="60" y="5" width="850" height="30">
+            <input
               type="range"
               min={0}
               max={Math.max(0, (_totalRows || 0) - 1)}
               value={Math.min(globalRow, Math.max(0, (_totalRows || 0) - 1))}
               onChange={e => onSeek?.(Number(e.target.value))}
-              className="w-full"
-          />
-          <div className="text-xs text-gray-300">{globalRow}/{_totalRows}</div>
-        </div>
+              style={{ width: '100%' }}
+            />
+          </foreignObject>
+          <text x="920" y="20" fill="#d1d5db" fontSize="12">
+            {globalRow}/{_totalRows}
+          </text>
+        </svg>
       </section>
   );
 };
