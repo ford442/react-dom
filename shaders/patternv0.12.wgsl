@@ -7,15 +7,23 @@ struct Uniforms {
   numRows: u32,
   numChannels: u32,
   playheadRow: u32,
-  pad: u32,
+  isPlaying: u32,
   cellW: f32,
   cellH: f32,
   canvasW: f32,
   canvasH: f32,
+  tickOffset: f32,
+  bpm: f32,
+  timeSec: f32,
+  pad2: f32,
 };
 
 @group(0) @binding(0) var<storage, read> cells: array<u32>;
 @group(0) @binding(1) var<uniform> uniforms: Uniforms;
+@group(0) @binding(2) var<storage, read> rowFlags: array<u32>;
+
+struct ChannelState { volume: f32, pan: f32, freq: f32, trigger: u32 };
+@group(0) @binding(3) var<storage, read> channels: array<ChannelState>;
 
 struct VertexOut {
   @builtin(position) position: vec4<f32>,
@@ -23,7 +31,7 @@ struct VertexOut {
   @location(1) @interpolate(flat) channel: u32,
   @location(2) uv: vec2<f32>,
   @location(3) @interpolate(flat) packedA: u32, // Note/Inst
-  @location(4) @interpolate(flat) packedB: u32, // Effects
+  @location(4) @interpolate(flat) packedB: u32, // Vol/Effect/Param
 };
 
 // --- VERTEX SHADER (Unchanged) ---
@@ -52,9 +60,9 @@ fn vs(@builtin(vertex_index) vertexIndex: u32, @builtin(instance_index) instance
   let clipX = (worldX / uniforms.canvasW) * 2.0 - 1.0;
   let clipY = 1.0 - (worldY / uniforms.canvasH) * 2.0;
 
-  // Read packed data (2 u32s per cell)
+  // Read packed data (2 u32s per cell) a,b
   let idx = instanceIndex * 2u;
-  let a = cells[idx];      // Note/Instrument
+  let a = cells[idx];
   let b = cells[idx + 1u]; // Effects
 
   var out: VertexOut;
@@ -154,88 +162,103 @@ fn getFragmentConstants() -> FragmentConstants {
 
 @fragment
 fn fs(in: VertexOut) -> @location(0) vec4<f32> {
-  // --- CHANGE ---
-  // Get all our styling constants
   let fs = getFragmentConstants();
 
-  // Decode
+  // Unpack fields
   let noteChar = (in.packedA >> 24) & 255u;
   let inst = in.packedA & 255u;
+  let volType = (in.packedB >> 24) & 255u; // 1=vol,2=pan
+  let volValue = (in.packedB >> 16) & 255u; // 0..255
+  let effCode = (in.packedB >> 8) & 255u;   // ASCII letter or code
+  let effParam = in.packedB & 255u;         // 0..255
+
   let hasNote = (noteChar > 0u);
-  let hasEffect = (in.packedB > 0u);
+  let hasEffect = (effParam > 0u);
 
-  // 1. Background
-  var color = fs.bgColorA;
+  // Background stripes + row flags
+  var color = vec3<f32>(0.0);
+  let baseA = getFragmentConstants().bgColorA;
+  let baseB = getFragmentConstants().bgColorB;
+  color = select(baseB, baseA, (in.channel & 1u) == 1u);
 
-  // Alternating channel stripes
-  if (in.channel % 2u == 0u) {
-      color = fs.bgColorB;
+  if (in.row < uniforms.numRows) {
+    let flags = rowFlags[in.row];
+    // bit0: beat4, bit1: measure16
+    let isMeasure = (flags & 2u) != 0u;
+    let isBeat = (flags & 1u) != 0u;
+    if (isMeasure) {
+      color = mix(color, vec3<f32>(0.03, 0.03, 0.05), 0.6);
+    } else if (isBeat) {
+      color = mix(color, vec3<f32>(0.04, 0.04, 0.06), 0.4);
+    }
   }
 
-  // 2. Playhead Highlight
-  if (in.row == uniforms.playheadRow) {
-      color = mix(color, fs.playheadBeamColor, fs.playheadBeamIntensity);
+  // Smooth playhead beam using tickOffset
+  let pr = f32(uniforms.playheadRow) + clamp(uniforms.tickOffset, 0.0, 1.0);
+  let playheadX = pr * uniforms.cellW / uniforms.canvasW; // 0..1
+  let beamDist = abs(in.uv.x + (f32(in.row) * uniforms.cellW) / uniforms.canvasW - playheadX);
+  let beam = exp(-beamDist * 48.0);
+  if (uniforms.isPlaying == 1u) {
+    color += vec3<f32>(0.18, 0.20, 0.26) * beam;
   }
 
-  // 3. Render Note (The "Pill")
+  // Note rendering
   if (hasNote) {
-      let hue = f32(inst) * fs.hueMagic;
-      let noteColor = neonPalette(hue);
+    // Hue by instrument; modulate by effect parameter intensity
+    let hue = fract((f32(inst) + 0.001 * f32(effParam)) * fs.hueMagic);
+    var noteColor = neonPalette(hue) * fs.noteIntensity;
 
-      // Center UVs
-      let center = in.uv - 0.5;
+    // Pulse with BPM (if playing)
+    if (uniforms.isPlaying == 1u) {
+      let pulse = 0.5 + 0.5 * sin(uniforms.timeSec * uniforms.bpm * 0.10472); // *2pi/60
+      noteColor *= mix(0.85, 1.15, pulse);
+    }
 
-      // --- CHANGE ---
-      // Calculate Signed Distance Field (SDF) for the pill
-      let pillSDF = sdRoundedBox(center, fs.pillSize, fs.pillRadius);
+    // Centered pill
+    let center = in.uv - 0.5;
+    let pillSDF = sdRoundedBox(center, fs.pillSize, fs.pillRadius);
+    let aa = fwidth(pillSDF) * 0.5;
+    let pillShape = 1.0 - smoothstep(-aa, aa, pillSDF);
+    let glow = exp(-pillSDF * fs.glowFalloff) * fs.glowIntensity;
 
-      // --- CHANGE ---
-      // Use fwidth() to get a resolution-independent antialiasing width
-      // This gives a perfect 1-pixel-wide soft edge.
-      let aa = fwidth(pillSDF) * 0.5;
-      let pillShape = 1.0 - smoothstep(-aa, aa, pillSDF);
+    // Channel dynamics
+    let ch = channels[in.channel];
+    let volAlpha = clamp(ch.volume, 0.0, 1.0);
+    let panTint = clamp(ch.pan * 0.5 + 0.5, 0.0, 1.0);
+    let panColor = mix(vec3<f32>(0.9, 0.4, 0.4), vec3<f32>(0.4, 0.4, 0.9), panTint);
 
-      // Your original glow logic, just using constants
-      let glow = exp(-pillSDF * fs.glowFalloff) * fs.glowIntensity;
+    // Flash on trigger
+    var flash = 0.0;
+    if (ch.trigger == 1u) {
+      flash = 0.8;
+    }
 
-      // Combine
-      color = mix(color, noteColor * fs.noteIntensity, clamp(pillShape + glow, 0.0, 1.0));
+    var mixColor = noteColor;
+    mixColor = mix(mixColor, panColor, 0.15);
+    mixColor = mix(mixColor, vec3<f32>(1.0), flash);
+
+    color = mix(color, mixColor, clamp(pillShape + glow, 0.0, 1.0) * max(0.2, volAlpha));
   }
 
-  // 4. Render Effect Indicator
+  // Effect indicator (use effParam to scale)
   if (hasEffect) {
-     // --- CHANGE ---
-     // Use an SDF for the circle (distance - radius)
      let effectSDF = distance(in.uv, fs.effectPos) - fs.effectRadius;
-
-     // --- CHANGE ---
-     // Use fwidth() again for crisp AA
      let aa = fwidth(effectSDF) * 0.5;
      let effectShape = 1.0 - smoothstep(-aa, aa, effectSDF);
-
-     color = mix(color, fs.effectColor, effectShape * fs.effectIntensity);
+     let strength = clamp(f32(effParam) / 255.0, 0.2, 1.0);
+     color = mix(color, fs.effectColor, effectShape * fs.effectIntensity * strength);
   }
 
-  // 5. Grid/Border
-
-  // --- CHANGE ---
-  // Get screen-space derivatives of UVs.
-  // This tells us how much one pixel changes the UV.
-  // We use this to draw a perfect 1-pixel border.
+  // Borders
   let uv_aa = vec2<f32>(fwidth(in.uv.x), fwidth(in.uv.y));
-
-  // --- CHANGE ---
-  // Use smoothstep to draw the 1px antialiased border.
-  // We subtract our desired thickness (in pixels) * the derivative
   let borderX = smoothstep(1.0 - (fs.borderThickness * uv_aa.x), 1.0, in.uv.x);
   let borderY = smoothstep(1.0 - (fs.borderThickness * uv_aa.y), 1.0, in.uv.y);
   let borderAlpha = max(borderX, borderY);
 
-  // Highlight the playhead column border
   if (in.row == uniforms.playheadRow) {
-      let playheadBorder = borderX * fs.playheadBorderIntensity; // Only highlight vertical border
+      let playheadBorder = borderX * fs.playheadBorderIntensity;
       color = mix(color, fs.playheadBorderColor, playheadBorder);
-      color = mix(color, fs.borderColor, borderY); // Draw normal horizontal border
+      color = mix(color, fs.borderColor, borderY);
   } else {
       color = mix(color, fs.borderColor, borderAlpha);
   }

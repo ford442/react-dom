@@ -33,6 +33,8 @@ export default function App() {
     sequencerGlobalRow,
     totalPatternRows,
     seekToStep,
+    playbackSeconds,
+    playbackRowFraction,
   } = useLibOpenMPT();
 
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -150,6 +152,10 @@ export default function App() {
                   cellWidth={18}
                   cellHeight={16}
                   shaderFile={shaderVersion}
+                  isPlaying={isPlaying}
+                  bpm={moduleInfo.bpm}
+                  timeSec={playbackSeconds}
+                  tickOffset={Math.max(0, (playbackRowFraction % 1))}
                 />
               ) : (
                 <PatternSequencer
