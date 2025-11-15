@@ -12,6 +12,7 @@
             <set>
               <option value="0c760ad2-cfcb-43ba-97c2-04b87cf7ed27" />
               <option value="6fa0df7c-863e-4652-9bae-78dcba3fe51f" />
+              <option value="1a517ec0-8d7a-4060-be54-cbb25f781a1c" />
             </set>
           </value>
         </entry>
@@ -30,6 +31,7 @@
           <option value="file://$PROJECT_DIR$/package.json" />
           <option value="file://$PROJECT_DIR$/shaders/patternShader.wgsl" />
           <option value="file://$PROJECT_DIR$/components/PatternDisplay.tsx" />
+          <option value="file://$PROJECT_DIR$/tsconfig.json" />
         </set>
       </entry>
       <entry key="d9efda0d-14d7-49f0-b58b-92bdc94f99a2">

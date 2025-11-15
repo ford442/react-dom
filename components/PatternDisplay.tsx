@@ -5,7 +5,7 @@ interface PatternDisplayProps {
   numChannels: number;
 }
 
-export const PatternDisplay: React.FC<PatternDisplayProps> = ({ data, numChannels }) => {
+export const PatternDisplay: React.FC<PatternDisplayProps> = ({ data: _data, numChannels }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -25,7 +25,7 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ data, numChannel
       }
 
       const device = await adapter.requestDevice();
-      const context = canvas.getContext('webgpu');
+      const context = canvas.getContext('webgpu') as GPUCanvasContext;
 
       const format = navigator.gpu.getPreferredCanvasFormat();
       context.configure({ device, format });
