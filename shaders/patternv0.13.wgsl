@@ -1,4 +1,4 @@
-// filepath: g:\github\react-dom\shaders\patternv0.12.wgsl
+// filepath: g:\github\react-dom\shaders\patternv0.13.wgsl
 // Horizontal Pattern Grid Shader (Time = X, Channels = Y)
 // V2: Refactored by "Custom Coding partner" to use fwidth() for AA
 // and a constants struct for easier tweaking.
@@ -15,14 +15,18 @@ struct Uniforms {
   tickOffset: f32,
   bpm: f32,
   timeSec: f32,
-  pad2: f32,
+  beatPhase: f32,
+  groove: f32,
+  kickTrigger: f32,
+  activeChannels: u32,
+  pad3: u32,
 };
 
 @group(0) @binding(0) var<storage, read> cells: array<u32>;
 @group(0) @binding(1) var<uniform> uniforms: Uniforms;
 @group(0) @binding(2) var<storage, read> rowFlags: array<u32>;
 
-struct ChannelState { volume: f32, pan: f32, freq: f32, trigger: u32 };
+struct ChannelState { volume: f32, pan: f32, freq: f32, trigger: u32, noteAge: f32, activeEffect: u32, effectValue: f32, isMuted: u32 };
 @group(0) @binding(3) var<storage, read> channels: array<ChannelState>;
 
 struct VertexOut {
@@ -186,77 +190,104 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   var color = vec3<f32>(0.0);
   let baseA = getFragmentConstants().bgColorA;
   let baseB = getFragmentConstants().bgColorB;
-  color = select(baseB, baseA, (in.channel & 1u) == 1u);
+  const color = select(baseB, baseA, (in.channel & 1u) == 1u);
 
+  var background = color;
   if (in.row < uniforms.numRows) {
     let flags = rowFlags[in.row];
-    // bit0: beat4, bit1: measure16
     let isMeasure = (flags & 2u) != 0u;
     let isBeat = (flags & 1u) != 0u;
+    let beatPulse = 0.5 + 0.5 * sin(uniforms.beatPhase * 3.14159);
+    let grooveShift = (uniforms.groove * 0.1) * select(-1.0, 1.0, (in.row & 1u) == 0u);
+    let shiftedRow = f32(in.row) + grooveShift;
     if (isMeasure) {
-      color = mix(color, vec3<f32>(0.03, 0.03, 0.05), 0.6);
+      background = mix(background, vec3<f32>(0.02, 0.03, 0.05), 0.7 + 0.2 * beatPulse);
     } else if (isBeat) {
-      color = mix(color, vec3<f32>(0.04, 0.04, 0.06), 0.4);
+      background = mix(background, vec3<f32>(0.04, 0.04, 0.06), 0.4 + 0.2 * beatPulse);
     }
   }
 
-  // Smooth playhead beam using tickOffset
+  var color = background;
+
   let pr = f32(uniforms.playheadRow) + clamp(uniforms.tickOffset, 0.0, 1.0);
-  let playheadX = pr * uniforms.cellW / uniforms.canvasW; // 0..1
+  let playheadX = pr * uniforms.cellW / uniforms.canvasW;
   let beamDist = abs(in.uv.x + (f32(in.row) * uniforms.cellW) / uniforms.canvasW - playheadX);
-  let beam = exp(-beamDist * 48.0);
+  let beam = exp(-beamDist * (48.0 - uniforms.kickTrigger * 24.0));
   if (uniforms.isPlaying == 1u) {
-    color += vec3<f32>(0.18, 0.20, 0.26) * beam;
+    color += vec3<f32>(0.18, 0.20, 0.26 + uniforms.kickTrigger * 0.2) * beam;
   }
 
-  // Note rendering
+  let center = in.uv - 0.5;
+  let pillSDF = sdRoundedBox(center, fs.pillSize, fs.pillRadius);
+  let pill_aa = fwidth(pillSDF) * 0.5;
+
+  let ch = channels[in.channel];
+
+  // Muted channels dimmer
+  if (ch.isMuted == 1u) {
+    color *= 0.2;
+  }
+
   if (hasNote) {
-    // Hue by instrument; modulate by effect parameter intensity
     let hue = fract((f32(inst) + 0.001 * f32(effParam)) * fs.hueMagic);
     var noteColor = neonPalette(hue) * fs.noteIntensity;
 
-    // Pulse with BPM (if playing)
     if (uniforms.isPlaying == 1u) {
-      let pulse = 0.5 + 0.5 * sin(uniforms.timeSec * uniforms.bpm * 0.10472); // *2pi/60
+      let pulse = 0.5 + 0.5 * sin(uniforms.timeSec * uniforms.bpm * 0.10472);
       noteColor *= mix(0.85, 1.15, pulse);
     }
 
-    // Centered pill
-    let center = in.uv - 0.5;
-    let pillSDF = sdRoundedBox(center, fs.pillSize, fs.pillRadius);
-    let aa = fwidth(pillSDF) * 0.5;
-    let pillShape = 1.0 - smoothstep(-aa, aa, pillSDF);
+    // Vibrato shake
+    var uv = center;
+    if (ch.activeEffect == 1u) {
+      let shake = sin(uniforms.timeSec * (10.0 + ch.effectValue * 20.0)) * (0.02 + ch.effectValue * 0.05);
+      uv.x += shake;
+    }
+    // Portamento shear
+    if (ch.activeEffect == 2u) {
+      let skew = clamp(ch.effectValue * 0.5, -0.3, 0.3);
+      uv.x += uv.y * skew;
+    }
+    // Tremolo pulse
+    if (ch.activeEffect == 3u) {
+      let trem = 0.5 + 0.5 * sin(uniforms.timeSec * (8.0 + ch.effectValue * 16.0));
+      noteColor *= mix(0.8, 1.2, trem);
+    }
+    // Arpeggio tint cycling
+    if (ch.activeEffect == 4u) {
+      let arp = fract(uniforms.timeSec * 4.0);
+      noteColor = mix(noteColor, neonPalette(arp), 0.35 * ch.effectValue);
+    }
+    // Retrigger strobe
+    if (ch.activeEffect == 5u) {
+      let strobe = step(0.5, fract(ch.noteAge * (5.0 + ch.effectValue * 30.0)));
+      noteColor *= mix(0.6, 1.4, strobe);
+    }
+
+    let pillShape = 1.0 - smoothstep(-pill_aa, pill_aa, sdRoundedBox(uv, fs.pillSize, fs.pillRadius));
     let glow = exp(-pillSDF * fs.glowFalloff) * fs.glowIntensity;
 
-    // Channel dynamics
-    let ch = channels[in.channel];
-    let volAlpha = clamp(ch.volume, 0.0, 1.0);
+    let volAlpha = clamp(ch.volume, 0.05, 1.0);
     let panTint = clamp(ch.pan * 0.5 + 0.5, 0.0, 1.0);
     let panColor = mix(vec3<f32>(0.9, 0.4, 0.4), vec3<f32>(0.4, 0.4, 0.9), panTint);
 
-    // Flash on trigger
-    var flash = 0.0;
-    if (ch.trigger == 1u) {
-      flash = 0.8;
-    }
-
     var mixColor = noteColor;
     mixColor = mix(mixColor, panColor, 0.15);
-    mixColor = mix(mixColor, vec3<f32>(1.0), flash);
+    mixColor = mix(mixColor, vec3<f32>(1.0), mix(0.0, 0.8, f32(ch.trigger)));
 
-    color = mix(color, mixColor, clamp(pillShape + glow, 0.0, 1.0) * max(0.2, volAlpha));
+    let noteTrail = exp(-ch.noteAge * 2.0);
+    color = mix(color, mixColor, clamp((pillShape + glow) * noteTrail, 0.0, 1.0) * volAlpha);
   }
 
-  // Effect indicator (use effParam to scale)
+  let effectSDF = distance(in.uv, fs.effectPos) - fs.effectRadius;
+  let aa_effect = fwidth(effectSDF) * 0.5;
+
   if (hasEffect) {
-     let effectSDF = distance(in.uv, fs.effectPos) - fs.effectRadius;
-     let aa = fwidth(effectSDF) * 0.5;
-     let effectShape = 1.0 - smoothstep(-aa, aa, effectSDF);
+     let effectShape = 1.0 - smoothstep(-aa_effect, aa_effect, effectSDF);
      let strength = clamp(f32(effParam) / 255.0, 0.2, 1.0);
      color = mix(color, fs.effectColor, effectShape * fs.effectIntensity * strength);
   }
 
-  // Borders
   let uv_aa = vec2<f32>(fwidth(in.uv.x), fwidth(in.uv.y));
   let borderX = smoothstep(1.0 - (fs.borderThickness * uv_aa.x), 1.0, in.uv.x);
   let borderY = smoothstep(1.0 - (fs.borderThickness * uv_aa.y), 1.0, in.uv.y);

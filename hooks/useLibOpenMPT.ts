@@ -9,6 +9,52 @@ const INITIAL_MODULE_INFO: ModuleInfo = { title: '...', order: 0, row: 0, bpm: 0
 const DEFAULT_MODULE_URL = 'https://raw.githubusercontent.com/deskjet/chiptunes/master/mods/4mat/4-mat_-_space_debris.mod';
 
 
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const decayTowards = (value: number, target: number, rate: number, dt: number) => lerp(value, target, 1 - Math.exp(-rate * dt));
+
+interface ChannelShadowState {
+  volume: number;
+  pan: number;
+  freq: number;
+  trigger: number;
+  noteAge: number;
+  activeEffect: number;
+  effectValue: number;
+  isMuted: number;
+}
+
+const decodeEffectCode = (cell?: PatternCell): { activeEffect: number; intensity: number } => {
+  if (!cell?.text) return { activeEffect: 0, intensity: 0 };
+  const text = cell.text.trim().toUpperCase();
+  const match = text.match(/([0-9A-F])([0-9A-F]{2})/);
+  if (!match) return { activeEffect: 0, intensity: 0 };
+  const code = match[1];
+  const value = parseInt(match[2], 16) / 255;
+  switch (code) {
+    case '4': return { activeEffect: 1, intensity: value }; // Vibrato
+    case '3': return { activeEffect: 2, intensity: value }; // Portamento
+    case '7': return { activeEffect: 3, intensity: value }; // Tremolo
+    case '0':
+      if (match[2] !== '00') return { activeEffect: 4, intensity: value }; // Arpeggio
+      break;
+    case 'R': return { activeEffect: 5, intensity: value }; // Retrigger
+    default: break;
+  }
+  return { activeEffect: 0, intensity: value };
+};
+
+const extractNote = (cell?: PatternCell): string | undefined => cell?.text?.match(/[A-G][#-]?\d/)?.[0];
+const noteToFreq = (note?: string): number => {
+  if (!note) return 0;
+  const n = note.toUpperCase();
+  const map: Record<string, number> = { C: 0, 'C#': 1, DB: 1, D: 2, 'D#': 3, EB: 3, E: 4, F: 5, 'F#': 6, GB: 6, G: 7, 'G#': 8, AB: 8, A: 9, 'A#': 10, BB: 10, B: 11 };
+  const match = n.match(/^([A-G](?:#|B)?)\-?(\d)$/);
+  if (!match) return 0;
+  const semitone = map[match[1]] ?? 0;
+  const midi = (parseInt(match[2], 10) + 1) * 12 + semitone;
+  return 440 * Math.pow(2, (midi - 69) / 12);
+};
+
 export function useLibOpenMPT() {
   const [status, setStatus] = useState<string>(INITIAL_STATUS);
   const [isReady, setIsReady] = useState<boolean>(false);
@@ -24,6 +70,11 @@ export function useLibOpenMPT() {
   const [totalPatternRows, setTotalPatternRows] = useState<number>(0);
   const [playbackSeconds, setPlaybackSeconds] = useState<number>(0);
   const [playbackRowFraction, setPlaybackRowFraction] = useState<number>(0);
+  const [channelStates, setChannelStates] = useState<ChannelShadowState[]>([]);
+  const [kickTrigger, setKickTrigger] = useState<number>(0);
+  const [beatPhase, setBeatPhase] = useState<number>(0);
+  const [grooveAmount, setGrooveAmount] = useState<number>(0);
+  const [activeChannels, setActiveChannels] = useState<number>(0);
 
   const libopenmptRef = useRef<LibOpenMPT | null>(null);
   const currentModulePtr = useRef<number>(0);
@@ -212,11 +263,18 @@ export function useLibOpenMPT() {
       const row = lib._openmpt_module_get_current_row(modPtr);
       const positionSeconds = lib._openmpt_module_get_position_seconds(modPtr);
       const bpm = lib._openmpt_module_get_current_estimated_bpm(modPtr);
+      const tempo2 = lib._openmpt_module_get_current_tempo2?.(modPtr) ?? bpm;
+      const speed = lib._openmpt_module_get_current_speed?.(modPtr) ?? 6;
+      const playingChannels = lib._openmpt_module_get_current_playing_channels?.(modPtr) ?? moduleInfoRef.current.numChannels;
 
       setModuleInfo(prev => ({ ...prev, order, row, bpm: Math.round(bpm) }));
       setPlaybackSeconds(positionSeconds);
+      setActiveChannels(playingChannels);
 
-      const rowsPerSecond = bpm > 0 ? (bpm / 60) * 4 : 0; // default rows/beat = 4
+      setBeatPhase((prev) => (prev + (tempo2 / 60) * (1 / 60)) % 1);
+      setGrooveAmount((prev) => decayTowards(prev, speed % 2 === 0 ? 0 : 0.1, 3, 1 / 60));
+
+      const rowsPerSecond = bpm > 0 ? (bpm / 60) * 4 : 0;
       const fractionalRow = rowsPerSecond > 0 ? positionSeconds * rowsPerSecond : row;
       setPlaybackRowFraction(fractionalRow);
 
@@ -229,47 +287,49 @@ export function useLibOpenMPT() {
       }
       setSequencerCurrentRow(row);
 
-      // compute global row index (sum of rows in earlier orders + current row)
-      let global = 0;
-      for (let i = 0; i < order; i++) {
-        const m = patternMatricesRef.current[i];
-        if (m) global += m.numRows;
-      }
-      global += row;
-      setSequencerGlobalRow(global);
+      const numChannels = matrix?.numChannels ?? moduleInfoRef.current.numChannels;
+      const newChannelStates: ChannelShadowState[] = [];
+      for (let ch = 0; ch < numChannels; ch++) {
+        const vu = lib._openmpt_module_get_current_channel_vu_mono?.(modPtr, ch) ?? 0;
+        const vuL = lib._openmpt_module_get_current_channel_vu_left?.(modPtr, ch) ?? vu;
+        const vuR = lib._openmpt_module_get_current_channel_vu_right?.(modPtr, ch) ?? vu;
+        const pan = Math.max(-1, Math.min(1, vuR - vuL));
+        const volume = Math.min(1, vu);
+        const isMuted = lib._openmpt_module_get_channel_mute_status?.(modPtr, ch) ?? 0;
 
-      const currentPattern = lib._openmpt_module_get_order_pattern(modPtr, order);
-      const numRows = lib._openmpt_module_get_pattern_num_rows(modPtr, currentPattern);
-      let patternHtml = "";
-      const contextRows = 8;
+        const rowCells = matrix?.rows[row] ?? [];
+        const cell = rowCells[ch];
+        const { activeEffect, intensity } = decodeEffectCode(cell);
+        const noteMatch = extractNote(cell);
+        const freq = noteToFreq(noteMatch);
+        const trigger = noteMatch ? 1 : 0;
 
-      for (let r = row - contextRows; r <= row + contextRows; r++) {
-        if (r < 0 || r >= numRows) {
-          patternHtml += "\n";
-          continue;
-        }
-        
-        const isCurrentRow = r === row;
-        const highlightClass = isCurrentRow ? 'text-yellow-300 bg-gray-700/50' : '';
-        let line = `<span class="${highlightClass}">`;
-        line += isCurrentRow ? "> " : "  ";
-        line += String(r).padStart(3, '0') + " |";
-        
-        const rowKey = `${order}-${r}`;
-        if (rowBufferRef.current[rowKey]) {
-          line += rowBufferRef.current[rowKey];
-        }
-        line += `</span>\n`;
-        patternHtml += line;
+        const prev = channelStates[ch];
+        const noteAge = trigger ? 0 : (prev?.noteAge ?? 0) + (1 / 60);
+
+        newChannelStates.push({
+          volume,
+          pan,
+          freq,
+          trigger,
+          noteAge,
+          activeEffect,
+          effectValue: intensity,
+          isMuted,
+        });
       }
-      
-      setPatternData(patternHtml);
+      setChannelStates(newChannelStates);
+      if (newChannelStates[0]?.trigger) {
+        setKickTrigger(1);
+      } else {
+        setKickTrigger(prev => decayTowards(prev, 0, 8, 1 / 60));
+      }
     } catch (e) {
       console.error("Error in UI update:", e);
     }
-    
+
     animationFrameHandle.current = requestAnimationFrame(updateUI);
-  }, []);
+  }, [channelStates]);
 
   const play = useCallback(() => {
     if (isPlaying || currentModulePtr.current === 0 || !libopenmptRef.current) return;
@@ -473,5 +533,5 @@ export function useLibOpenMPT() {
     }
   };
 
-  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI, sequencerMatrix, sequencerCurrentRow, sequencerGlobalRow, totalPatternRows, playbackSeconds, playbackRowFraction, seekToStep };
+  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI, sequencerMatrix, sequencerCurrentRow, sequencerGlobalRow, totalPatternRows, playbackSeconds, playbackRowFraction, channelStates, beatPhase, grooveAmount, kickTrigger, activeChannels, seekToStep };
 }

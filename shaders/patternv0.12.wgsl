@@ -27,7 +27,8 @@ struct VertexOut {
 
 // --- VERTEX SHADER (Unchanged) ---
 // This was already solid. No changes needed.
-@vertexfn vs(@builtin(vertex_index) vertexIndex: u32, @builtin(instance_index) instanceIndex: u32) -> VertexOut {
+@vertex
+fn vs(@builtin(vertex_index) vertexIndex: u32, @builtin(instance_index) instanceIndex: u32) -> VertexOut {
   var quad = array<vec2<f32>, 6>(
     vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(0.0, 1.0),
     vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0)
@@ -150,7 +151,8 @@ fn getFragmentConstants() -> FragmentConstants {
 }
 
 
-@fragmentfn fs(in: VertexOut) -> @location(0) vec4<f32> {
+@fragment
+fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   // --- CHANGE ---
   // Get all our styling constants
   let fs = getFragmentConstants();
@@ -174,23 +176,21 @@ fn getFragmentConstants() -> FragmentConstants {
       color = mix(color, fs.playheadBeamColor, fs.playheadBeamIntensity);
   }
 
+  // Precompute SDFs and AA for all elements unconditionally
+  let center = in.uv - 0.5;
+  let pillSDF = sdRoundedBox(center, fs.pillSize, fs.pillRadius);
+  let pill_aa = fwidth(pillSDF) * 0.5;
+
+  let effectSDF = distance(in.uv, fs.effectPos) - fs.effectRadius;
+  let effect_aa = fwidth(effectSDF) * 0.5;
+
   // 3. Render Note (The "Pill")
   if (hasNote) {
       let hue = f32(inst) * fs.hueMagic;
       let noteColor = neonPalette(hue);
 
-      // Center UVs
-      let center = in.uv - 0.5;
-
-      // --- CHANGE ---
-      // Calculate Signed Distance Field (SDF) for the pill
-      let pillSDF = sdRoundedBox(center, fs.pillSize, fs.pillRadius);
-
-      // --- CHANGE ---
-      // Use fwidth() to get a resolution-independent antialiasing width
-      // This gives a perfect 1-pixel-wide soft edge.
-      let aa = fwidth(pillSDF) * 0.5;
-      let pillShape = 1.0 - smoothstep(-aa, aa, pillSDF);
+      // Use precomputed pill_aa
+      let pillShape = 1.0 - smoothstep(-pill_aa, pill_aa, pillSDF);
 
       // Your original glow logic, just using constants
       let glow = exp(-pillSDF * fs.glowFalloff) * fs.glowIntensity;
@@ -201,14 +201,8 @@ fn getFragmentConstants() -> FragmentConstants {
 
   // 4. Render Effect Indicator
   if (hasEffect) {
-     // --- CHANGE ---
-     // Use an SDF for the circle (distance - radius)
-     let effectSDF = distance(in.uv, fs.effectPos) - fs.effectRadius;
-
-     // --- CHANGE ---
-     // Use fwidth() again for crisp AA
-     let aa = fwidth(effectSDF) * 0.5;
-     let effectShape = 1.0 - smoothstep(-aa, aa, effectSDF);
+     // Use precomputed effect_aa
+     let effectShape = 1.0 - smoothstep(-effect_aa, effect_aa, effectSDF);
 
      color = mix(color, fs.effectColor, effectShape * fs.effectIntensity);
   }

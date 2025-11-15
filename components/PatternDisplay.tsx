@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { PatternMatrix } from '../types';
+import type { ChannelShadowState, PatternMatrix } from '../types';
 
 interface PatternDisplayProps {
   matrix: PatternMatrix | null;
@@ -12,9 +12,15 @@ interface PatternDisplayProps {
   bpm?: number;
   timeSec?: number;
   tickOffset?: number; // 0..1 fractional progress between rows
+  channels?: ChannelShadowState[];
+  beatPhase?: number;
+  grooveAmount?: number;
+  kickTrigger?: number;
+  activeChannels?: number;
 }
 
 const MIN_STORAGE = new Uint32Array([0, 0]);
+const CHANNEL_STRUCT_SIZE = 32; // vec4 + vec4
 
 const clampPlayhead = (value: number, numRows: number) => {
   if (numRows <= 0) return 0;
@@ -114,22 +120,7 @@ const buildRowFlags = (numRows: number): Uint32Array => {
   return flags;
 };
 
-const noteNameToFreq = (note: string): number => {
-  const m = note.toUpperCase().match(/^([A-G])(#|B)?-?(\d)/);
-  if (!m) return 0;
-  const name = m[1] + (m[2] || '');
-  const octave = parseInt(m[3], 10);
-  const semitones: Record<string, number> = { C: 0, 'C#': 1, DB: 1, D: 2, 'D#': 3, EB: 3, E: 4, F: 5, 'F#': 6, GB: 6, G: 7, 'G#': 8, AB: 8, A: 9, 'A#': 10, BB: 10, B: 11 };
-  const n = (octave + 1) * 12 + (semitones[name] ?? 0); // MIDI note number
-  return 440 * Math.pow(2, (n - 69) / 12);
-};
-
-const extractNoteStr = (text: string): string => {
-  const m = text.match(/[A-Ga-g][#bB-]?\d/);
-  return m ? m[0] : '';
-};
-
-export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playheadRow, cellWidth = 18, cellHeight = 14, shaderFile = 'patternv0.12.wgsl', isPlaying = false, bpm = 120, timeSec = 0, tickOffset = 0 }) => {
+export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playheadRow, cellWidth = 18, cellHeight = 14, shaderFile = 'patternv0.12.wgsl', isPlaying = false, bpm = 120, timeSec = 0, tickOffset = 0, channels = [], beatPhase = 0, grooveAmount = 0, kickTrigger = 0, activeChannels = 0 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const deviceRef = useRef<GPUDevice | null>(null);
   const contextRef = useRef<GPUCanvasContext | null>(null);
@@ -272,7 +263,7 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
         }
 
         // Uniform buffer: 48 bytes (multiple of 16)
-        const uniformBuffer = device.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+        const uniformBuffer = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
 
         deviceRef.current = device;
         contextRef.current = context;
@@ -344,7 +335,7 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
     const numChannels = matrix?.numChannels ?? 0;
     const clampedRow = clampPlayhead(playheadRow, numRows);
 
-    const data = new ArrayBuffer(48);
+    const data = new ArrayBuffer(64);
     const view = new DataView(data);
     view.setUint32(0, numRows, true);
     view.setUint32(4, numChannels, true);
@@ -357,7 +348,11 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
     view.setFloat32(32, Math.max(0, Math.min(1, tickOffset ?? 0)), true);
     view.setFloat32(36, bpm ?? 0, true);
     view.setFloat32(40, timeSec ?? 0, true);
-    view.setFloat32(44, 0, true);
+    view.setFloat32(44, beatPhase ?? 0, true);
+    view.setFloat32(48, grooveAmount ?? 0, true);
+    view.setFloat32(52, kickTrigger ?? 0, true);
+    view.setUint32(56, activeChannels ?? 0, true);
+    view.setUint32(60, 0, true);
 
     device.queue.writeBuffer(uniformBufferRef.current, 0, data);
   };
@@ -366,41 +361,34 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
   useEffect(() => {
     if (!gpuReady || !matrix || !channelsBufferRef.current) return;
     const numChannels = matrix.numChannels;
-    const rowIdx = clampPlayhead(playheadRow, matrix.numRows);
-    const ab = new ArrayBuffer(numChannels * 16);
+    const count = Math.min(numChannels, channels.length);
+    const ab = new ArrayBuffer(Math.max(1, count) * CHANNEL_STRUCT_SIZE);
     const dv = new DataView(ab);
 
-    for (let c = 0; c < numChannels; c++) {
-      const cell = matrix.rows[rowIdx]?.[c];
-      let vol = 1.0, pan = 0.0, freq = 0.0, trigger = 0;
-      if (cell && cell.text) {
-        const b = parsePackedB(cell.text);
-        const volType = (b >>> 24) & 0xff;
-        const volValue = (b >>> 16) & 0xff;
-        if (volType === 1) vol = volValue / 255.0; // volume
-        if (volType === 2) pan = (volValue / 255.0) * 2 - 1; // -1..1
-        const noteStr = extractNoteStr(cell.text);
-        if (noteStr) { freq = noteNameToFreq(noteStr); trigger = 1; }
-      }
-      const offset = c * 16;
-      dv.setFloat32(offset + 0, vol, true);
-      dv.setFloat32(offset + 4, pan, true);
-      dv.setFloat32(offset + 8, freq, true);
-      dv.setUint32(offset + 12, trigger, true);
+    for (let c = 0; c < count; c++) {
+      const state = channels[c];
+      const offset = c * CHANNEL_STRUCT_SIZE;
+      dv.setFloat32(offset + 0, state?.volume ?? 0, true);
+      dv.setFloat32(offset + 4, state?.pan ?? 0, true);
+      dv.setFloat32(offset + 8, state?.freq ?? 0, true);
+      dv.setUint32(offset + 12, state?.trigger ?? 0, true);
+      dv.setFloat32(offset + 16, state?.noteAge ?? 0, true);
+      dv.setUint32(offset + 20, state?.activeEffect ?? 0, true);
+      dv.setFloat32(offset + 24, state?.effectValue ?? 0, true);
+      dv.setUint32(offset + 28, state?.isMuted ?? 0, true);
     }
 
     deviceRef.current!.queue.writeBuffer(channelsBufferRef.current, 0, ab);
-    // also uniforms
     writeUniforms();
     render();
-  }, [matrix, playheadRow, gpuReady]);
+  }, [matrix, playheadRow, gpuReady, channels]);
 
   // Update uniforms + render when visual parameters change
   useEffect(() => {
     if (!gpuReady) return;
     writeUniforms();
     render();
-  }, [tickOffset, bpm, timeSec, isPlaying, cellWidth, cellHeight, gpuReady, canvasMetrics.width, canvasMetrics.height]);
+  }, [tickOffset, bpm, timeSec, isPlaying, cellWidth, cellHeight, gpuReady, canvasMetrics.width, canvasMetrics.height, beatPhase, grooveAmount, kickTrigger, activeChannels]);
 
   return (
     <section className="bg-black/70 p-4 rounded-xl border border-white/5 shadow-lg">

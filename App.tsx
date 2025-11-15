@@ -35,6 +35,11 @@ export default function App() {
     seekToStep,
     playbackSeconds,
     playbackRowFraction,
+    channelStates,
+    beatPhase,
+    grooveAmount,
+    kickTrigger,
+    activeChannels,
   } = useLibOpenMPT();
 
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -156,6 +161,11 @@ export default function App() {
                   bpm={moduleInfo.bpm}
                   timeSec={playbackSeconds}
                   tickOffset={Math.max(0, (playbackRowFraction % 1))}
+                  channels={channelStates}
+                  beatPhase={beatPhase}
+                  grooveAmount={grooveAmount}
+                  kickTrigger={kickTrigger}
+                  activeChannels={activeChannels}
                 />
               ) : (
                 <PatternSequencer

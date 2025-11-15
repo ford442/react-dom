@@ -51,6 +51,17 @@ export interface PatternMatrix {
   rows: PatternCell[][];
 }
 
+export interface ChannelShadowState {
+  volume: number;
+  pan: number;
+  freq: number;
+  trigger: number;
+  noteAge: number;
+  activeEffect: number;
+  effectValue: number;
+  isMuted: number;
+}
+
 export interface SequencerState {
   matrix: PatternMatrix | null;
   currentRow: number;
@@ -103,6 +114,14 @@ export interface LibOpenMPT {
   _openmpt_module_get_current_order: (modulePtr: number) => number;
   _openmpt_module_get_current_row: (modulePtr: number) => number;
   _openmpt_module_get_current_estimated_bpm: (modulePtr: number) => number;
+  _openmpt_module_get_current_tempo2?: (modulePtr: number) => number;
+  _openmpt_module_get_current_speed?: (modulePtr: number) => number;
+  _openmpt_module_get_current_playing_channels?: (modulePtr: number) => number;
+  _openmpt_module_get_current_channel_vu_mono?: (modulePtr: number, channel: number) => number;
+  _openmpt_module_get_current_channel_vu_left?: (modulePtr: number, channel: number) => number;
+  _openmpt_module_get_current_channel_vu_right?: (modulePtr: number, channel: number) => number;
+  _openmpt_module_get_channel_mute_status?: (modulePtr: number, channel: number) => number;
+  _openmpt_module_get_pattern_row_channel_command?: (modulePtr: number, pattern: number, row: number, channel: number) => number;
   _openmpt_module_get_position_seconds: (modulePtr: number) => number;
 }
 

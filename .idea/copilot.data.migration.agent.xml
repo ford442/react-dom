@@ -24,6 +24,12 @@
               <option value="3520d204-970a-4831-adcf-7b3f3d72593d" />
               <option value="7efa7faa-3bf8-4ed1-80c0-c91160bee12f" />
               <option value="14e32f46-bd92-4a6d-9db0-564ee0b3fe9c" />
+              <option value="5b3d7b6e-98af-4e6f-b555-381cc15bca4a" />
+              <option value="24cbdb4c-844f-4fb2-bf02-de8ac4b66f7a" />
+              <option value="661ef949-3aef-41da-a5a0-22b398519e04" />
+              <option value="ee7c532c-b416-4788-8b52-e41ff7f6732a" />
+              <option value="749e7220-7dc9-457e-8429-7d257f54582c" />
+              <option value="16304aad-ac29-4bf6-8ecb-dffca23d6306" />
             </set>
           </value>
         </entry>
@@ -45,6 +51,9 @@
           <option value="file://$PROJECT_DIR$/tsconfig.json" />
           <option value="file://$PROJECT_DIR$/App.tsx" />
           <option value="file://$PROJECT_DIR$/shaders/patternv0.12.wgsl" />
+          <option value="file://$PROJECT_DIR$/shaders/patternv0.13.wgsl" />
+          <option value="file://$PROJECT_DIR$/types.ts" />
+          <option value="file://$PROJECT_DIR$/hooks/useLibOpenMPT.ts" />
         </set>
       </entry>
       <entry key="d9efda0d-14d7-49f0-b58b-92bdc94f99a2">
