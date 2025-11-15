@@ -6,6 +6,25 @@ export interface ModuleInfo {
   numChannels: number;
 }
 
+export interface NoteData {
+  // Define based on usage, e.g., note, instrument, etc.
+  note?: string;
+  instrument?: number;
+  effect?: string;
+}
+
+export interface PatternData {
+  // Define based on usage, e.g., pattern index, rows, etc.
+  index: number;
+  rows: any[]; // Adjust as needed
+}
+
+export interface SongPosition {
+  order: number;
+  row: number;
+  seconds: number;
+}
+
 // Media types for images/GIFs/videos used by the UI
 export type MediaKind = 'image' | 'gif' | 'video';
 
@@ -102,6 +121,7 @@ export interface LibOpenMPT {
   _openmpt_module_set_position_order_row: (modulePtr: number, order: number, row: number) => void;
   _openmpt_module_get_current_order: (modulePtr: number) => number;
   _openmpt_module_get_current_row: (modulePtr: number) => number;
+  _openmpt_module_get_position_seconds: (modulePtr: number) => number;
   _openmpt_module_get_current_estimated_bpm: (modulePtr: number) => number;
 }
 

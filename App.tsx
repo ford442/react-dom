@@ -87,18 +87,18 @@ export default function App() {
 
         {isModuleLoaded && (
           <>
-            <InfoDisplay moduleInfo={moduleInfo} />
+            <InfoDisplay moduleInfo={moduleInfo!} />
             <div className="my-6 flex justify-center">
               <button
-                onClick={askAI}
+                onClick={() => askAI()}
                 disabled={isAiLoading || !isModuleLoaded}
                 className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-900 disabled:text-gray-400 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
               >
-                {isAiLoading ? 'Thinking...' : `Ask Gemini about "${moduleInfo.title}"`}
+                {isAiLoading ? 'Thinking...' : `Ask Gemini about "${moduleInfo!.title}"`}
               </button>
             </div>
             <AiInfoCard response={aiResponse} isLoading={isAiLoading} />
-            <PatternSequencer matrix={sequencerMatrix ?? null} currentRow={sequencerCurrentRow} globalRow={sequencerGlobalRow} totalRows={totalPatternRows} onSeek={seekToStep} bpm={moduleInfo.bpm} />
+            <PatternSequencer matrix={sequencerMatrix ?? null} currentRow={sequencerCurrentRow} globalRow={sequencerGlobalRow} totalRows={totalPatternRows} onSeek={seekToStep} bpm={moduleInfo!.bpm} />
 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
               <MediaPanel media={media} activeMediaId={activeMediaId} onSelect={(id) => { setActiveMediaId(id); setOverlayVisible(!!id); }} onRemove={removeMedia} />
