@@ -2,10 +2,19 @@
 <project version="4">
   <component name="AgentMigrationStateService">
     <option name="pendingSessionIds">
+      <option value="a17908ed-3672-4f78-8b18-4ed692b4e3e2" />
       <option value="d9efda0d-14d7-49f0-b58b-92bdc94f99a2" />
     </option>
     <option name="pendingTurns">
       <map>
+        <entry key="a17908ed-3672-4f78-8b18-4ed692b4e3e2">
+          <value>
+            <set>
+              <option value="0c760ad2-cfcb-43ba-97c2-04b87cf7ed27" />
+              <option value="6fa0df7c-863e-4652-9bae-78dcba3fe51f" />
+            </set>
+          </value>
+        </entry>
         <entry key="d9efda0d-14d7-49f0-b58b-92bdc94f99a2">
           <value>
             <set>
@@ -16,6 +25,13 @@
       </map>
     </option>
     <pendingWorkingSetItems>
+      <entry key="a17908ed-3672-4f78-8b18-4ed692b4e3e2">
+        <set>
+          <option value="file://$PROJECT_DIR$/package.json" />
+          <option value="file://$PROJECT_DIR$/shaders/patternShader.wgsl" />
+          <option value="file://$PROJECT_DIR$/components/PatternDisplay.tsx" />
+        </set>
+      </entry>
       <entry key="d9efda0d-14d7-49f0-b58b-92bdc94f99a2">
         <set>
           <option value="file://$PROJECT_DIR$/types.ts" />
