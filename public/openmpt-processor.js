@@ -1,7 +1,15 @@
 // public/openmpt-processor.js
 
-// Import the Emscripten-built ES6 module
-import libopenmpt from './libopenmpt.js';
+// Set up the Module for Emscripten before loading the script
+const Module = {
+  onRuntimeInitialized: function() {
+    console.log('libopenmpt runtime initialized in AudioWorklet.');
+    // The module is ready
+  }
+};
+
+// Load the Emscripten script
+importScripts('./libopenmpt.js');
 
 /**
  * This class will be instantiated in the AudioWorkletGlobalScope.
@@ -24,11 +32,17 @@ class OpenMPTProcessor extends AudioWorkletProcessor {
   }
 
   async initModule() {
-    // Wait for the Emscripten module (and WASM) to be ready
-    this.libopenmptModule = await libopenmpt();
+    // Wait for the Emscripten module to be ready
+    await new Promise(resolve => {
+      Module.onRuntimeInitialized = () => {
+        console.log('libopenmpt runtime initialized in AudioWorklet.');
+        resolve();
+      };
+    });
+
+    this.libopenmptModule = Module;
 
     // Create the player instance
-    // We pass the module instance to the player as seen in your hook
     this.libopenmptPlayer = new this.libopenmptModule.libopenmpt.OKAY_Player(
       this.libopenmptModule,
     );
@@ -51,6 +65,9 @@ class OpenMPTProcessor extends AudioWorkletProcessor {
           break;
         case 'seek':
           this.seek(data);
+          break;
+        case 'seekToStep':
+          this.seekToStep(data);
           break;
       }
     };
