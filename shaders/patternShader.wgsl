@@ -102,7 +102,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
     let hue = hashInstrument(inst);
     base = hueToRgb(hue);
     // Slight saturation boost for note presence
-    let boost = 0.1;
+    var boost = 0.1;
     if (hasNote) { boost = 0.25; }
     base = mix(base, normalize(base + 0.0001), boost);
   }
