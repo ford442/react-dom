@@ -11,6 +11,10 @@ import { MediaOverlay } from './components/MediaOverlay';
 import { PatternDisplay } from './components/PatternDisplay';
 import type { MediaItem } from './types';
 
+// Dynamically load all WGSL shader files
+const shaderModules = import.meta.glob('./shaders/*.wgsl', { as: 'url' });
+const availableShaders = Object.keys(shaderModules).map(path => path.replace('./shaders/', ''));
+
 export default function App() {
   const {
     status,
@@ -72,7 +76,7 @@ export default function App() {
   const activeMedia = media.find(m => m.id === activeMediaId);
   const webgpuSupported = typeof navigator !== 'undefined' && 'gpu' in navigator;
   const [patternMode, setPatternMode] = useState<'html' | 'webgpu'>(webgpuSupported ? 'webgpu' : 'html');
-  const [shaderVersion, setShaderVersion] = useState<string>('patternShaderv0.1.wgsl');
+  const [shaderVersion, setShaderVersion] = useState<string>('patternv0.12.wgsl');
   const effectivePatternMode = webgpuSupported ? patternMode : 'html';
 
   return (
@@ -131,9 +135,9 @@ export default function App() {
                       onChange={(e) => setShaderVersion(e.target.value)}
                       className="bg-gray-800 text-white text-sm px-3 py-2 rounded border border-white/10"
                     >
-                      <option value="patternShaderv0.0.wgsl">v0.0</option>
-                      <option value="patternShaderv0.1.wgsl">v0.1</option>
-                      <option value="patternShaderv0.11.wgsl">v0.11</option>
+                      {availableShaders.map(shader => (
+                        <option key={shader} value={shader}>{shader.replace('.wgsl', '')}</option>
+                      ))}
                     </select>
                   )}
                 </div>
