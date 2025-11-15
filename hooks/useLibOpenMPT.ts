@@ -158,37 +158,43 @@ export const useLibOpenMPT = () => {
         }
     }, [moduleInfo]);
 
-    const seekToStep = useCallback((step: number) => {
-        // Implement seek to step logic
-        postWorkletMessage('seekToStep', step);
-    }, []);
+    const seekToStep = useCallback((stepIndex: number) => {
+        const lib = libopenmptRef.current;
+        const modPtr = currentModulePtr.current;
+        if (!lib || modPtr === 0) return;
 
-    // This is no longer needed, as updates are pushed from the worklet
-    // const startUpdating = () => { ... }
-    // const stopUpdating = () => { ... }
+        // find order and row for the given stepIndex
+        let acc = 0;
+        let targetOrder = 0;
+        let targetRow = 0;
+        const numOrders = lib._openmpt_module_get_num_orders(modPtr);
+        for (let o = 0; o < numOrders; o++) {
+            const m = patternMatricesRef.current[o];
+            const rows = m ? m.numRows : lib._openmpt_module_get_pattern_num_rows(modPtr, lib._openmpt_module_get_order_pattern(modPtr, o));
+            if (stepIndex < acc + rows) {
+                targetOrder = o;
+                targetRow = stepIndex - acc;
+                break;
+            }
+            acc += rows;
+        }
+
+        try {
+            lib._openmpt_module_set_position_order_row(modPtr, targetOrder, targetRow);
+            // update UI state immediately
+            setModuleInfo(prev => ({ ...prev, order: targetOrder, row: targetRow }));
+            setSequencerCurrentRow(targetRow);
+            setSequencerGlobalRow(stepIndex);
+        } catch (e) {
+            console.error('Failed to seek:', e);
+        }
+    }, []); // Empty dependency array is correct, as refs and setters are stable
 
     return {
-        isReady,
-        moduleInfo,
-        songPosition,
-        currentPattern,
-        currentNote,
-        isPlaying,
-        loadModule,
-        play,
-        pause,
-        stop,
-        seek,
-        status,
-        isModuleLoaded,
-        aiResponse,
-        isAiLoading,
-        stopMusic,
-        askAI,
-        sequencerMatrix,
-        sequencerCurrentRow,
-        sequencerGlobalRow,
-        totalPatternRows,
-        seekToStep,
+        status, isReady, isPlaying, isModuleLoaded, moduleInfo,
+        patternData, aiResponse, isAiLoading, loadModule, play,
+        stopMusic, askAI, sequencerMatrix, sequencerCurrentRow,
+        sequencerGlobalRow, totalPatternRows, playbackSeconds,
+        playbackRowFraction, seekToStep // This is now a stable function
     };
 };
