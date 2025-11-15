@@ -183,7 +183,7 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
         const format = navigator.gpu.getPreferredCanvasFormat();
         context.configure({ device, format });
 
-        const shaderSource = await fetch('/shaders/patternShader.wgsl').then(res => res.text());
+        const shaderSource = await fetch('./shaders/patternShader.wgsl').then(res => res.text());
         if (cancelled) return;
         const module = device.createShaderModule({ code: shaderSource });
 
