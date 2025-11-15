@@ -22,6 +22,8 @@ export function useLibOpenMPT() {
   const [sequencerCurrentRow, setSequencerCurrentRow] = useState<number>(0);
   const [sequencerGlobalRow, setSequencerGlobalRow] = useState<number>(0);
   const [totalPatternRows, setTotalPatternRows] = useState<number>(0);
+  const [playbackSeconds, setPlaybackSeconds] = useState<number>(0);
+  const [playbackRowFraction, setPlaybackRowFraction] = useState<number>(0);
 
   const libopenmptRef = useRef<LibOpenMPT | null>(null);
   const currentModulePtr = useRef<number>(0);
@@ -208,9 +210,15 @@ export function useLibOpenMPT() {
 
       const order = lib._openmpt_module_get_current_order(modPtr);
       const row = lib._openmpt_module_get_current_row(modPtr);
+      const positionSeconds = lib._openmpt_module_get_position_seconds(modPtr);
       const bpm = lib._openmpt_module_get_current_estimated_bpm(modPtr);
 
       setModuleInfo(prev => ({ ...prev, order, row, bpm: Math.round(bpm) }));
+      setPlaybackSeconds(positionSeconds);
+
+      const rowsPerSecond = bpm > 0 ? (bpm / 60) * 4 : 0; // default rows/beat = 4
+      const fractionalRow = rowsPerSecond > 0 ? positionSeconds * rowsPerSecond : row;
+      setPlaybackRowFraction(fractionalRow);
 
       // update sequencer state from cached matrices
       const matrix = patternMatricesRef.current[order] ?? null;
@@ -465,5 +473,5 @@ export function useLibOpenMPT() {
     }
   };
 
-  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI, sequencerMatrix, sequencerCurrentRow, sequencerGlobalRow, totalPatternRows, seekToStep };
+  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI, sequencerMatrix, sequencerCurrentRow, sequencerGlobalRow, totalPatternRows, playbackSeconds, playbackRowFraction, seekToStep };
 }
