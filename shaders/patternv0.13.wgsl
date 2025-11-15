@@ -29,7 +29,14 @@ struct VertexOut {
   @builtin(position) position: vec4<f32>,
   @location(0) @interpolate(flat) row: u32,
   @location(1) @interpolate(flat) channel: u32,
-  @location(2) uv: vec2<f32>,
+
+  // --- FIX ---
+  // Added @interpolate(linear).
+  // All floating-point values passed from vertex to fragment
+  // MUST specify an interpolation type (e.g., linear, flat, perspective).
+  @location(2) @interpolate(linear) uv: vec2<f32>,
+  // -----------
+
   @location(3) @interpolate(flat) packedA: u32, // Note/Inst
   @location(4) @interpolate(flat) packedB: u32, // Vol/Effect/Param
 };
