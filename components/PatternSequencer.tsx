@@ -257,7 +257,6 @@ export const PatternSequencer: React.FC<PatternSequencerProps> = ({ matrix, curr
                             <MemoizedSVGCell
                                 key={stepIdx}
                                 stepIdx={stepIdx}
-                                chIdx={chIdx}
                                 cellNote={cellNote}
                                 isActive={isActive}
                                 baseGlobal={baseGlobal}
