@@ -13,6 +13,12 @@
               <option value="0c760ad2-cfcb-43ba-97c2-04b87cf7ed27" />
               <option value="6fa0df7c-863e-4652-9bae-78dcba3fe51f" />
               <option value="1a517ec0-8d7a-4060-be54-cbb25f781a1c" />
+              <option value="9b169eb7-4bf5-4e8a-a9d5-c6ce8b83cc51" />
+              <option value="3bb18e83-960c-4e58-81be-68b49578072f" />
+              <option value="4ce79e00-67ef-4ed2-bc45-5bd8962e5a5d" />
+              <option value="d54578ab-66f0-4544-bca3-1e3a2671ec12" />
+              <option value="6b839cc4-7085-4642-8133-58e63c3e6778" />
+              <option value="3b36c16b-28bd-40fd-beba-3240290320e1" />
             </set>
           </value>
         </entry>
@@ -32,6 +38,7 @@
           <option value="file://$PROJECT_DIR$/shaders/patternShader.wgsl" />
           <option value="file://$PROJECT_DIR$/components/PatternDisplay.tsx" />
           <option value="file://$PROJECT_DIR$/tsconfig.json" />
+          <option value="file://$PROJECT_DIR$/App.tsx" />
         </set>
       </entry>
       <entry key="d9efda0d-14d7-49f0-b58b-92bdc94f99a2">

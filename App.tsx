@@ -8,6 +8,7 @@ import { AiInfoCard } from './components/AiInfoCard';
 import { GithubIcon } from './components/icons';
 import { MediaPanel } from './components/MediaPanel';
 import { MediaOverlay } from './components/MediaOverlay';
+import { PatternDisplay } from './components/PatternDisplay';
 import type { MediaItem } from './types';
 
 export default function App() {
@@ -69,6 +70,9 @@ export default function App() {
   }, [activeMediaId]);
 
   const activeMedia = media.find(m => m.id === activeMediaId);
+  const webgpuSupported = typeof navigator !== 'undefined' && 'gpu' in navigator;
+  const [patternMode, setPatternMode] = useState<'html' | 'webgpu'>(webgpuSupported ? 'webgpu' : 'html');
+  const effectivePatternMode = webgpuSupported ? patternMode : 'html';
 
   return (
     <div className="min-h-screen p-4 md:p-8 flex flex-col">
@@ -98,7 +102,47 @@ export default function App() {
               </button>
             </div>
             <AiInfoCard response={aiResponse} isLoading={isAiLoading} />
-            <PatternSequencer matrix={sequencerMatrix ?? null} currentRow={sequencerCurrentRow} globalRow={sequencerGlobalRow} totalRows={totalPatternRows} onSeek={seekToStep} bpm={moduleInfo.bpm} />
+
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <h2 className="text-sm uppercase tracking-widest text-gray-400">Pattern View</h2>
+                <div className="inline-flex rounded-lg border border-white/10 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setPatternMode('html')}
+                    className={`px-4 py-2 text-sm font-semibold transition ${effectivePatternMode === 'html' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    HTML
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPatternMode('webgpu')}
+                    className={`px-4 py-2 text-sm font-semibold transition ${effectivePatternMode === 'webgpu' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
+                    disabled={!webgpuSupported}
+                  >
+                    WGSL
+                  </button>
+                </div>
+              </div>
+
+              {effectivePatternMode === 'webgpu' ? (
+                <PatternDisplay
+                  matrix={sequencerMatrix ?? null}
+                  playheadRow={sequencerCurrentRow}
+                  cellWidth={18}
+                  cellHeight={16}
+                />
+              ) : (
+                <PatternSequencer
+                  matrix={sequencerMatrix ?? null}
+                  currentRow={sequencerCurrentRow}
+                  globalRow={sequencerGlobalRow}
+                  totalRows={totalPatternRows}
+                  onSeek={seekToStep}
+                  bpm={moduleInfo.bpm}
+                />
+              )}
+            </div>
 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
               <MediaPanel media={media} activeMediaId={activeMediaId} onSelect={(id) => { setActiveMediaId(id); setOverlayVisible(!!id); }} onRemove={removeMedia} />

@@ -1,12 +1,94 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { PatternMatrix } from '../types';
 
 interface PatternDisplayProps {
   matrix: PatternMatrix | null;
-  playheadRow: number; // current row to highlight
+  playheadRow: number;
   cellWidth?: number;
   cellHeight?: number;
 }
+
+const MIN_STORAGE = new Uint32Array([0, 0]);
+
+const clampPlayhead = (value: number, numRows: number) => {
+  if (numRows <= 0) return 0;
+  return Math.min(Math.max(Math.floor(value), 0), numRows - 1);
+};
+
+const packPatternMatrix = (matrix: PatternMatrix | null): Uint32Array => {
+  if (!matrix || matrix.numRows <= 0 || matrix.numChannels <= 0) {
+    return MIN_STORAGE.slice();
+  }
+
+  const { numRows, numChannels, rows } = matrix;
+  const packed = new Uint32Array(numRows * numChannels * 2);
+
+  for (let r = 0; r < numRows; r++) {
+    const rowCells = rows[r] || [];
+    for (let c = 0; c < numChannels; c++) {
+      const offset = (r * numChannels + c) * 2;
+      const cell = rowCells[c];
+      if (!cell || !cell.text) {
+        packed[offset] = 0;
+        packed[offset + 1] = 0;
+        continue;
+      }
+
+      const text = cell.text.trim();
+      const upper = text.toUpperCase();
+      const notePart = upper.slice(0, 3).padEnd(3, '\u0000');
+      const instMatch = text.match(/(\d{1,2})$/);
+      const instByte = instMatch ? Math.min(255, parseInt(instMatch[1], 10)) : 0;
+
+      const n0 = notePart.charCodeAt(0) & 0xff;
+      const n1 = notePart.charCodeAt(1) & 0xff;
+      const n2 = notePart.charCodeAt(2) & 0xff;
+
+      packed[offset] = (n0 << 24) | (n1 << 16) | (n2 << 8) | instByte;
+      packed[offset + 1] = 0;
+    }
+  }
+
+  return packed;
+};
+
+const createBufferWithData = (device: GPUDevice, data: Uint32Array): GPUBuffer => {
+  const buffer = device.createBuffer({
+    size: Math.max(16, data.byteLength),
+    usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    mappedAtCreation: true,
+  });
+  new Uint8Array(buffer.getMappedRange()).set(new Uint8Array(data.buffer));
+  buffer.unmap();
+  return buffer;
+};
+
+const writeUniforms = (
+  device: GPUDevice,
+  uniformBuffer: GPUBuffer,
+  canvas: HTMLCanvasElement,
+  matrix: PatternMatrix | null,
+  playheadRow: number,
+  cellWidth: number,
+  cellHeight: number,
+) => {
+  const numRows = matrix?.numRows ?? 0;
+  const numChannels = matrix?.numChannels ?? 0;
+  const clampedRow = clampPlayhead(playheadRow, numRows);
+
+  const data = new ArrayBuffer(32);
+  const view = new DataView(data);
+  view.setUint32(0, numRows, true);
+  view.setUint32(4, numChannels, true);
+  view.setUint32(8, clampedRow, true);
+  view.setUint32(12, 0, true);
+  view.setFloat32(16, cellWidth, true);
+  view.setFloat32(20, cellHeight, true);
+  view.setFloat32(24, canvas.width, true);
+  view.setFloat32(28, canvas.height, true);
+
+  device.queue.writeBuffer(uniformBuffer, 0, data);
+};
 
 export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playheadRow, cellWidth = 18, cellHeight = 14 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -16,203 +98,191 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
   const cellsBufferRef = useRef<GPUBuffer | null>(null);
   const uniformBufferRef = useRef<GPUBuffer | null>(null);
   const bindGroupRef = useRef<GPUBindGroup | null>(null);
-  const animationRef = useRef<number | null>(null);
 
-  // Helper: build packed buffer from matrix
-  const buildCellsBuffer = (device: GPUDevice) => {
-    if (!matrix) return;
-    const { rows, numChannels, numRows } = matrix;
-    const totalCells = numRows * numChannels;
-    const packed = new Uint32Array(totalCells * 2); // two u32 per cell
+  const [webgpuAvailable, setWebgpuAvailable] = useState(true);
+  const [gpuReady, setGpuReady] = useState(false);
 
-    for (let r = 0; r < numRows; r++) {
-      const rowCells = rows[r] || [];
-      for (let c = 0; c < numChannels; c++) {
-        const idx = (r * numChannels + c) * 2;
-        const cell = rowCells[c];
-        if (!cell) {
-          packed[idx] = 0; // a
-          packed[idx + 1] = 0; // b
-          continue;
-        }
-        // For now parse first up to 3 chars of cell.text as note, instrument from last numeric part
-        const text = cell.text || '';
-        const notePart = text.slice(0, 3).padEnd(3, '\u0000');
-        let instByte = 0;
-        const instMatch = text.match(/(\d{1,2})$/);
-        if (instMatch) instByte = Math.min(255, parseInt(instMatch[1], 10));
-        const n0 = notePart.charCodeAt(0) & 0xff;
-        const n1 = notePart.charCodeAt(1) & 0xff;
-        const n2 = notePart.charCodeAt(2) & 0xff;
-        const a = (n0 << 24) | (n1 << 16) | (n2 << 8) | instByte;
-        // Effects unused -> zero; flag future usage if needed
-        const b = 0;
-        packed[idx] = a >>> 0;
-        packed[idx + 1] = b >>> 0;
-      }
-    }
-
-    if (cellsBufferRef.current) cellsBufferRef.current.destroy();
-    const cellsBuffer = device.createBuffer({
-      size: packed.byteLength,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-      mappedAtCreation: true,
-    });
-    const map = new Uint8Array(cellsBuffer.getMappedRange());
-    map.set(new Uint8Array(packed.buffer));
-    cellsBuffer.unmap();
-    cellsBufferRef.current = cellsBuffer;
-  };
-
-  // Update uniforms
-  const writeUniforms = (device: GPUDevice) => {
-    if (!uniformBufferRef.current) return;
-    const numRows = matrix?.numRows || 0;
-    const numChannels = matrix?.numChannels || 0;
-    const canvas = canvasRef.current!;
-    const dataF32 = new Float32Array([
-      numRows, // will reinterpret later
-      numChannels,
-      playheadRow,
-      0,
-      cellWidth,
-      cellHeight,
-      canvas.width,
-      canvas.height,
-    ]);
-    // We need u32 for first four but layout: treat as raw bytes
-    device.queue.writeBuffer(uniformBufferRef.current, 0, dataF32.buffer);
-  };
+  const canvasMetrics = useMemo(() => {
+    const channels = Math.max(1, matrix?.numChannels ?? 1);
+    const rows = Math.max(1, matrix?.numRows ?? 1);
+    return {
+      width: Math.ceil(channels * cellWidth),
+      height: Math.ceil(rows * cellHeight),
+    };
+  }, [matrix, cellWidth, cellHeight]);
 
   const render = () => {
     const device = deviceRef.current;
     const context = contextRef.current;
     const pipeline = pipelineRef.current;
-    if (!device || !context || !pipeline || !uniformBufferRef.current || !cellsBufferRef.current) return;
+    const bindGroup = bindGroupRef.current;
+    if (!device || !context || !pipeline || !bindGroup || !uniformBufferRef.current || !cellsBufferRef.current) return;
 
     const encoder = device.createCommandEncoder();
     const pass = encoder.beginRenderPass({
-      colorAttachments: [{
-        view: context.getCurrentTexture().createView(),
-        loadOp: 'clear',
-        clearValue: { r: 0, g: 0, b: 0, a: 1 },
-        storeOp: 'store'
-      }]
+      colorAttachments: [
+        {
+          view: context.getCurrentTexture().createView(),
+          loadOp: 'clear',
+          clearValue: { r: 0, g: 0, b: 0, a: 1 },
+          storeOp: 'store',
+        },
+      ],
     });
 
     pass.setPipeline(pipeline);
-    pass.setBindGroup(0, bindGroupRef.current!);
-    const totalInstances = (matrix?.numRows || 0) * (matrix?.numChannels || 0);
-    pass.draw(6, totalInstances, 0, 0);
+    pass.setBindGroup(0, bindGroup);
+    const totalInstances = (matrix?.numRows ?? 0) * (matrix?.numChannels ?? 0);
+    if (totalInstances > 0) {
+      pass.draw(6, totalInstances, 0, 0);
+    }
     pass.end();
 
     device.queue.submit([encoder.finish()]);
   };
 
-  // Initialization
+  const refreshBindGroup = (device: GPUDevice) => {
+    if (!pipelineRef.current || !cellsBufferRef.current || !uniformBufferRef.current) return;
+    const layout = pipelineRef.current.getBindGroupLayout(0);
+    bindGroupRef.current = device.createBindGroup({
+      layout,
+      entries: [
+        { binding: 0, resource: { buffer: cellsBufferRef.current!, size: cellsBufferRef.current!.size } },
+        { binding: 1, resource: { buffer: uniformBufferRef.current! } },
+      ],
+    });
+  };
+
+  // GPU initialization
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    if (!('gpu' in navigator)) return;
+
+    if (!('gpu' in navigator)) {
+      setWebgpuAvailable(false);
+      return;
+    }
+
+    let cancelled = false;
 
     const init = async () => {
-      const adapter = await navigator.gpu.requestAdapter();
-      if (!adapter) return;
-      const device = await adapter.requestDevice();
-      deviceRef.current = device;
-      const context = canvas.getContext('webgpu') as GPUCanvasContext;
-      contextRef.current = context;
-      const format = navigator.gpu.getPreferredCanvasFormat();
-      context.configure({ device, format });
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter || cancelled) {
+          setWebgpuAvailable(false);
+          return;
+        }
 
-      const shaderCode = await fetch('/shaders/patternShader.wgsl').then(r => r.text());
-      const module = device.createShaderModule({ code: shaderCode });
+        const device = await adapter.requestDevice();
+        if (!device || cancelled) {
+          setWebgpuAvailable(false);
+          return;
+        }
 
-      const bindGroupLayout = device.createBindGroupLayout({
-        entries: [
-          { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
-          { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
-        ]
-      });
+        const context = canvas.getContext('webgpu') as GPUCanvasContext;
+        const format = navigator.gpu.getPreferredCanvasFormat();
+        context.configure({ device, format });
 
-      const pipeline = device.createRenderPipeline({
-        layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
-        vertex: { module, entryPoint: 'vs' },
-        fragment: { module, entryPoint: 'fs', targets: [{ format }] },
-        primitive: { topology: 'triangle-list' },
-      });
-      pipelineRef.current = pipeline;
+        const shaderSource = await fetch('/shaders/patternShader.wgsl').then(res => res.text());
+        if (cancelled) return;
+        const module = device.createShaderModule({ code: shaderSource });
 
-      // Create uniform buffer
-      const uniformBuffer = device.createBuffer({
-        size: 32, // 8 * 4 bytes
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-      });
-      uniformBufferRef.current = uniformBuffer;
+        const bindGroupLayout = device.createBindGroupLayout({
+          entries: [
+            { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+            { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
+          ],
+        });
 
-      if (matrix) buildCellsBuffer(device);
+        const pipeline = device.createRenderPipeline({
+          layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
+          vertex: { module, entryPoint: 'vs' },
+          fragment: { module, entryPoint: 'fs', targets: [{ format }] },
+          primitive: { topology: 'triangle-list' },
+        });
 
-      const bindGroup = device.createBindGroup({
-        layout: bindGroupLayout,
-        entries: [
-          { binding: 0, resource: { buffer: cellsBufferRef.current!, size: cellsBufferRef.current!.size } },
-          { binding: 1, resource: { buffer: uniformBuffer } },
-        ]
-      });
-      bindGroupRef.current = bindGroup;
+        const uniformBuffer = device.createBuffer({
+          size: 32,
+          usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
 
-      writeUniforms(device);
-      render();
+        deviceRef.current = device;
+        contextRef.current = context;
+        pipelineRef.current = pipeline;
+        uniformBufferRef.current = uniformBuffer;
+        cellsBufferRef.current = createBufferWithData(device, MIN_STORAGE);
+        refreshBindGroup(device);
+        setGpuReady(true);
+      } catch (error) {
+        console.error('Failed to initialize WebGPU pattern display', error);
+        if (!cancelled) setWebgpuAvailable(false);
+      }
     };
 
     init();
+
     return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      cancelled = true;
+      bindGroupRef.current = null;
+      pipelineRef.current = null;
+      contextRef.current = null;
+      if (cellsBufferRef.current) {
+        cellsBufferRef.current.destroy();
+        cellsBufferRef.current = null;
+      }
+      if (uniformBufferRef.current) {
+        uniformBufferRef.current.destroy();
+        uniformBufferRef.current = null;
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Rebuild cells when matrix changes
+  // Upload packed pattern data whenever matrix changes
   useEffect(() => {
-    const device = deviceRef.current;
-    if (!device || !matrix) return;
-    buildCellsBuffer(device);
-    // Recreate bind group with new buffer
-    if (pipelineRef.current && uniformBufferRef.current && cellsBufferRef.current) {
-      const layout = pipelineRef.current.getBindGroupLayout(0);
-      bindGroupRef.current = device.createBindGroup({
-        layout,
-        entries: [
-          { binding: 0, resource: { buffer: cellsBufferRef.current!, size: cellsBufferRef.current!.size } },
-          { binding: 1, resource: { buffer: uniformBufferRef.current! } },
-        ]
-      });
-    }
-    writeUniforms(device);
-    render();
-  }, [matrix]);
-
-  // Update playhead highlight
-  useEffect(() => {
+    if (!gpuReady) return;
     const device = deviceRef.current;
     if (!device) return;
-    writeUniforms(device);
-    render();
-  }, [playheadRow, cellWidth, cellHeight]);
 
-  const numChannels = matrix?.numChannels || 0;
-  const numRows = matrix?.numRows || 0;
+    const packed = packPatternMatrix(matrix);
+    if (cellsBufferRef.current) {
+      cellsBufferRef.current.destroy();
+    }
+    cellsBufferRef.current = createBufferWithData(device, packed);
+    refreshBindGroup(device);
+  }, [matrix, gpuReady]);
+
+  // Update uniforms + render when visual parameters change
+  useEffect(() => {
+    if (!gpuReady) return;
+    const device = deviceRef.current;
+    const canvas = canvasRef.current;
+    if (!device || !canvas || !uniformBufferRef.current) return;
+
+    writeUniforms(device, uniformBufferRef.current, canvas, matrix, playheadRow, cellWidth, cellHeight);
+    render();
+  }, [playheadRow, cellWidth, cellHeight, matrix, gpuReady]);
 
   return (
-    <section className="bg-black p-2 rounded-lg shadow-inner overflow-hidden">
-      <div className="flex text-xs text-gray-400 mb-1 font-mono">
-        <span className="mr-2">Rows: {numRows}</span>
-        <span>Channels: {numChannels}</span>
-        <span className="ml-auto">Playhead: {playheadRow}</span>
+    <section className="bg-black/70 p-4 rounded-xl border border-white/5 shadow-lg">
+      <div className="flex items-center justify-between text-xs text-gray-400 font-mono mb-2">
+        <span>Rows: {matrix?.numRows ?? 0}</span>
+        <span>Channels: {matrix?.numChannels ?? 0}</span>
+        <span>Playhead: {playheadRow}</span>
       </div>
-      <canvas ref={canvasRef} width={numChannels * cellWidth} height={Math.max(1, numRows) * cellHeight} />
-      {!('gpu' in navigator) && (
-        <div className="text-red-400 text-xs mt-2">WebGPU not supported – pattern grid unavailable.</div>
+      <div className="relative bg-black border border-white/10 rounded-lg overflow-auto">
+        <canvas
+          ref={canvasRef}
+          width={canvasMetrics.width}
+          height={canvasMetrics.height}
+          className="block min-w-full"
+          style={{ imageRendering: 'pixelated' }}
+        />
+      </div>
+      {!matrix && (
+        <div className="text-xs text-gray-500 mt-3">Load a module to view its pattern grid.</div>
+      )}
+      {!webgpuAvailable && (
+        <div className="text-xs text-red-400 mt-2">WebGPU is not supported in this browser. Switch to the HTML view.</div>
       )}
     </section>
   );
