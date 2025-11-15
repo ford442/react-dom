@@ -6,6 +6,25 @@ export interface ModuleInfo {
   numChannels: number;
 }
 
+export interface NoteData {
+  // Define based on usage, e.g., note, instrument, etc.
+  note?: string;
+  instrument?: number;
+  effect?: string;
+}
+
+export interface PatternData {
+  // Define based on usage, e.g., pattern index, rows, etc.
+  index: number;
+  rows: any[]; // Adjust as needed
+}
+
+export interface SongPosition {
+  order: number;
+  row: number;
+  seconds: number;
+}
+
 // Media types for images/GIFs/videos used by the UI
 export type MediaKind = 'image' | 'gif' | 'video';
 

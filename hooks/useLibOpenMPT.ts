@@ -16,8 +16,18 @@ export const useLibOpenMPT = () => {
     const [moduleInfo, setModuleInfo] = useState<ModuleInfo | null>(null);
     const [songPosition, setSongPosition] = useState<SongPosition | null>(null);
     const [currentPattern, setCurrentPattern] = useState<PatternData | null>(null);
-    const [currentNote, setCurrentNote] = useState<NoteData | null>(null);
+    const [currentNote] = useState<NoteData | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+
+    // Added states for missing properties
+    const [status, _setStatus] = useState<string>('idle');
+    const [isModuleLoaded, setIsModuleLoaded] = useState<boolean>(false);
+    const [aiResponse, setAiResponse] = useState<string>('');
+    const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
+    const [sequencerMatrix, _setSequencerMatrix] = useState<any>(null);
+    const [sequencerCurrentRow, _setSequencerCurrentRow] = useState<number>(0);
+    const [sequencerGlobalRow, _setSequencerGlobalRow] = useState<number>(0);
+    const [totalPatternRows, _setTotalPatternRows] = useState<number>(0);
 
     // Refs for audio context and worklet node
     const audioContextRef = useRef<AudioContext | null>(null);
@@ -49,6 +59,7 @@ export const useLibOpenMPT = () => {
                             break;
                         case 'metadata':
                             setModuleInfo(data);
+                            setIsModuleLoaded(true);
                             break;
                         case 'update':
                             setSongPosition(data.position);
@@ -127,6 +138,31 @@ export const useLibOpenMPT = () => {
         postWorkletMessage('seek', position);
     }, [moduleInfo]);
 
+    const stopMusic = useCallback(() => {
+        stop();
+    }, [stop]);
+
+    const askAI = useCallback(async (query?: string) => {
+        if (!moduleInfo) return;
+        setIsAiLoading(true);
+        try {
+            // Implement AI call here, e.g., using Gemini API
+            const response = await fetch('/api/ask-ai', { method: 'POST', body: JSON.stringify({ query, module: moduleInfo }) });
+            const data = await response.json();
+            setAiResponse(data.response);
+        } catch (e) {
+            console.error(e);
+            setAiResponse('Error fetching AI response');
+        } finally {
+            setIsAiLoading(false);
+        }
+    }, [moduleInfo]);
+
+    const seekToStep = useCallback((step: number) => {
+        // Implement seek to step logic
+        postWorkletMessage('seekToStep', step);
+    }, []);
+
     // This is no longer needed, as updates are pushed from the worklet
     // const startUpdating = () => { ... }
     // const stopUpdating = () => { ... }
@@ -143,5 +179,16 @@ export const useLibOpenMPT = () => {
         pause,
         stop,
         seek,
+        status,
+        isModuleLoaded,
+        aiResponse,
+        isAiLoading,
+        stopMusic,
+        askAI,
+        sequencerMatrix,
+        sequencerCurrentRow,
+        sequencerGlobalRow,
+        totalPatternRows,
+        seekToStep,
     };
 };
