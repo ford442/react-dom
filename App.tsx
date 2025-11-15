@@ -72,6 +72,7 @@ export default function App() {
   const activeMedia = media.find(m => m.id === activeMediaId);
   const webgpuSupported = typeof navigator !== 'undefined' && 'gpu' in navigator;
   const [patternMode, setPatternMode] = useState<'html' | 'webgpu'>(webgpuSupported ? 'webgpu' : 'html');
+  const [shaderVersion, setShaderVersion] = useState<string>('patternShaderv0.1.wgsl');
   const effectivePatternMode = webgpuSupported ? patternMode : 'html';
 
   return (
@@ -106,22 +107,35 @@ export default function App() {
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <h2 className="text-sm uppercase tracking-widest text-gray-400">Pattern View</h2>
-                <div className="inline-flex rounded-lg border border-white/10 overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setPatternMode('html')}
-                    className={`px-4 py-2 text-sm font-semibold transition ${effectivePatternMode === 'html' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
-                  >
-                    HTML
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPatternMode('webgpu')}
-                    className={`px-4 py-2 text-sm font-semibold transition ${effectivePatternMode === 'webgpu' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
-                    disabled={!webgpuSupported}
-                  >
-                    WGSL
-                  </button>
+                <div className="flex items-center gap-3">
+                  <div className="inline-flex rounded-lg border border-white/10 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setPatternMode('html')}
+                      className={`px-4 py-2 text-sm font-semibold transition ${effectivePatternMode === 'html' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      HTML
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPatternMode('webgpu')}
+                      className={`px-4 py-2 text-sm font-semibold transition ${effectivePatternMode === 'webgpu' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
+                      disabled={!webgpuSupported}
+                    >
+                      WGSL
+                    </button>
+                  </div>
+                  {effectivePatternMode === 'webgpu' && (
+                    <select
+                      value={shaderVersion}
+                      onChange={(e) => setShaderVersion(e.target.value)}
+                      className="bg-gray-800 text-white text-sm px-3 py-2 rounded border border-white/10"
+                    >
+                      <option value="patternShaderv0.0.wgsl">v0.0</option>
+                      <option value="patternShaderv0.1.wgsl">v0.1</option>
+                      <option value="patternShaderv0.11.wgsl">v0.11</option>
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -131,6 +145,7 @@ export default function App() {
                   playheadRow={sequencerCurrentRow}
                   cellWidth={18}
                   cellHeight={16}
+                  shaderFile={shaderVersion}
                 />
               ) : (
                 <PatternSequencer

@@ -6,6 +6,7 @@ interface PatternDisplayProps {
   playheadRow: number;
   cellWidth?: number;
   cellHeight?: number;
+  shaderFile?: string;
 }
 
 const MIN_STORAGE = new Uint32Array([0, 0]);
@@ -90,7 +91,7 @@ const writeUniforms = (
   device.queue.writeBuffer(uniformBuffer, 0, data);
 };
 
-export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playheadRow, cellWidth = 18, cellHeight = 14 }) => {
+export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playheadRow, cellWidth = 18, cellHeight = 14, shaderFile = 'patternShader.wgsl' }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const deviceRef = useRef<GPUDevice | null>(null);
   const contextRef = useRef<GPUCanvasContext | null>(null);
@@ -183,7 +184,7 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
         const format = navigator.gpu.getPreferredCanvasFormat();
         context.configure({ device, format });
 
-        const shaderSource = await fetch('./shaders/patternShader.wgsl').then(res => res.text());
+        const shaderSource = await fetch(`./shaders/${shaderFile}`).then(res => res.text());
         if (cancelled) return;
         const module = device.createShaderModule({ code: shaderSource });
 
@@ -235,7 +236,7 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
         uniformBufferRef.current = null;
       }
     };
-  }, []);
+  }, [shaderFile]);
 
   // Upload packed pattern data whenever matrix changes
   useEffect(() => {
