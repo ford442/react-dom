@@ -103,6 +103,7 @@ export interface LibOpenMPT {
   _openmpt_module_get_current_order: (modulePtr: number) => number;
   _openmpt_module_get_current_row: (modulePtr: number) => number;
   _openmpt_module_get_current_estimated_bpm: (modulePtr: number) => number;
+  _openmpt_module_get_position_seconds: (modulePtr: number) => number;
 }
 
 // For the global window object
