@@ -19,10 +19,10 @@ struct Uniforms {
 
 struct VertexOut {
   @builtin(position) position: vec4<f32>,
-  @location(0) row: u32,
-  @location(1) channel: u32,
+  @location(0) @interpolate(flat) row: u32,
+  @location(1) @interpolate(flat) channel: u32,
   @location(2) uv: vec2<f32>, // local 0..1 in cell
-  @location(3) packedA: u32,
+  @location(3) @interpolate(flat) packedA: u32,
 };
 
 fn decodeA(a: u32) -> vec4<u32> {
