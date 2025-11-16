@@ -224,8 +224,8 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
             entries: [
               { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
               { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
-              { binding: 2, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
-              { binding: 3, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+              { binding: 2, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
+              { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
             ],
           });
         } catch {
@@ -262,8 +262,54 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
           pipelineRef.current = pipeline;
         }
 
+        // Adjust uniform buffer size to match the updated Uniforms struct in the shader
+        const uniformBuffer = device.createBuffer({ size: 1024, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+
+        // Update pipeline layout to include sampler and texture bindings for patternShaderv0.12.wgsl
+        if (shaderFile === 'patternShaderv0.12.wgsl') {
+          bindGroupLayout = device.createBindGroupLayout({
+            entries: [
+              { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+              { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
+              { binding: 2, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
+              { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+            ],
+          });
+        } else {
+          // Default pipeline layout for other shaders
+          bindGroupLayout = device.createBindGroupLayout({
+            entries: [
+              { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+              { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
+            ],
+          });
+        }
+
+        let entryVert = 'vs';
+        let entryFrag = 'fs';
+        // Optional fallback for older shaders
+        try {
+          // create pipeline to validate entry points
+          const pipeline = device.createRenderPipeline({
+            layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
+            vertex: { module, entryPoint: entryVert },
+            fragment: { module, entryPoint: entryFrag, targets: [{ format }] },
+            primitive: { topology: 'triangle-list' },
+          });
+          pipelineRef.current = pipeline;
+        } catch (e) {
+          // fallback names
+          const pipeline = device.createRenderPipeline({
+            layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
+            vertex: { module, entryPoint: 'vertex_main' },
+            fragment: { module, entryPoint: 'fragment_main', targets: [{ format }] },
+            primitive: { topology: 'triangle-list' },
+          });
+          pipelineRef.current = pipeline;
+        }
+
         // Uniform buffer: 48 bytes (multiple of 16)
-        const uniformBuffer = device.createBuffer({ size: 64, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+        const uniformBuffer = device.createBuffer({ size: 1024, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
 
         deviceRef.current = device;
         contextRef.current = context;
