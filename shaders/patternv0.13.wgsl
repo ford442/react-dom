@@ -190,7 +190,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   var color = vec3<f32>(0.0);
   let baseA = getFragmentConstants().bgColorA;
   let baseB = getFragmentConstants().bgColorB;
-  const color = select(baseB, baseA, (in.channel & 1u) == 1u);
+  color = select(baseB, baseA, (in.channel & 1u) == 1u);
 
   var background = color;
   if (in.row < uniforms.numRows) {
@@ -207,7 +207,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
     }
   }
 
-  var color = background;
+  color = background;
 
   let pr = f32(uniforms.playheadRow) + clamp(uniforms.tickOffset, 0.0, 1.0);
   let playheadX = pr * uniforms.cellW / uniforms.canvasW;
@@ -229,8 +229,13 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   }
 
   if (hasNote) {
-    let hue = fract((f32(inst) + 0.001 * f32(effParam)) * fs.hueMagic);
-    var noteColor = neonPalette(hue) * fs.noteIntensity;
+    // Use a bright base color for notes
+    let base_note_color = vec3<f32>(0.7, 0.9, 1.0); // Bright cyan/blue
+
+    // Use instrument ID to modulate brightness [0.5, 1.0]
+    let brightness = 0.5 + (f32(inst) / 255.0) * 0.5;
+
+    var noteColor = base_note_color * brightness * fs.noteIntensity;
 
     if (uniforms.isPlaying == 1u) {
       let pulse = 0.5 + 0.5 * sin(uniforms.timeSec * uniforms.bpm * 0.10472);
