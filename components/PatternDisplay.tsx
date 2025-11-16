@@ -20,7 +20,6 @@ interface PatternDisplayProps {
 }
 
 const MIN_STORAGE = new Uint32Array([0, 0]);
-const CHANNEL_STRUCT_SIZE = 32; // vec4 + vec4
 
 const clampPlayhead = (value: number, numRows: number) => {
   if (numRows <= 0) return 0;
@@ -120,7 +119,7 @@ const buildRowFlags = (numRows: number): Uint32Array => {
   return flags;
 };
 
-export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playheadRow, cellWidth = 18, cellHeight = 14, shaderFile = 'patternv0.12.wgsl', isPlaying = false, bpm = 120, timeSec = 0, tickOffset = 0, channels = [], beatPhase = 0, grooveAmount = 0, kickTrigger = 0, activeChannels = 0 }) => {
+export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playheadRow, cellWidth = 18, cellHeight = 14, shaderFile = 'patternv0.12.wgsl', bpm = 120, timeSec = 0, tickOffset = 0, grooveAmount = 0, kickTrigger = 0, activeChannels = 0 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const deviceRef = useRef<GPUDevice | null>(null);
   const contextRef = useRef<GPUCanvasContext | null>(null);
@@ -254,29 +253,25 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
 
         let entryVert = 'vs';
         let entryFrag = 'fs';
-        // Optional fallback for older shaders
         try {
-          // create pipeline to validate entry points
-          const pipeline = device.createRenderPipeline({
+          pipelineRef.current = device.createRenderPipeline({
             layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
             vertex: { module, entryPoint: entryVert },
             fragment: { module, entryPoint: entryFrag, targets: [{ format }] },
             primitive: { topology: 'triangle-list' },
           });
-          pipelineRef.current = pipeline;
-        } catch (e) {
-          // fallback names
-          const pipeline = device.createRenderPipeline({
+        } catch {
+          pipelineRef.current = device.createRenderPipeline({
             layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
             vertex: { module, entryPoint: 'vertex_main' },
             fragment: { module, entryPoint: 'fragment_main', targets: [{ format }] },
             primitive: { topology: 'triangle-list' },
           });
-          pipelineRef.current = pipeline;
         }
 
         // Adjust uniform buffer size to match the updated Uniforms struct in the shader
-        const uniformBuffer = device.createBuffer({ size: 1024, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+        const uniformSize = shaderFile === 'patternShaderv0.12.wgsl' ? 1024 : 64;
+        const uniformBuffer = device.createBuffer({ size: uniformSize, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
 
         deviceRef.current = device;
         contextRef.current = context;
@@ -319,8 +314,8 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
           bindGroupRef.current = device.createBindGroup({
             layout: bindGroupLayout,
             entries: [
-              { binding: 0, resource: { buffer: cellsBufferRef.current } },
-              { binding: 1, resource: { buffer: uniformBufferRef.current } },
+              { binding: 0, resource: { buffer: cellsBufferRef.current! } },
+              { binding: 1, resource: { buffer: uniformBufferRef.current! } },
               { binding: 2, resource: sampler },
               { binding: 3, resource: texture.createView() },
             ],
@@ -340,133 +335,54 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
 
     return () => {
       cancelled = true;
-      bindGroupRef.current = null;
-      pipelineRef.current = null;
-      contextRef.current = null;
-      if (cellsBufferRef.current) { cellsBufferRef.current.destroy(); cellsBufferRef.current = null; }
-      if (uniformBufferRef.current) { uniformBufferRef.current.destroy(); uniformBufferRef.current = null; }
-      if (rowFlagsBufferRef.current) { rowFlagsBufferRef.current.destroy(); rowFlagsBufferRef.current = null; }
-      if (channelsBufferRef.current) { channelsBufferRef.current.destroy(); channelsBufferRef.current = null; }
+      setWebgpuAvailable(true);
+      setGpuReady(false);
     };
-  }, [shaderFile, matrix?.numRows, matrix?.numChannels]);
+  }, [matrix, shaderFile]);
 
-  // Upload packed pattern data whenever matrix changes
+  // Update buffers and re-render when matrix or playheadRow changes
   useEffect(() => {
-    if (!gpuReady) return;
     const device = deviceRef.current;
-    if (!device) return;
+    if (!device || !gpuReady) return;
 
-    const packed = packPatternMatrix(matrix);
-    if (cellsBufferRef.current) cellsBufferRef.current.destroy();
-    cellsBufferRef.current = createBufferWithData(device, packed, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+    // Update cells buffer
+    if (matrix) {
+      if (cellsBufferRef.current) {
+        cellsBufferRef.current.destroy();
+      }
+      cellsBufferRef.current = createBufferWithData(device, packPatternMatrix(matrix), GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+      refreshBindGroup(device);
+    } else if (!cellsBufferRef.current) {
+      cellsBufferRef.current = createBufferWithData(device, MIN_STORAGE, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+      refreshBindGroup(device);
+    }
 
-    if (useExtendedRef.current) {
+    // Update uniform buffer with playhead and timing information
+    if (uniformBufferRef.current) {
       const numRows = matrix?.numRows ?? 1;
-      if (rowFlagsBufferRef.current) rowFlagsBufferRef.current.destroy();
-      rowFlagsBufferRef.current = createBufferWithData(device, buildRowFlags(numRows), GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+      const tick = clampPlayhead(playheadRow + tickOffset, numRows);
+      const timeFrac = numRows > 0 ? (tick + 1) / numRows : 0;
+      const beat = Math.floor(tick / 4) % 4;
+      const groove = Math.min(1, Math.max(0, (beat + grooveAmount) / 4));
+      const kick = (beat === 0 && grooveAmount > 0) ? 1 : 0;
 
-      const channelsCount = Math.max(1, matrix?.numChannels ?? 1);
-      if (channelsBufferRef.current) channelsBufferRef.current.destroy();
-      const channelsAB = new ArrayBuffer(channelsCount * 16);
-      channelsBufferRef.current = createBufferWithData(device, new Uint8Array(channelsAB), GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+      // Pack uniforms into a Float32Array
+      const uniforms = new Float32Array([
+        timeSec, timeFrac, bpm, activeChannels,    // time and tempo
+        tick, beat, groove, kick,     // tick and beat information
+        0, 0, 0, 0,                   // padding
+      ]);
+
+      device.queue.writeBuffer(uniformBufferRef.current, 0, uniforms.buffer, uniforms.byteOffset, uniforms.byteLength);
     }
 
-    refreshBindGroup(device);
     render();
-  }, [matrix, gpuReady]);
-
-  const writeUniforms = () => {
-    const device = deviceRef.current;
-    if (!device || !uniformBufferRef.current || !canvasRef.current) return;
-    const canvas = canvasRef.current;
-    const numRows = matrix?.numRows ?? 0;
-    const numChannels = matrix?.numChannels ?? 0;
-    const clampedRow = clampPlayhead(playheadRow, numRows);
-
-    const data = new ArrayBuffer(1024);
-    const view = new DataView(data);
-    view.setUint32(0, numRows, true);
-    view.setUint32(4, numChannels, true);
-    view.setUint32(8, clampedRow, true);
-    view.setUint32(12, isPlaying ? 1 : 0, true);
-    view.setFloat32(16, cellWidth, true);
-    view.setFloat32(20, cellHeight, true);
-    view.setFloat32(24, canvas.width, true);
-    view.setFloat32(28, canvas.height, true);
-    view.setFloat32(32, Math.max(0, Math.min(1, tickOffset ?? 0)), true);
-    view.setFloat32(36, bpm ?? 0, true);
-    view.setFloat32(40, timeSec ?? 0, true);
-    view.setFloat32(44, beatPhase ?? 0, true);
-    view.setFloat32(48, grooveAmount ?? 0, true);
-    view.setFloat32(52, kickTrigger ?? 0, true);
-    view.setUint32(56, activeChannels ?? 0, true);
-    view.setUint32(60, 0, true);
-    // Additional uniforms for patternShaderv0.12.wgsl
-    view.setFloat32(64, 1.0, true); // texScale.x
-    view.setFloat32(68, 1.0, true); // texScale.y
-    view.setFloat32(72, 0.0, true); // texOffset.x
-    view.setFloat32(76, 0.0, true); // texOffset.y
-    view.setFloat32(80, 0.8, true); // colorMix
-    view.setFloat32(84, 1.0, true); // maskMix
-
-    device.queue.writeBuffer(uniformBufferRef.current, 0, data);
-  };
-
-  // Update per-channel buffer each frame using current row data (approximation)
-  useEffect(() => {
-    if (!gpuReady || !matrix || !channelsBufferRef.current) return;
-    const numChannels = matrix.numChannels;
-    const count = Math.min(numChannels, channels.length);
-    const ab = new ArrayBuffer(Math.max(1, count) * CHANNEL_STRUCT_SIZE);
-    const dv = new DataView(ab);
-
-    for (let c = 0; c < count; c++) {
-      const state = channels[c];
-      const offset = c * CHANNEL_STRUCT_SIZE;
-      dv.setFloat32(offset + 0, state?.volume ?? 0, true);
-      dv.setFloat32(offset + 4, state?.pan ?? 0, true);
-      dv.setFloat32(offset + 8, state?.freq ?? 0, true);
-      dv.setUint32(offset + 12, state?.trigger ?? 0, true);
-      dv.setFloat32(offset + 16, state?.noteAge ?? 0, true);
-      dv.setUint32(offset + 20, state?.activeEffect ?? 0, true);
-      dv.setFloat32(offset + 24, state?.effectValue ?? 0, true);
-      dv.setUint32(offset + 28, state?.isMuted ?? 0, true);
-    }
-
-    deviceRef.current!.queue.writeBuffer(channelsBufferRef.current, 0, ab);
-    writeUniforms();
-    render();
-  }, [matrix, playheadRow, gpuReady, channels]);
-
-  // Update uniforms + render when visual parameters change
-  useEffect(() => {
-    if (!gpuReady) return;
-    writeUniforms();
-    render();
-  }, [tickOffset, bpm, timeSec, isPlaying, cellWidth, cellHeight, gpuReady, canvasMetrics.width, canvasMetrics.height, beatPhase, grooveAmount, kickTrigger, activeChannels]);
+  }, [matrix, playheadRow, timeSec, bpm, tickOffset, grooveAmount, kickTrigger, activeChannels, gpuReady]);
 
   return (
-    <section className="bg-black/70 p-4 rounded-xl border border-white/5 shadow-lg">
-      <div className="flex items-center justify-between text-xs text-gray-400 font-mono mb-2">
-        <span>Rows: {matrix?.numRows ?? 0}</span>
-        <span>Channels: {matrix?.numChannels ?? 0}</span>
-        <span>Playhead: {playheadRow}</span>
-      </div>
-      <div className="relative bg-black border border-white/10 rounded-lg overflow-auto">
-        <canvas
-          ref={canvasRef}
-          width={canvasMetrics.width}
-          height={canvasMetrics.height}
-          className="block min-w-full"
-          style={{ imageRendering: 'pixelated' }}
-        />
-      </div>
-      {!matrix && (
-        <div className="text-xs text-gray-500 mt-3">Load a module to view its pattern grid.</div>
-      )}
-      {!webgpuAvailable && (
-        <div className="text-xs text-red-400 mt-2">WebGPU is not supported in this browser. Switch to the HTML view.</div>
-      )}
-    </section>
+    <div className="pattern-display">
+      <canvas ref={canvasRef} width={canvasMetrics.width} height={canvasMetrics.height} />
+      {!webgpuAvailable && <div className="error">WebGPU not available in this browser.</div>}
+    </div>
   );
 };
