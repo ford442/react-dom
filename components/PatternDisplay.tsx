@@ -239,6 +239,19 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
           });
         }
 
+        // Override for patternShaderv0.12.wgsl to ensure sampler and texture bindings
+        if (shaderFile === 'patternShaderv0.12.wgsl') {
+          useExtendedRef.current = true;
+          bindGroupLayout = device.createBindGroupLayout({
+            entries: [
+              { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+              { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
+              { binding: 2, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
+              { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+            ],
+          });
+        }
+
         let entryVert = 'vs';
         let entryFrag = 'fs';
         // Optional fallback for older shaders
@@ -265,52 +278,6 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
         // Adjust uniform buffer size to match the updated Uniforms struct in the shader
         const uniformBuffer = device.createBuffer({ size: 1024, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
 
-        // Update pipeline layout to include sampler and texture bindings for patternShaderv0.12.wgsl
-        if (shaderFile === 'patternShaderv0.12.wgsl') {
-          bindGroupLayout = device.createBindGroupLayout({
-            entries: [
-              { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
-              { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
-              { binding: 2, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
-              { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
-            ],
-          });
-        } else {
-          // Default pipeline layout for other shaders
-          bindGroupLayout = device.createBindGroupLayout({
-            entries: [
-              { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
-              { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
-            ],
-          });
-        }
-
-        let entryVert = 'vs';
-        let entryFrag = 'fs';
-        // Optional fallback for older shaders
-        try {
-          // create pipeline to validate entry points
-          const pipeline = device.createRenderPipeline({
-            layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
-            vertex: { module, entryPoint: entryVert },
-            fragment: { module, entryPoint: entryFrag, targets: [{ format }] },
-            primitive: { topology: 'triangle-list' },
-          });
-          pipelineRef.current = pipeline;
-        } catch (e) {
-          // fallback names
-          const pipeline = device.createRenderPipeline({
-            layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
-            vertex: { module, entryPoint: 'vertex_main' },
-            fragment: { module, entryPoint: 'fragment_main', targets: [{ format }] },
-            primitive: { topology: 'triangle-list' },
-          });
-          pipelineRef.current = pipeline;
-        }
-
-        // Uniform buffer: 48 bytes (multiple of 16)
-        const uniformBuffer = device.createBuffer({ size: 1024, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
-
         deviceRef.current = device;
         contextRef.current = context;
         uniformBufferRef.current = uniformBuffer;
@@ -326,7 +293,42 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
           channelsBufferRef.current = createBufferWithData(device, new Uint8Array(channelsAB), GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
         }
 
-        refreshBindGroup(device);
+        // Load texture and sampler for patternShaderv0.12.wgsl and create bind group
+        if (shaderFile === 'patternShaderv0.12.wgsl') {
+          const img = new Image();
+          img.src = './public/unlit-buttons.png';
+          await img.decode();
+
+          const bitmap = await createImageBitmap(img);
+          const texture = device.createTexture({
+            size: [bitmap.width, bitmap.height, 1],
+            format: 'rgba8unorm',
+            usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+          });
+          device.queue.copyExternalImageToTexture(
+            { source: bitmap },
+            { texture: texture },
+            [bitmap.width, bitmap.height, 1]
+          );
+
+          const sampler = device.createSampler({
+            magFilter: 'linear',
+            minFilter: 'linear',
+          });
+
+          bindGroupRef.current = device.createBindGroup({
+            layout: bindGroupLayout,
+            entries: [
+              { binding: 0, resource: { buffer: cellsBufferRef.current } },
+              { binding: 1, resource: { buffer: uniformBufferRef.current } },
+              { binding: 2, resource: sampler },
+              { binding: 3, resource: texture.createView() },
+            ],
+          });
+        } else {
+          refreshBindGroup(device);
+        }
+
         setGpuReady(true);
       } catch (error) {
         console.error('Failed to initialize WebGPU pattern display', error);
@@ -381,7 +383,7 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
     const numChannels = matrix?.numChannels ?? 0;
     const clampedRow = clampPlayhead(playheadRow, numRows);
 
-    const data = new ArrayBuffer(64);
+    const data = new ArrayBuffer(1024);
     const view = new DataView(data);
     view.setUint32(0, numRows, true);
     view.setUint32(4, numChannels, true);
@@ -399,6 +401,13 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
     view.setFloat32(52, kickTrigger ?? 0, true);
     view.setUint32(56, activeChannels ?? 0, true);
     view.setUint32(60, 0, true);
+    // Additional uniforms for patternShaderv0.12.wgsl
+    view.setFloat32(64, 1.0, true); // texScale.x
+    view.setFloat32(68, 1.0, true); // texScale.y
+    view.setFloat32(72, 0.0, true); // texOffset.x
+    view.setFloat32(76, 0.0, true); // texOffset.y
+    view.setFloat32(80, 0.8, true); // colorMix
+    view.setFloat32(84, 1.0, true); // maskMix
 
     device.queue.writeBuffer(uniformBufferRef.current, 0, data);
   };
