@@ -312,7 +312,7 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
     });
     device.queue.copyExternalImageToTexture({ source: bitmap }, { texture }, [bitmap.width, bitmap.height, 1]);
-    const sampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
+    const sampler = device.createSampler({ magFilter: 'nearest', minFilter: 'nearest' });
     textureResourcesRef.current = { sampler, view: texture.createView() };
   };
 
