@@ -215,38 +215,40 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
         if (cancelled) return;
         const module = device.createShaderModule({ code: shaderSource });
 
-        // Try extended layout first
-        let bindGroupLayout: GPUBindGroupLayout;
-        useExtendedRef.current = true;
-        try {
-          bindGroupLayout = device.createBindGroupLayout({
-            entries: [
-              { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
-              { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
-              { binding: 2, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
-              { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
-            ],
-          });
-        } catch {
-          // Fallback to simple two-binding shader
-          useExtendedRef.current = false;
-          bindGroupLayout = device.createBindGroupLayout({
-            entries: [
-              { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
-              { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
-            ],
-          });
+        // Determine layout type based on shader
+        let layoutType = 'simple';
+        if (shaderFile === 'patternShaderv0.12.wgsl') {
+          layoutType = 'texture';
+        } else if (shaderFile === 'patternv0.13.wgsl') {
+          layoutType = 'extended';
         }
 
-        // Override for patternShaderv0.12.wgsl to ensure sampler and texture bindings
-        if (shaderFile === 'patternShaderv0.12.wgsl') {
-          useExtendedRef.current = true;
+        useExtendedRef.current = layoutType !== 'simple';
+
+        let bindGroupLayout: GPUBindGroupLayout;
+        if (layoutType === 'texture') {
           bindGroupLayout = device.createBindGroupLayout({
             entries: [
               { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
               { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
               { binding: 2, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
               { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+            ],
+          });
+        } else if (layoutType === 'extended') {
+          bindGroupLayout = device.createBindGroupLayout({
+            entries: [
+              { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+              { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
+              { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } },
+              { binding: 3, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } },
+            ],
+          });
+        } else {
+          bindGroupLayout = device.createBindGroupLayout({
+            entries: [
+              { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+              { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
             ],
           });
         }
@@ -270,7 +272,7 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
         }
 
         // Adjust uniform buffer size to match the updated Uniforms struct in the shader
-        const uniformSize = shaderFile === 'patternShaderv0.12.wgsl' ? 1024 : 64;
+        const uniformSize = shaderFile === 'patternv0.13.wgsl' ? 1024 : 64;
         const uniformBuffer = device.createBuffer({ size: uniformSize, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
 
         deviceRef.current = device;
@@ -288,8 +290,8 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
           channelsBufferRef.current = createBufferWithData(device, new Uint8Array(channelsAB), GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
         }
 
-        // Load texture and sampler for patternShaderv0.12.wgsl and create bind group
-        if (shaderFile === 'patternShaderv0.12.wgsl') {
+        // Load texture and sampler for texture shaders and create bind group
+        if (layoutType === 'texture') {
           const img = new Image();
           img.src = './public/unlit-buttons.png';
           await img.decode();

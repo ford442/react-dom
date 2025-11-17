@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="AgentMigrationStateService">
+    <option name="migrationStatus" value="IN_PROGRESS" />
     <option name="pendingSessionIds">
       <option value="02bed463-e537-417e-8227-4d3459124639" />
+      <option value="889f00fb-7f22-47d6-b8f0-2c9ee90568ee" />
       <option value="a17908ed-3672-4f78-8b18-4ed692b4e3e2" />
       <option value="d9efda0d-14d7-49f0-b58b-92bdc94f99a2" />
     </option>
@@ -11,12 +13,21 @@
         <entry key="02bed463-e537-417e-8227-4d3459124639">
           <value>
             <set>
-              <option value="82d4a7c4-0d05-45c1-aaf2-b2a0ff20e98c" />
-              <option value="d791031c-11db-4f6f-80f9-d7adb1c73b47" />
-              <option value="23328b01-7fda-4541-a098-317422449129" />
-              <option value="b9ee9090-672f-4911-9154-7b365ab12bbe" />
               <option value="206347be-f3d1-41cb-a73a-8c2a8386e43d" />
+              <option value="23328b01-7fda-4541-a098-317422449129" />
+              <option value="82d4a7c4-0d05-45c1-aaf2-b2a0ff20e98c" />
               <option value="b055e33c-e0f7-4c0a-8da2-6c62366a3aee" />
+              <option value="b9ee9090-672f-4911-9154-7b365ab12bbe" />
+              <option value="d791031c-11db-4f6f-80f9-d7adb1c73b47" />
+            </set>
+          </value>
+        </entry>
+        <entry key="889f00fb-7f22-47d6-b8f0-2c9ee90568ee">
+          <value>
+            <set>
+              <option value="b42aefd1-d892-4259-a79a-46ae46382ea8" />
+              <option value="e2ba59e1-0591-4122-9073-2e1bbe7a53b9" />
+              <option value="cd4da6f9-4696-4c17-a980-5952a2414f71" />
             </set>
           </value>
         </entry>
@@ -24,27 +35,27 @@
           <value>
             <set>
               <option value="0c760ad2-cfcb-43ba-97c2-04b87cf7ed27" />
-              <option value="6fa0df7c-863e-4652-9bae-78dcba3fe51f" />
+              <option value="115012e1-f868-4f95-9f09-92e6c91a6dee" />
+              <option value="14e32f46-bd92-4a6d-9db0-564ee0b3fe9c" />
+              <option value="16304aad-ac29-4bf6-8ecb-dffca23d6306" />
               <option value="1a517ec0-8d7a-4060-be54-cbb25f781a1c" />
-              <option value="9b169eb7-4bf5-4e8a-a9d5-c6ce8b83cc51" />
+              <option value="24cbdb4c-844f-4fb2-bf02-de8ac4b66f7a" />
+              <option value="3520d204-970a-4831-adcf-7b3f3d72593d" />
+              <option value="3b36c16b-28bd-40fd-beba-3240290320e1" />
               <option value="3bb18e83-960c-4e58-81be-68b49578072f" />
               <option value="4ce79e00-67ef-4ed2-bc45-5bd8962e5a5d" />
-              <option value="d54578ab-66f0-4544-bca3-1e3a2671ec12" />
-              <option value="6b839cc4-7085-4642-8133-58e63c3e6778" />
-              <option value="3b36c16b-28bd-40fd-beba-3240290320e1" />
-              <option value="e656a9a0-52d5-4c6f-a07e-73289873afff" />
               <option value="58305915-2986-4f23-ae8e-9761857e9b1f" />
-              <option value="3520d204-970a-4831-adcf-7b3f3d72593d" />
-              <option value="7efa7faa-3bf8-4ed1-80c0-c91160bee12f" />
-              <option value="14e32f46-bd92-4a6d-9db0-564ee0b3fe9c" />
               <option value="5b3d7b6e-98af-4e6f-b555-381cc15bca4a" />
-              <option value="24cbdb4c-844f-4fb2-bf02-de8ac4b66f7a" />
               <option value="661ef949-3aef-41da-a5a0-22b398519e04" />
-              <option value="ee7c532c-b416-4788-8b52-e41ff7f6732a" />
+              <option value="6b839cc4-7085-4642-8133-58e63c3e6778" />
+              <option value="6fa0df7c-863e-4652-9bae-78dcba3fe51f" />
               <option value="749e7220-7dc9-457e-8429-7d257f54582c" />
-              <option value="16304aad-ac29-4bf6-8ecb-dffca23d6306" />
+              <option value="7efa7faa-3bf8-4ed1-80c0-c91160bee12f" />
+              <option value="9b169eb7-4bf5-4e8a-a9d5-c6ce8b83cc51" />
               <option value="a2a1804e-541f-49c3-bfef-926c5527fe7d" />
-              <option value="115012e1-f868-4f95-9f09-92e6c91a6dee" />
+              <option value="d54578ab-66f0-4544-bca3-1e3a2671ec12" />
+              <option value="e656a9a0-52d5-4c6f-a07e-73289873afff" />
+              <option value="ee7c532c-b416-4788-8b52-e41ff7f6732a" />
             </set>
           </value>
         </entry>
@@ -58,30 +69,14 @@
       </map>
     </option>
     <pendingWorkingSetItems>
-      <entry key="02bed463-e537-417e-8227-4d3459124639">
+      <entry key="02bed463-e537-417e-8227-4d3459124639" />
+      <entry key="889f00fb-7f22-47d6-b8f0-2c9ee90568ee">
         <set>
-          <option value="file://$PROJECT_DIR$/shaders/patternShaderv0.12.wgsl" />
           <option value="file://$PROJECT_DIR$/components/PatternDisplay.tsx" />
         </set>
       </entry>
-      <entry key="a17908ed-3672-4f78-8b18-4ed692b4e3e2">
-        <set>
-          <option value="file://$PROJECT_DIR$/package.json" />
-          <option value="file://$PROJECT_DIR$/shaders/patternShader.wgsl" />
-          <option value="file://$PROJECT_DIR$/components/PatternDisplay.tsx" />
-          <option value="file://$PROJECT_DIR$/tsconfig.json" />
-          <option value="file://$PROJECT_DIR$/App.tsx" />
-          <option value="file://$PROJECT_DIR$/shaders/patternv0.12.wgsl" />
-          <option value="file://$PROJECT_DIR$/shaders/patternv0.13.wgsl" />
-          <option value="file://$PROJECT_DIR$/types.ts" />
-          <option value="file://$PROJECT_DIR$/hooks/useLibOpenMPT.ts" />
-        </set>
-      </entry>
-      <entry key="d9efda0d-14d7-49f0-b58b-92bdc94f99a2">
-        <set>
-          <option value="file://$PROJECT_DIR$/types.ts" />
-        </set>
-      </entry>
+      <entry key="a17908ed-3672-4f78-8b18-4ed692b4e3e2" />
+      <entry key="d9efda0d-14d7-49f0-b58b-92bdc94f99a2" />
     </pendingWorkingSetItems>
   </component>
 </project>
