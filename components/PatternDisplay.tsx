@@ -8,7 +8,7 @@ type LayoutType = 'simple' | 'texture' | 'extended';
 const alignTo = (value: number, alignment: number) => Math.ceil(value / alignment) * alignment;
 const getLayoutType = (shaderFile: string): LayoutType => {
   if (shaderFile === 'patternShaderv0.12.wgsl') return 'texture';
-  if (shaderFile === 'patternv0.13.wgsl') return 'extended';
+  if (shaderFile === 'patternv0.13.wgsl' || shaderFile === 'patternv0.14.wgsl') return 'extended';
   return 'simple';
 };
 
@@ -234,7 +234,7 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
   const [webgpuAvailable, setWebgpuAvailable] = useState(true);
   const [gpuReady, setGpuReady] = useState(false);
 
-  const isHorizontal = shaderFile.includes('v0.12') || shaderFile.includes('v0.13');
+  const isHorizontal = shaderFile.includes('v0.12') || shaderFile.includes('v0.13') || shaderFile.includes('v0.14');
 
   const canvasMetrics = useMemo(() => {
     const channelsCount = Math.max(1, matrix?.numChannels ?? 1);

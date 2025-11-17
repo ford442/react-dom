@@ -6,6 +6,7 @@
       <option value="00c2059e-759b-4c1b-a87b-18b700788677" />
       <option value="02bed463-e537-417e-8227-4d3459124639" />
       <option value="1d2c51cb-2cd8-404f-88d6-0192d28ff3d7" />
+      <option value="675dcf46-c809-4981-a8f1-c287e25f87ee" />
       <option value="889f00fb-7f22-47d6-b8f0-2c9ee90568ee" />
       <option value="a17908ed-3672-4f78-8b18-4ed692b4e3e2" />
       <option value="c9d80ec1-e5b1-42da-bf3a-1518b1f3cefc" />
@@ -91,6 +92,7 @@
               <option value="ead512aa-54df-4de0-917d-7250cd456868" />
               <option value="90ab2e3a-7b44-4df0-bc63-0769f89f081a" />
               <option value="e29ef5b1-835f-4c81-a9cd-1de379d82471" />
+              <option value="d5adfde3-2ab8-4ab8-bbe0-0fdd261e3600" />
             </set>
           </value>
         </entry>
@@ -111,6 +113,11 @@
       </entry>
       <entry key="02bed463-e537-417e-8227-4d3459124639" />
       <entry key="1d2c51cb-2cd8-404f-88d6-0192d28ff3d7">
+        <set>
+          <option value="file://$PROJECT_DIR$/components/PatternDisplay.tsx" />
+        </set>
+      </entry>
+      <entry key="675dcf46-c809-4981-a8f1-c287e25f87ee">
         <set>
           <option value="file://$PROJECT_DIR$/components/PatternDisplay.tsx" />
         </set>
