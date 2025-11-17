@@ -311,7 +311,18 @@ let mainButtonYMask  = smoothstep(0.23, 0.24, y) - smoothstep(0.82, 0.83, y);
       let instBand = inst & 15u;
       let instBrightness = 0.7 + (select(0.0, f32(instBand) / 15.0, instBand > 0u)) * 0.3;
 
-      noteColor = base_note_color * instBrightness;
+      // --- NEW: Octave Lightness ---
+      let octaveChar = (in.packedA >> 8) & 255u; // Get the ASCII char for the octave
+      let octaveF = f32(octaveChar) - 48.0; // Convert '0' (48) to 0.0, '4' (52) to 4.0
+      // Center brightness around Octave 4 (1.0).
+      // Lower octaves get darker (min 0.55), higher octaves get brighter.
+      let octaveDelta = clamp(octaveF, 1.0, 8.0) - 4.0; // Range from -3.0 to 4.0
+      let octaveLightness = 1.0 + octaveDelta * 0.15; // Range from 0.55 to 1.6
+      // -----------------------------
+      
+      // --- MODIFIED: Apply octaveLightness ---
+      noteColor = base_note_color * instBrightness * octaveLightness;
+      
       let triggerFlash = noteColor * 1.5 + 0.5;
       noteColor = mix(noteColor, triggerFlash, f32(ch.trigger) * 0.8);
 
