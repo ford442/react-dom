@@ -4,7 +4,6 @@ import { Header } from './components/Header';
 import { Controls } from './components/Controls';
 import { InfoDisplay } from './components/InfoDisplay';
 import { PatternSequencer } from './components/PatternSequencer';
-import { AiInfoCard } from './components/AiInfoCard';
 import { GithubIcon } from './components/icons';
 import { MediaPanel } from './components/MediaPanel';
 import { MediaOverlay } from './components/MediaOverlay';
@@ -22,12 +21,9 @@ export default function App() {
     isPlaying,
     isModuleLoaded,
     moduleInfo,
-    aiResponse,
-    isAiLoading,
     loadModule,
     play,
     stopMusic,
-    askAI,
     sequencerMatrix,
     sequencerCurrentRow,
     sequencerGlobalRow,
@@ -104,16 +100,6 @@ export default function App() {
         {isModuleLoaded && (
           <>
             <InfoDisplay moduleInfo={moduleInfo} />
-            <div className="my-6 flex justify-center">
-              <button
-                onClick={askAI}
-                disabled={isAiLoading || !isModuleLoaded}
-                className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-900 disabled:text-gray-400 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
-              >
-                {isAiLoading ? 'Thinking...' : `Ask Gemini about "${moduleInfo.title}"`}
-              </button>
-            </div>
-            <AiInfoCard response={aiResponse} isLoading={isAiLoading} />
 
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between flex-wrap gap-3">
@@ -195,8 +181,8 @@ export default function App() {
         )}
       </main>
       <footer className="text-center text-gray-500 mt-8 text-sm">
-        <p>Powered by React, libopenmpt, and Gemini API.</p>
-        <a href="https://github.com/L-F-S/gemini-prototyping-showcase" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-white transition-colors">
+        <p>Powered by React and libopenmpt.</p>
+        <a href="https://github.com/ford442/react-dom" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-white transition-colors">
           <GithubIcon className="w-4 h-4" />
           View on GitHub
         </a>
