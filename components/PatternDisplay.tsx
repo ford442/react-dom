@@ -119,7 +119,23 @@ const buildRowFlags = (numRows: number): Uint32Array => {
   return flags;
 };
 
-export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playheadRow, cellWidth = 18, cellHeight = 14, shaderFile = 'patternv0.12.wgsl', bpm = 120, timeSec = 0, tickOffset = 0, grooveAmount = 0, kickTrigger = 0, activeChannels = 0 }) => {
+const packChannelStates = (channels: ChannelShadowState[], count: number): Float32Array => {
+  const packed = new Float32Array(count * 8);
+  for (let i = 0; i < count; i++) {
+    const ch = channels[i] || { volume: 0, pan: 0, freq: 0, trigger: 0, noteAge: 0, activeEffect: 0, effectValue: 0, isMuted: 0 };
+    packed[i * 8 + 0] = ch.volume;
+    packed[i * 8 + 1] = ch.pan;
+    packed[i * 8 + 2] = ch.freq;
+    packed[i * 8 + 3] = ch.trigger;
+    packed[i * 8 + 4] = ch.noteAge;
+    packed[i * 8 + 5] = ch.activeEffect;
+    packed[i * 8 + 6] = ch.effectValue;
+    packed[i * 8 + 7] = ch.isMuted;
+  }
+  return packed;
+};
+
+export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playheadRow, cellWidth = 18, cellHeight = 14, shaderFile = 'patternv0.12.wgsl', bpm = 120, timeSec = 0, tickOffset = 0, grooveAmount = 0, kickTrigger = 0, activeChannels = 0, channels = [] }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const deviceRef = useRef<GPUDevice | null>(null);
   const contextRef = useRef<GPUCanvasContext | null>(null);
