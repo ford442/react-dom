@@ -9,16 +9,18 @@
       <option value="675dcf46-c809-4981-a8f1-c287e25f87ee" />
       <option value="889f00fb-7f22-47d6-b8f0-2c9ee90568ee" />
       <option value="a17908ed-3672-4f78-8b18-4ed692b4e3e2" />
+      <option value="b8a08896-7893-413d-a166-bcacfecdf610" />
       <option value="c9d80ec1-e5b1-42da-bf3a-1518b1f3cefc" />
       <option value="d9efda0d-14d7-49f0-b58b-92bdc94f99a2" />
+      <option value="fc61c8fe-9f8c-4de4-97cb-9d38f4ef598f" />
     </option>
     <option name="pendingTurns">
       <map>
         <entry key="00c2059e-759b-4c1b-a87b-18b700788677">
           <value>
             <set>
-              <option value="a4f73678-2e07-4600-a683-147032d85848" />
               <option value="a0af7b5b-ee55-4ce9-8998-2a985c1c5de4" />
+              <option value="a4f73678-2e07-4600-a683-147032d85848" />
             </set>
           </value>
         </entry>
@@ -37,8 +39,8 @@
         <entry key="1d2c51cb-2cd8-404f-88d6-0192d28ff3d7">
           <value>
             <set>
-              <option value="b75ceda7-8b5f-44e9-96b8-9211dbb139a3" />
               <option value="31c115f4-ebb0-4f1c-a803-657f1a2d9306" />
+              <option value="b75ceda7-8b5f-44e9-96b8-9211dbb139a3" />
             </set>
           </value>
         </entry>
@@ -52,12 +54,12 @@
         <entry key="889f00fb-7f22-47d6-b8f0-2c9ee90568ee">
           <value>
             <set>
-              <option value="b42aefd1-d892-4259-a79a-46ae46382ea8" />
-              <option value="e2ba59e1-0591-4122-9073-2e1bbe7a53b9" />
-              <option value="cd4da6f9-4696-4c17-a980-5952a2414f71" />
               <option value="5955656e-e523-43c1-a318-dfde141de662" />
-              <option value="a88c8e08-647e-4db5-97b2-f6999fcb46bc" />
               <option value="614221a6-fc13-4cfa-b60e-d39baf6a4aab" />
+              <option value="a88c8e08-647e-4db5-97b2-f6999fcb46bc" />
+              <option value="b42aefd1-d892-4259-a79a-46ae46382ea8" />
+              <option value="cd4da6f9-4696-4c17-a980-5952a2414f71" />
+              <option value="e2ba59e1-0591-4122-9073-2e1bbe7a53b9" />
             </set>
           </value>
         </entry>
@@ -93,13 +95,13 @@
           <value>
             <set>
               <option value="80b3d261-8772-47e7-b6c4-41ed2de2c504" />
-              <option value="e68c2d73-7602-43c6-a0c1-7abab6a49387" />
-              <option value="ecb2c383-ecb1-4115-b9fa-44ae7e9a7ca1" />
-              <option value="b81bcd11-cd8b-43f8-ada6-54bda6f42e80" />
-              <option value="ead512aa-54df-4de0-917d-7250cd456868" />
               <option value="90ab2e3a-7b44-4df0-bc63-0769f89f081a" />
-              <option value="e29ef5b1-835f-4c81-a9cd-1de379d82471" />
+              <option value="b81bcd11-cd8b-43f8-ada6-54bda6f42e80" />
               <option value="d5adfde3-2ab8-4ab8-bbe0-0fdd261e3600" />
+              <option value="e29ef5b1-835f-4c81-a9cd-1de379d82471" />
+              <option value="e68c2d73-7602-43c6-a0c1-7abab6a49387" />
+              <option value="ead512aa-54df-4de0-917d-7250cd456868" />
+              <option value="ecb2c383-ecb1-4115-b9fa-44ae7e9a7ca1" />
             </set>
           </value>
         </entry>
@@ -113,34 +115,13 @@
       </map>
     </option>
     <pendingWorkingSetItems>
-      <entry key="00c2059e-759b-4c1b-a87b-18b700788677">
-        <set>
-          <option value="file://$PROJECT_DIR$/components/PatternDisplay.tsx" />
-        </set>
-      </entry>
+      <entry key="00c2059e-759b-4c1b-a87b-18b700788677" />
       <entry key="02bed463-e537-417e-8227-4d3459124639" />
-      <entry key="1d2c51cb-2cd8-404f-88d6-0192d28ff3d7">
-        <set>
-          <option value="file://$PROJECT_DIR$/components/PatternDisplay.tsx" />
-        </set>
-      </entry>
-      <entry key="675dcf46-c809-4981-a8f1-c287e25f87ee">
-        <set>
-          <option value="file://$PROJECT_DIR$/components/PatternDisplay.tsx" />
-        </set>
-      </entry>
-      <entry key="889f00fb-7f22-47d6-b8f0-2c9ee90568ee">
-        <set>
-          <option value="file://$PROJECT_DIR$/components/PatternDisplay.tsx" />
-        </set>
-      </entry>
+      <entry key="1d2c51cb-2cd8-404f-88d6-0192d28ff3d7" />
+      <entry key="675dcf46-c809-4981-a8f1-c287e25f87ee" />
+      <entry key="889f00fb-7f22-47d6-b8f0-2c9ee90568ee" />
       <entry key="a17908ed-3672-4f78-8b18-4ed692b4e3e2" />
-      <entry key="c9d80ec1-e5b1-42da-bf3a-1518b1f3cefc">
-        <set>
-          <option value="file://$PROJECT_DIR$/shaders/patternv0.13.wgsl" />
-          <option value="file://$PROJECT_DIR$/components/PatternDisplay.tsx" />
-        </set>
-      </entry>
+      <entry key="c9d80ec1-e5b1-42da-bf3a-1518b1f3cefc" />
       <entry key="d9efda0d-14d7-49f0-b58b-92bdc94f99a2" />
     </pendingWorkingSetItems>
   </component>

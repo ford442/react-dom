@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { LibOpenMPT, ModuleInfo, PatternMatrix, PatternCell } from '../types';
 
-const SAMPLE_RATE = 48000;
+const SAMPLE_RATE = 44100;
 const BUFFER_SIZE = 4096;
 const INITIAL_STATUS = "Loading library...";
 const INITIAL_MODULE_INFO: ModuleInfo = { title: '...', order: 0, row: 0, bpm: 0, numChannels: 0 };
