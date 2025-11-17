@@ -398,7 +398,13 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
     if (useExtendedRef.current && channelsBufferRef.current) {
       const count = Math.max(1, matrix?.numChannels ?? 1);
       const packed = packChannelStates(channels, count);
-      device.queue.writeBuffer(channelsBufferRef.current, 0, packed);
+      device.queue.writeBuffer(
+        channelsBufferRef.current,
+        0,
+        packed.buffer,
+        packed.byteOffset,
+        packed.byteLength,
+      );
     }
 
     render();
