@@ -1,6 +1,100 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ChannelShadowState, PatternMatrix } from '../types';
 
+const MIN_STORAGE = new Uint32Array([0, 0]);
+const EMPTY_CHANNEL: ChannelShadowState = { volume: 0, pan: 0, freq: 0, trigger: 0, noteAge: 0, activeEffect: 0, effectValue: 0, isMuted: 0 };
+type LayoutType = 'simple' | 'texture' | 'extended';
+
+const alignTo = (value: number, alignment: number) => Math.ceil(value / alignment) * alignment;
+const getLayoutType = (shaderFile: string): LayoutType => {
+  if (shaderFile === 'patternShaderv0.12.wgsl') return 'texture';
+  if (shaderFile === 'patternv0.13.wgsl') return 'extended';
+  return 'simple';
+};
+
+const createUniformPayload = (
+  layoutType: LayoutType,
+  params: {
+    numRows: number;
+    numChannels: number;
+    playheadRow: number;
+    isPlaying: boolean;
+    cellW: number;
+    cellH: number;
+    canvasW: number;
+    canvasH: number;
+    tickOffset: number;
+    bpm: number;
+    timeSec: number;
+    beatPhase: number;
+    groove: number;
+    kickTrigger: number;
+    activeChannels: number;
+  }
+): ArrayBuffer => {
+  if (layoutType === 'extended') {
+    const buffer = new ArrayBuffer(64);
+    const uint = new Uint32Array(buffer);
+    const float = new Float32Array(buffer);
+    uint[0] = Math.max(0, params.numRows) >>> 0;
+    uint[1] = Math.max(0, params.numChannels) >>> 0;
+    uint[2] = Math.max(0, params.playheadRow) >>> 0;
+    uint[3] = params.isPlaying ? 1 : 0;
+    float[4] = params.cellW;
+    float[5] = params.cellH;
+    float[6] = params.canvasW;
+    float[7] = params.canvasH;
+    float[8] = params.tickOffset;
+    float[9] = params.bpm;
+    float[10] = params.timeSec;
+    float[11] = params.beatPhase;
+    float[12] = params.groove;
+    float[13] = params.kickTrigger;
+    uint[14] = Math.max(0, params.activeChannels) >>> 0;
+    uint[15] = 0;
+    return buffer;
+  }
+
+  const buffer = new ArrayBuffer(layoutType === 'texture' ? 64 : 32);
+  const uint = new Uint32Array(buffer);
+  const float = new Float32Array(buffer);
+  uint[0] = Math.max(0, params.numRows) >>> 0;
+  uint[1] = Math.max(0, params.numChannels) >>> 0;
+  uint[2] = Math.max(0, params.playheadRow) >>> 0;
+  uint[3] = 0;
+  float[4] = params.cellW;
+  float[5] = params.cellH;
+  float[6] = params.canvasW;
+  float[7] = params.canvasH;
+  if (layoutType === 'texture') {
+    float[8] = 1;
+    float[9] = 1;
+    float[10] = 0;
+    float[11] = 0;
+    float[12] = 1;
+    float[13] = 1;
+  }
+  return buffer;
+};
+
+const packChannelStates = (channels: ChannelShadowState[], count: number): ArrayBuffer => {
+  const buffer = new ArrayBuffer(Math.max(1, count) * 32);
+  const view = new DataView(buffer);
+  for (let i = 0; i < count; i++) {
+    const ch = channels[i] || EMPTY_CHANNEL;
+    const offset = i * 32;
+    view.setFloat32(offset, ch.volume ?? 0, true);
+    view.setFloat32(offset + 4, ch.pan ?? 0, true);
+    view.setFloat32(offset + 8, ch.freq ?? 0, true);
+    view.setUint32(offset + 12, (ch.trigger ?? 0) >>> 0, true);
+    view.setFloat32(offset + 16, ch.noteAge ?? 0, true);
+    view.setUint32(offset + 20, (ch.activeEffect ?? 0) >>> 0, true);
+    view.setFloat32(offset + 24, ch.effectValue ?? 0, true);
+    view.setUint32(offset + 28, (ch.isMuted ?? 0) >>> 0, true);
+  }
+  return buffer;
+};
+
 interface PatternDisplayProps {
   matrix: PatternMatrix | null;
   playheadRow: number;
@@ -18,8 +112,6 @@ interface PatternDisplayProps {
   kickTrigger?: number;
   activeChannels?: number;
 }
-
-const MIN_STORAGE = new Uint32Array([0, 0]);
 
 const clampPlayhead = (value: number, numRows: number) => {
   if (numRows <= 0) return 0;
@@ -97,13 +189,19 @@ const packPatternMatrix = (matrix: PatternMatrix | null): Uint32Array => {
   return packed;
 };
 
-const createBufferWithData = (device: GPUDevice, data: ArrayBufferView, usage: GPUBufferUsageFlags): GPUBuffer => {
+const createBufferWithData = (device: GPUDevice, data: ArrayBufferView | ArrayBuffer, usage: GPUBufferUsageFlags): GPUBuffer => {
+  const byteLength = data instanceof ArrayBuffer ? data.byteLength : data.byteLength;
   const buffer = device.createBuffer({
-    size: Math.max(16, data.byteLength),
+    size: Math.max(16, byteLength),
     usage,
     mappedAtCreation: true,
   });
-  new Uint8Array(buffer.getMappedRange()).set(new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
+  const dst = new Uint8Array(buffer.getMappedRange());
+  if (data instanceof ArrayBuffer) {
+    dst.set(new Uint8Array(data));
+  } else {
+    dst.set(new Uint8Array(data.buffer, data.byteOffset, data.byteLength));
+  }
   buffer.unmap();
   return buffer;
 };
@@ -119,23 +217,7 @@ const buildRowFlags = (numRows: number): Uint32Array => {
   return flags;
 };
 
-const packChannelStates = (channels: ChannelShadowState[], count: number): Float32Array => {
-  const packed = new Float32Array(count * 8);
-  for (let i = 0; i < count; i++) {
-    const ch = channels[i] || { volume: 0, pan: 0, freq: 0, trigger: 0, noteAge: 0, activeEffect: 0, effectValue: 0, isMuted: 0 };
-    packed[i * 8 + 0] = ch.volume;
-    packed[i * 8 + 1] = ch.pan;
-    packed[i * 8 + 2] = ch.freq;
-    packed[i * 8 + 3] = ch.trigger;
-    packed[i * 8 + 4] = ch.noteAge;
-    packed[i * 8 + 5] = ch.activeEffect;
-    packed[i * 8 + 6] = ch.effectValue;
-    packed[i * 8 + 7] = ch.isMuted;
-  }
-  return packed;
-};
-
-export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playheadRow, cellWidth = 18, cellHeight = 14, shaderFile = 'patternv0.12.wgsl', bpm = 120, timeSec = 0, tickOffset = 0, grooveAmount = 0, kickTrigger = 0, activeChannels = 0, channels = [] }) => {
+export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playheadRow, cellWidth = 18, cellHeight = 14, shaderFile = 'patternv0.12.wgsl', bpm = 120, timeSec = 0, tickOffset = 0, grooveAmount = 0, kickTrigger = 0, activeChannels = 0, channels = [], isPlaying = false, beatPhase = 0 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const deviceRef = useRef<GPUDevice | null>(null);
   const contextRef = useRef<GPUCanvasContext | null>(null);
@@ -145,19 +227,21 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
   const rowFlagsBufferRef = useRef<GPUBuffer | null>(null);
   const channelsBufferRef = useRef<GPUBuffer | null>(null);
   const bindGroupRef = useRef<GPUBindGroup | null>(null);
-  const useExtendedRef = useRef<boolean>(true);
+  const layoutTypeRef = useRef<LayoutType>('simple');
+  const textureResourcesRef = useRef<{ sampler: GPUSampler; view: GPUTextureView } | null>(null);
+  const useExtendedRef = useRef<boolean>(false);
 
   const [webgpuAvailable, setWebgpuAvailable] = useState(true);
   const [gpuReady, setGpuReady] = useState(false);
 
-  const isHorizontal = shaderFile.includes('v0.12');
+  const isHorizontal = shaderFile.includes('v0.12') || shaderFile.includes('v0.13');
 
   const canvasMetrics = useMemo(() => {
-    const channels = Math.max(1, matrix?.numChannels ?? 1);
+    const channelsCount = Math.max(1, matrix?.numChannels ?? 1);
     const rows = Math.max(1, matrix?.numRows ?? 1);
     return isHorizontal
-      ? { width: Math.ceil(rows * cellWidth), height: Math.ceil(channels * cellHeight) }
-      : { width: Math.ceil(channels * cellWidth), height: Math.ceil(rows * cellHeight) };
+      ? { width: Math.ceil(rows * cellWidth), height: Math.ceil(channelsCount * cellHeight) }
+      : { width: Math.ceil(channelsCount * cellWidth), height: Math.ceil(rows * cellHeight) };
   }, [matrix, cellWidth, cellHeight, isHorizontal]);
 
   const render = () => {
@@ -191,16 +275,26 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
   const refreshBindGroup = (device: GPUDevice) => {
     if (!pipelineRef.current || !cellsBufferRef.current || !uniformBufferRef.current) return;
     const layout = pipelineRef.current.getBindGroupLayout(0);
+    const layoutType = layoutTypeRef.current;
     const entries: GPUBindGroupEntry[] = [
       { binding: 0, resource: { buffer: cellsBufferRef.current!, size: cellsBufferRef.current!.size } },
       { binding: 1, resource: { buffer: uniformBufferRef.current! } },
     ];
-    if (useExtendedRef.current && rowFlagsBufferRef.current && channelsBufferRef.current) {
+
+    if (layoutType === 'extended') {
+      if (!rowFlagsBufferRef.current || !channelsBufferRef.current) return;
       entries.push(
         { binding: 2, resource: { buffer: rowFlagsBufferRef.current! } },
         { binding: 3, resource: { buffer: channelsBufferRef.current! } },
       );
+    } else if (layoutType === 'texture') {
+      if (!textureResourcesRef.current) return;
+      entries.push(
+        { binding: 2, resource: textureResourcesRef.current.sampler },
+        { binding: 3, resource: textureResourcesRef.current.view },
+      );
     }
+
     bindGroupRef.current = device.createBindGroup({ layout, entries });
   };
 
@@ -230,16 +324,25 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
         const shaderSource = await fetch(`./shaders/${shaderFile}`).then(res => res.text());
         if (cancelled) return;
         const module = device.createShaderModule({ code: shaderSource });
-
-        // Determine layout type based on shader
-        let layoutType = 'simple';
-        if (shaderFile === 'patternShaderv0.12.wgsl') {
-          layoutType = 'texture';
-        } else if (shaderFile === 'patternv0.13.wgsl') {
-          layoutType = 'extended';
+        if ('getCompilationInfo' in module) {
+          module.getCompilationInfo().then(info => {
+            info.messages.forEach(msg => {
+              const log = msg.type === 'error' ? console.error : console.warn;
+              log(`[WGSL ${msg.type}] ${shaderFile}:${msg.lineNum}:${msg.linePos} ${msg.message}`);
+            });
+          }).catch(() => {});
         }
 
-        useExtendedRef.current = layoutType !== 'simple';
+        const layoutType = getLayoutType(shaderFile);
+        layoutTypeRef.current = layoutType;
+        useExtendedRef.current = layoutType === 'extended';
+        if (layoutType !== 'extended') {
+          rowFlagsBufferRef.current?.destroy();
+          rowFlagsBufferRef.current = null;
+          channelsBufferRef.current?.destroy();
+          channelsBufferRef.current = null;
+        }
+        textureResourcesRef.current = null;
 
         let bindGroupLayout: GPUBindGroupLayout;
         if (layoutType === 'texture') {
@@ -287,26 +390,22 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
           });
         }
 
-        // Adjust uniform buffer size to match the updated Uniforms struct in the shader
-        const uniformSize = shaderFile === 'patternv0.13.wgsl' ? 1024 : 64;
-        const uniformBuffer = device.createBuffer({ size: uniformSize, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+        const uniformSize = layoutType === 'simple' ? 32 : 64;
+        const uniformBuffer = device.createBuffer({ size: alignTo(uniformSize, 256), usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
 
         deviceRef.current = device;
         contextRef.current = context;
         uniformBufferRef.current = uniformBuffer;
 
-        // Initialize storage buffers
         cellsBufferRef.current = createBufferWithData(device, MIN_STORAGE, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
-        if (useExtendedRef.current) {
+        if (layoutType === 'extended') {
           const numRows = matrix?.numRows ?? 1;
           rowFlagsBufferRef.current = createBufferWithData(device, buildRowFlags(numRows), GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
-          // channels buffer will be created after we know numChannels
           const channelsCount = Math.max(1, matrix?.numChannels ?? 1);
-          const channelsAB = new ArrayBuffer(channelsCount * 32);
-          channelsBufferRef.current = createBufferWithData(device, new Uint8Array(channelsAB), GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+          const emptyChannels = packChannelStates([], channelsCount);
+          channelsBufferRef.current = createBufferWithData(device, emptyChannels, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
         }
 
-        // Load texture and sampler for texture shaders and create bind group
         if (layoutType === 'texture') {
           const img = new Image();
           img.src = './public/unlit-buttons.png';
@@ -320,7 +419,7 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
           });
           device.queue.copyExternalImageToTexture(
             { source: bitmap },
-            { texture: texture },
+            { texture },
             [bitmap.width, bitmap.height, 1]
           );
 
@@ -329,15 +428,8 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
             minFilter: 'linear',
           });
 
-          bindGroupRef.current = device.createBindGroup({
-            layout: bindGroupLayout,
-            entries: [
-              { binding: 0, resource: { buffer: cellsBufferRef.current! } },
-              { binding: 1, resource: { buffer: uniformBufferRef.current! } },
-              { binding: 2, resource: sampler },
-              { binding: 3, resource: texture.createView() },
-            ],
-          });
+          textureResourcesRef.current = { sampler, view: texture.createView() };
+          refreshBindGroup(device);
         } else {
           refreshBindGroup(device);
         }
@@ -376,39 +468,56 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
     }
 
     // Update uniform buffer with playhead and timing information
-    if (uniformBufferRef.current) {
-      const numRows = matrix?.numRows ?? 1;
-      const tick = clampPlayhead(playheadRow + tickOffset, numRows);
-      const timeFrac = numRows > 0 ? (tick + 1) / numRows : 0;
-      const beat = Math.floor(tick / 4) % 4;
-      const groove = Math.min(1, Math.max(0, (beat + grooveAmount) / 4));
-      const kick = (beat === 0 && grooveAmount > 0) ? 1 : 0;
-
-      // Pack uniforms into a Float32Array
-      const uniforms = new Float32Array([
-        timeSec, timeFrac, bpm, activeChannels,    // time and tempo
-        tick, beat, groove, kick,     // tick and beat information
-        0, 0, 0, 0,                   // padding
-      ]);
-
-      device.queue.writeBuffer(uniformBufferRef.current, 0, uniforms.buffer, uniforms.byteOffset, uniforms.byteLength);
+    const uniformBuffer = uniformBufferRef.current;
+    if (uniformBuffer) {
+      const numRows = matrix?.numRows ?? 0;
+      const rowLimit = Math.max(1, numRows);
+      const tickRow = clampPlayhead(playheadRow, rowLimit);
+      const fractionalTick = Math.min(1, Math.max(0, tickOffset));
+      const uniformPayload = createUniformPayload(layoutTypeRef.current, {
+        numRows,
+        numChannels: matrix?.numChannels ?? 0,
+        playheadRow: tickRow,
+        isPlaying,
+        cellW: cellWidth,
+        cellH: cellHeight,
+        canvasW: canvasMetrics.width,
+        canvasH: canvasMetrics.height,
+        tickOffset: fractionalTick,
+        bpm,
+        timeSec,
+        beatPhase,
+        groove: Math.min(1, Math.max(0, grooveAmount)),
+        kickTrigger,
+        activeChannels,
+      });
+      device.queue.writeBuffer(uniformBuffer, 0, uniformPayload);
     }
 
-    // Update channels buffer for extended layout (patternv0.13.wgsl)
-    if (useExtendedRef.current && channelsBufferRef.current) {
+    const layoutType = layoutTypeRef.current;
+    if (layoutType === 'extended') {
       const count = Math.max(1, matrix?.numChannels ?? 1);
-      const packed = packChannelStates(channels, count);
-      device.queue.writeBuffer(
-        channelsBufferRef.current,
-        0,
-        packed.buffer,
-        packed.byteOffset,
-        packed.byteLength,
-      );
+      const packedBuffer = packChannelStates(channels, count);
+      if (!channelsBufferRef.current || channelsBufferRef.current.size < packedBuffer.byteLength) {
+        channelsBufferRef.current?.destroy();
+        channelsBufferRef.current = createBufferWithData(device, packedBuffer, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+        refreshBindGroup(device);
+      } else {
+        device.queue.writeBuffer(channelsBufferRef.current, 0, packedBuffer);
+      }
+
+      const flags = buildRowFlags(Math.max(1, matrix?.numRows ?? 1));
+      if (!rowFlagsBufferRef.current || rowFlagsBufferRef.current.size < flags.byteLength) {
+        rowFlagsBufferRef.current?.destroy();
+        rowFlagsBufferRef.current = createBufferWithData(device, flags, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+        refreshBindGroup(device);
+      } else {
+        device.queue.writeBuffer(rowFlagsBufferRef.current, 0, flags.buffer, flags.byteOffset, flags.byteLength);
+      }
     }
 
     render();
-  }, [matrix, playheadRow, timeSec, bpm, tickOffset, grooveAmount, kickTrigger, activeChannels, gpuReady, channels]);
+  }, [matrix, playheadRow, timeSec, bpm, tickOffset, grooveAmount, kickTrigger, activeChannels, gpuReady, channels, canvasMetrics, isPlaying, beatPhase]);
 
   return (
     <div className="pattern-display">
