@@ -259,7 +259,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   let x = tiledUV.x;
   let indicatorXMask = smoothstep(0.4, 0.41, x) - smoothstep(0.6, 0.61, x);
   let topLightMask    = (smoothstep(0.10, 0.11, y) - smoothstep(0.20, 0.21, y)) * indicatorXMask;
-let mainButtonMask  = smoothstep(0.32, 0.33, y) - smoothstep(0.80, 0.81, y);
+let mainButtonMask  = smoothstep(0.32, 0.33, y) - smoothstep(0.60, 0.61, y);
 let bottomLightMask = (smoothstep(0.90, 0.91, y) - smoothstep(0.95, 0.96, y)) * indicatorXMask;
 
 
