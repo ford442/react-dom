@@ -286,7 +286,7 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
           rowFlagsBufferRef.current = createBufferWithData(device, buildRowFlags(numRows), GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
           // channels buffer will be created after we know numChannels
           const channelsCount = Math.max(1, matrix?.numChannels ?? 1);
-          const channelsAB = new ArrayBuffer(channelsCount * 16);
+          const channelsAB = new ArrayBuffer(channelsCount * 32);
           channelsBufferRef.current = createBufferWithData(device, new Uint8Array(channelsAB), GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
         }
 
