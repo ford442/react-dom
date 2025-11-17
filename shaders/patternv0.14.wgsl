@@ -311,12 +311,19 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   //
   // *** YOU WILL NEED TO TWEAK THESE Y-VALUES ***
   // Based on your 'unlit-buttons.png', find the Y-coordinates for each part.
+  //// --- 3. IDENTIFY BUTTON REGIONS (Requires Tweaking!) ---
+  //
+  // *** YOU WILL NEED TO TWEAK THESE Y-VALUES ***
+  // Based on your 'unlit-button.png', find the Y-coordinates for each part.
   //
   let y = tiledUV.y;
   // (smoothstep creates a soft mask)
-  let topLightMask    = smoothstep(0.1, 0.11, y) - smoothstep(0.2, 0.21, y);
-  let mainButtonMask  = smoothstep(0.25, 0.26, y) - smoothstep(0.8, 0.81, y);
-  let bottomLightMask = smoothstep(0.85, 0.86, y) - smoothstep(0.95, 0.96, y);
+
+  // NEW: Refined estimates for 'unlit-button.png'
+  // These values are percentages (0.0=top, 1.0=bottom)
+  let topLightMask    = smoothstep(0.10, 0.11, y) - smoothstep(0.20, 0.21, y);
+  let mainButtonMask  = smoothstep(0.28, 0.29, y) - smoothstep(0.85, 0.86, y);
+  let bottomLightMask = smoothstep(0.90, 0.91, y) - smoothstep(0.95, 0.96, y);
 
   // --- 4. APPLY STATES TO REGIONS (Your new logic) ---
 
