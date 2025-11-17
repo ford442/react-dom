@@ -294,8 +294,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   // UV for sampling the *first button* from your 6-button strip
   // We assume the first button is in the u-coordinate range [0.0, 1.0/6.0]
   // This achieves your "cut it down to one button" goal.
-  let singleButtonUV = vec2<f32>(tiledUV.x * (1.0 / 6.0), tiledUV.y);
-
+  let singleButtonUV = tiledUV; // Use the whole texture
   // Get the base color from the texture. This is our "canvas".
   var finalColor = textureSample(buttonsTexture, buttonsSampler, singleButtonUV).rgb;
 
