@@ -35,20 +35,12 @@ struct VertexOut {
   @builtin(position) position: vec4<f32>,
   @location(0) @interpolate(flat) row: u32,
   @location(1) @interpolate(flat) channel: u32,
-
-  // --- FIX ---
-  // Added @interpolate(linear).
-  // All floating-point values passed from vertex to fragment
-  // MUST specify an interpolation type (e.g., linear, flat, perspective).
   @location(2) @interpolate(linear) uv: vec2<f32>,
-  // -----------
-
   @location(3) @interpolate(flat) packedA: u32, // Note/Inst
   @location(4) @interpolate(flat) packedB: u32, // Vol/Effect/Param
 };
 
 // --- VERTEX SHADER (Unchanged) ---
-// This was already solid. No changes needed.
 @vertex
 fn vs(@builtin(vertex_index) vertexIndex: u32, @builtin(instance_index) instanceIndex: u32) -> VertexOut {
   var quad = array<vec2<f32>, 6>(
@@ -60,8 +52,6 @@ fn vs(@builtin(vertex_index) vertexIndex: u32, @builtin(instance_index) instance
   let row = instanceIndex / numChannels;
   let channel = instanceIndex % numChannels;
 
-  // --- ORIENTATION FLIP ---
-  // Horizontal Layout: Row increases X, Channel increases Y
   let px = f32(row) * uniforms.cellW;
   let py = f32(channel) * uniforms.cellH;
 
@@ -69,14 +59,12 @@ fn vs(@builtin(vertex_index) vertexIndex: u32, @builtin(instance_index) instance
   let worldX = px + lp.x * uniforms.cellW;
   let worldY = py + lp.y * uniforms.cellH;
 
-  // Convert to clip space
   let clipX = (worldX / uniforms.canvasW) * 2.0 - 1.0;
   let clipY = 1.0 - (worldY / uniforms.canvasH) * 2.0;
 
-  // Read packed data (2 u32s per cell) a,b
   let idx = instanceIndex * 2u;
   let a = cells[idx];
-  let b = cells[idx + 1u]; // Effects
+  let b = cells[idx + 1u];
 
   var out: VertexOut;
   out.position = vec4<f32>(clipX, clipY, 0.0, 1.0);
@@ -90,17 +78,14 @@ fn vs(@builtin(vertex_index) vertexIndex: u32, @builtin(instance_index) instance
 
 // --- FRAGMENT SHADER ---
 
-// "Cosine based palette" for rich, neon colors
-// https://iquilezles.org/articles/palettes/
 fn neonPalette(t: f32) -> vec3<f32> {
     let a = vec3<f32>(0.5, 0.5, 0.5);
     let b = vec3<f32>(0.5, 0.5, 0.5);
     let c = vec3<f32>(1.0, 1.0, 1.0);
-    let d = vec3<f32>(0.263, 0.416, 0.557); // Technicolor phase
+    let d = vec3<f32>(0.263, 0.416, 0.557);
     return a + b * cos(6.28318 * (c * t + d));
 }
 
-// SDF for a Rounded Box
 fn sdRoundedBox(p: vec2<f32>, b: vec2<f32>, r: f32) -> f32 {
     let q = abs(p) - b + r;
     return length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - r;
@@ -139,12 +124,12 @@ fn pitchClassFromPacked(packed: u32) -> f32 {
 fn classifyEffectGlyph(code: u32) -> u32 {
     let c = toUpperAscii(code & 255u);
     switch c {
-        case 49u: { return 1u; }         // '1' Porta Up
-        case 50u: { return 2u; }         // '2' Porta Down
-        case 51u: { return 1u; }         // '3' also Portamento style
-        case 52u: { return 3u; }         // '4' Vibrato
-        case 55u: { return 4u; }         // '7' Tremolo
-        case 65u: { return 5u; }         // 'A' Volume slide
+        case 49u: { return 1u; }
+        case 50u: { return 2u; }
+        case 51u: { return 1u; }
+        case 52u: { return 3u; }
+        case 55u: { return 4u; }
+        case 65u: { return 5u; }
         default: { return 0u; }
     }
 }
@@ -202,100 +187,62 @@ fn effectColorFromCode(code: u32, fallback: vec3<f32>) -> vec3<f32> {
     }
 }
 
-fn buttonPatternColor(fs: FragmentConstants, uv: vec2<f32>, row: u32, channel: u32) -> vec3<f32> {
-    let tiled = fract(vec2<f32>(uv.x * fs.buttonTexScale.x + f32(row) * 0.17, uv.y * fs.buttonTexScale.y + f32(channel) * 0.23));
-    return textureSample(buttonsTexture, buttonsSampler, tiled).rgb;
-}
-
-// --- CHANGE ---
-// We've moved all the "magic numbers" for styling into this one
-// struct. Now you can tweak the appearance from one central place!
 struct FragmentConstants {
-  // Background
   bgColorA: vec3<f32>,
   bgColorB: vec3<f32>,
   playheadBeamColor: vec3<f32>,
   playheadBeamIntensity: f32,
-
-  // Note Pill
   pillSize: vec2<f32>,
   pillRadius: f32,
   noteIntensity: f32,
   glowFalloff: f32,
   glowIntensity: f32,
   hueMagic: f32,
-
-  // Effect Dot
   effectPos: vec2<f32>,
   effectRadius: f32,
   effectColor: vec3<f32>,
   effectIntensity: f32,
   buttonTexScale: vec2<f32>,
   buttonTexMix: f32,
-
-  // Borders
   borderColor: vec3<f32>,
   playheadBorderColor: vec3<f32>,
   playheadBorderIntensity: f32,
-  borderThickness: f32, // --- NOTE: This is now a 1.0-pixel-based thickness
+  borderThickness: f32,
 };
 
-// --- CHANGE ---
-// Initialize all our styling constants.
-// This function acts like a "constructor" for the struct.
 fn getFragmentConstants() -> FragmentConstants {
     var c: FragmentConstants;
-
-    // Background
     c.bgColorA = vec3<f32>(0.05, 0.05, 0.07);
-    c.bgColorB = vec3<f32>(0.04, 0.04, 0.056); // 0.8 * bgColorA
+    c.bgColorB = vec3<f32>(0.04, 0.04, 0.056);
     c.playheadBeamColor = vec3<f32>(0.2, 0.25, 0.3);
     c.playheadBeamIntensity = 0.5;
-
-    // Note Pill
-    c.pillSize = vec2<f32>(0.35, 0.25); // (width, height) in UV space
+    c.pillSize = vec2<f32>(0.35, 0.25);
     c.pillRadius = 0.1;
     c.noteIntensity = 1.2;
-    c.glowFalloff = 8.0;   // For exp() glow
+    c.glowFalloff = 8.0;
     c.glowIntensity = 0.6;
-    c.hueMagic = 0.123;  // Magic number for instrument hue separation
-
-    // Effect Dot
-    c.effectPos = vec2<f32>(0.5, 0.85); // UV position
+    c.hueMagic = 0.123;
+    c.effectPos = vec2<f32>(0.5, 0.85);
     c.effectRadius = 0.05;
     c.effectColor = vec3<f32>(0.8, 0.8, 0.8);
     c.effectIntensity = 0.8;
     c.buttonTexScale = vec2<f32>(3.5, 3.5);
     c.buttonTexMix = 0.55;
-
-    // Borders
     c.borderColor = vec3<f32>(0.15, 0.15, 0.2);
     c.playheadBorderColor = vec3<f32>(1.0, 0.8, 0.0);
     c.playheadBorderIntensity = 0.8;
-    c.borderThickness = 1.0; // Draw a 1.0 pixel thick border
-
+    c.borderThickness = 1.0;
     return c;
 }
 
-//
-// ----------------- NEW FRAGMENT SHADER -----------------
-// This REPLACES your entire @fragment fn fs(...) function
-//
+
 @fragment
 fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   let fs = getFragmentConstants();
 
   // --- 1. TILE & SAMPLE THE *SINGLE* BUTTON ---
-  // This replaces all the old background color logic
-
-  // Tiled UV (0 to 1 inside this cell)
   let tiledUV = in.uv;
-
-  // UV for sampling the *first button* from your 6-button strip
-  // We assume the first button is in the u-coordinate range [0.0, 1.0/6.0]
-  // This achieves your "cut it down to one button" goal.
   let singleButtonUV = tiledUV; // Use the whole texture
-  // Get the base color from the texture. This is our "canvas".
   var finalColor = textureSample(buttonsTexture, buttonsSampler, singleButtonUV).rgb;
 
   // --- 2. UNPACK DATA (Same as before) ---
@@ -307,23 +254,19 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   let hasEffect = (effParam > 0u);
   let ch = channels[in.channel];
 
-  // --- 3. IDENTIFY BUTTON REGIONS (Requires Tweaking!) ---
-  //
-  // *** YOU WILL NEED TO TWEAK THESE Y-VALUES ***
-  // Based on your 'unlit-buttons.png', find the Y-coordinates for each part.
-  //// --- 3. IDENTIFY BUTTON REGIONS (Requires Tweaking!) ---
-  //
-  // *** YOU WILL NEED TO TWEAK THESE Y-VALUES ***
-  // Based on your 'unlit-button.png', find the Y-coordinates for each part.
-  //
+  // --- 3. IDENTIFY BUTTON REGIONS ---
   let y = tiledUV.y;
-  // (smoothstep creates a soft mask)
+  let x = tiledUV.x;
 
-  // NEW: Refined estimates for 'unlit-button.png'
-  // These values are percentages (0.0=top, 1.0=bottom)
-  let topLightMask    = smoothstep(0.10, 0.11, y) - smoothstep(0.20, 0.21, y);
+  // GOAL 1 & 2: Add X-axis mask for the small indicators
+  // (Assumes they are in the horizontal center, 40%-60% of the width)
+  let indicatorXMask = smoothstep(0.4, 0.41, x) - smoothstep(0.6, 0.61, x);
+
+  // Y-Masks (from previous step)
+  let topLightMask    = (smoothstep(0.10, 0.11, y) - smoothstep(0.20, 0.21, y)) * indicatorXMask;
   let mainButtonMask  = smoothstep(0.28, 0.29, y) - smoothstep(0.85, 0.86, y);
-  let bottomLightMask = smoothstep(0.90, 0.91, y) - smoothstep(0.95, 0.96, y);
+  let bottomLightMask = (smoothstep(0.90, 0.91, y) - smoothstep(0.95, 0.96, y)) * indicatorXMask;
+
 
   // --- 4. APPLY STATES TO REGIONS (Your new logic) ---
 
@@ -333,74 +276,63 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   }
 
   // ** "Channel Active" -> Top Light **
-  // We'll use the note's "age" to see if it's "on".
   let noteTrail = exp(-ch.noteAge * 2.0);
-  let channelActive = step(0.1, noteTrail); // Is the note "on"?
+  let channelActive = step(0.1, noteTrail);
 
   if (channelActive > 0.5) {
-      // Make the top light (blue in your PNG) pulse brightly
       let topGlow = vec3<f32>(0.5, 0.8, 1.0) * (0.7 + 0.3 * sin(uniforms.timeSec * 10.0));
-      // Mix this glow color *onto* the top light area
       finalColor = mix(finalColor, finalColor + topGlow, topLightMask);
   }
 
   // ** "Has Note" -> Main Button **
   if (hasNote) {
-      // Get pitch color (same as your v0.13 logic)
       let pitchHue = pitchClassFromPacked(in.packedA);
       let base_note_color = neonPalette(pitchHue);
       let instBand = inst & 15u;
       let instBrightness = 0.7 + (select(0.0, f32(instBand) / 15.0, instBand > 0u)) * 0.3;
       var noteColor = base_note_color * instBrightness;
 
-      // Apply trigger flash
-      noteColor = mix(noteColor, vec3<f32>(1.0), f32(ch.trigger) * 0.8);
+      // GOAL 3: Apply trigger flash (boosted note color)
+      let triggerFlash = noteColor * 1.5 + 0.5; // "Hot" version of note color
+      noteColor = mix(noteColor, triggerFlash, f32(ch.trigger) * 0.8);
 
-      // Apply volume (as opacity/mix)
       let volAlpha = clamp(ch.volume, 0.05, 1.0);
-
-      // We mix the noteColor with the base button texture color
-      // The 'noteTrail' makes it fade out
       let mixAmount = mainButtonMask * volAlpha * noteTrail;
       finalColor = mix(finalColor, noteColor, mixAmount);
   }
 
   // ** "Has Effect" -> Bottom Light **
   if (hasEffect) {
-      // Get the effect-specific color
       let effectColor = effectColorFromCode(effCode, fs.effectColor);
       let strength = clamp(f32(effParam) / 255.0, 0.2, 1.0);
-
-      // Make the bottom light (yellow in your PNG) glow with the effect color
       let effectGlow = effectColor * strength * (1.0 + 0.5 * sin(uniforms.timeSec * 15.0));
-      // Mix this glow color *onto* the bottom light area
       finalColor = mix(finalColor, finalColor + effectGlow, bottomLightMask);
   }
 
-  // --- 5. BORDERS & PLAYHEAD (Same as before) ---
-  // This logic now draws *over* our new texture-based color
+  // --- 5. NEW PLAYHEAD LOGIC (Goals 4 & 5) ---
+  if (in.row == uniforms.playheadRow) {
+      // Animate a blink
+      let playheadBlink = 0.5 + 0.5 * sin(uniforms.timeSec * 30.0);
+
+      if (hasNote) {
+          // "lit notes blink their color very bright"
+          let brightNote = noteColor * 2.0 + 0.8; // Even hotter than trigger
+          finalColor = mix(finalColor, brightNote, playheadBlink * mainButtonMask);
+      } else {
+          // "row of indicators blinks bright white"
+          let whiteFlash = vec3<f32>(0.8, 0.8, 1.0); // A bright, cool white
+          finalColor = mix(finalColor, whiteFlash, playheadBlink * mainButtonMask);
+      }
+  }
+
+  // --- 6. BORDERS ---
+  // GOAL 4: Removed all old playhead logic from borders
   let uv_aa = vec2<f32>(fwidth(in.uv.x), fwidth(in.uv.y));
   let borderX = smoothstep(1.0 - (fs.borderThickness * uv_aa.x), 1.0, in.uv.x);
   let borderY = smoothstep(1.0 - (fs.borderThickness * uv_aa.y), 1.0, in.uv.y);
   let borderAlpha = max(borderX, borderY);
 
-  // Apply playhead beam
-  let pr = f32(uniforms.playheadRow) + clamp(uniforms.tickOffset, 0.0, 1.0);
-  let playheadX = pr * uniforms.cellW / uniforms.canvasW;
-  let beamDist = abs(in.uv.x + (f32(in.row) * uniforms.cellW) / uniforms.canvasW - playheadX);
-  let beam = exp(-beamDist * (48.0 - uniforms.kickTrigger * 24.0));
-  if (uniforms.isPlaying == 1u) {
-    finalColor += vec3<f32>(0.18, 0.20, 0.26 + uniforms.kickTrigger * 0.2) * beam;
-  }
-
-  // Apply borders
-  if (in.row == uniforms.playheadRow) {
-      let playheadBorder = borderX * fs.playheadBorderIntensity;
-      finalColor = mix(finalColor, fs.playheadBorderColor, playheadBorder);
-      finalColor = mix(finalColor, fs.borderColor, borderY);
-  } else {
-      finalColor = mix(finalColor, fs.borderColor, borderAlpha);
-  }
+  finalColor = mix(finalColor, fs.borderColor, borderAlpha);
 
   return vec4<f32>(finalColor, 1.0);
 }
