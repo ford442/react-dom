@@ -282,10 +282,12 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
     ];
 
     if (layoutType === 'extended') {
-      if (!rowFlagsBufferRef.current || !channelsBufferRef.current) return;
+      if (!rowFlagsBufferRef.current || !channelsBufferRef.current || !textureResourcesRef.current) return;
       entries.push(
         { binding: 2, resource: { buffer: rowFlagsBufferRef.current! } },
         { binding: 3, resource: { buffer: channelsBufferRef.current! } },
+        { binding: 4, resource: textureResourcesRef.current.sampler },
+        { binding: 5, resource: textureResourcesRef.current.view },
       );
     } else if (layoutType === 'texture') {
       if (!textureResourcesRef.current) return;
@@ -296,6 +298,22 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
     }
 
     bindGroupRef.current = device.createBindGroup({ layout, entries });
+  };
+
+  const ensureButtonTexture = async (device: GPUDevice) => {
+    if (textureResourcesRef.current) return;
+    const img = new Image();
+    img.src = '/unlit-buttons.png';
+    await img.decode();
+    const bitmap = await createImageBitmap(img);
+    const texture = device.createTexture({
+      size: [bitmap.width, bitmap.height, 1],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+    device.queue.copyExternalImageToTexture({ source: bitmap }, { texture }, [bitmap.width, bitmap.height, 1]);
+    const sampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
+    textureResourcesRef.current = { sampler, view: texture.createView() };
   };
 
   // GPU initialization
@@ -361,6 +379,8 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
               { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
               { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } },
               { binding: 3, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } },
+              { binding: 4, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
+              { binding: 5, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
             ],
           });
         } else {
@@ -406,33 +426,12 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
           channelsBufferRef.current = createBufferWithData(device, emptyChannels, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
         }
 
-        if (layoutType === 'texture') {
-          const img = new Image();
-          img.src = './public/unlit-buttons.png';
-          await img.decode();
-
-          const bitmap = await createImageBitmap(img);
-          const texture = device.createTexture({
-            size: [bitmap.width, bitmap.height, 1],
-            format: 'rgba8unorm',
-            usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
-          });
-          device.queue.copyExternalImageToTexture(
-            { source: bitmap },
-            { texture },
-            [bitmap.width, bitmap.height, 1]
-          );
-
-          const sampler = device.createSampler({
-            magFilter: 'linear',
-            minFilter: 'linear',
-          });
-
-          textureResourcesRef.current = { sampler, view: texture.createView() };
-          refreshBindGroup(device);
-        } else {
-          refreshBindGroup(device);
+        const needsTexture = layoutType === 'texture' || layoutType === 'extended';
+        if (needsTexture) {
+          await ensureButtonTexture(device);
         }
+
+        refreshBindGroup(device);
 
         setGpuReady(true);
       } catch (error) {

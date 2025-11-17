@@ -28,22 +28,8 @@ struct Uniforms {
 
 struct ChannelState { volume: f32, pan: f32, freq: f32, trigger: u32, noteAge: f32, activeEffect: u32, effectValue: f32, isMuted: u32 };
 @group(0) @binding(3) var<storage, read> channels: array<ChannelState>;
-
-struct VertexOut {
-  @builtin(position) position: vec4<f32>,
-  @location(0) @interpolate(flat) row: u32,
-  @location(1) @interpolate(flat) channel: u32,
-
-  // --- FIX ---
-  // Added @interpolate(linear).
-  // All floating-point values passed from vertex to fragment
-  // MUST specify an interpolation type (e.g., linear, flat, perspective).
-  @location(2) @interpolate(linear) uv: vec2<f32>,
-  // -----------
-
-  @location(3) @interpolate(flat) packedA: u32, // Note/Inst
-  @location(4) @interpolate(flat) packedB: u32, // Vol/Effect/Param
-};
+@group(0) @binding(4) var buttonsSampler: sampler;
+@group(0) @binding(5) var buttonsTexture: texture_2d<f32>;
 
 // --- VERTEX SHADER (Unchanged) ---
 // This was already solid. No changes needed.
@@ -104,6 +90,107 @@ fn sdRoundedBox(p: vec2<f32>, b: vec2<f32>, r: f32) -> f32 {
     return length(max(q, vec2<f32>(0.0))) + min(max(q.x, q.y), 0.0) - r;
 }
 
+fn toUpperAscii(code: u32) -> u32 {
+    return select(code, code - 32u, (code >= 97u) & (code <= 122u));
+}
+
+fn pitchClassFromPacked(packed: u32) -> f32 {
+    let c0 = toUpperAscii((packed >> 24) & 255u);
+    var semitone: i32 = 0;
+    var valid = true;
+    switch c0 {
+        case 65u: { semitone = 9; }
+        case 66u: { semitone = 11; }
+        case 67u: { semitone = 0; }
+        case 68u: { semitone = 2; }
+        case 69u: { semitone = 4; }
+        case 70u: { semitone = 5; }
+        case 71u: { semitone = 7; }
+        default: { valid = false; }
+    }
+    if (!valid) {
+        return 0.0;
+    }
+    let c1 = toUpperAscii((packed >> 16) & 255u);
+    if ((c1 == 35u) || (c1 == 43u)) {
+        semitone = (semitone + 1) % 12;
+    } else if (c1 == 66u) {
+        semitone = (semitone + 11) % 12;
+    }
+    return f32(semitone) / 12.0;
+}
+
+fn classifyEffectGlyph(code: u32) -> u32 {
+    let c = toUpperAscii(code & 255u);
+    switch c {
+        case 49u: { return 1u; }         // '1' Porta Up
+        case 50u: { return 2u; }         // '2' Porta Down
+        case 51u: { return 1u; }         // '3' also Portamento style
+        case 52u: { return 3u; }         // '4' Vibrato
+        case 55u: { return 4u; }         // '7' Tremolo
+        case 65u: { return 5u; }         // 'A' Volume slide
+        default: { return 0u; }
+    }
+}
+
+fn sdEquilateralTriangle(p: vec2<f32>, size: f32) -> f32 {
+    const k = 1.7320508;
+    var q = p;
+    q.x = abs(q.x);
+    q.x -= size;
+    q.y += size / k;
+    if (q.x + k * q.y > 0.0) {
+        q = vec2<f32>(q.x - k * q.y, -k * q.y) * 0.5;
+    }
+    q.x -= clamp(q.x, -2.0 * size, 0.0);
+    return -length(q) * sign(q.y);
+}
+
+fn sdDiamond(p: vec2<f32>, size: f32) -> f32 {
+    let q = abs(p);
+    return (q.x + q.y) - size;
+}
+
+fn effectGlyphSDF(kind: u32, offset: vec2<f32>, radius: f32) -> f32 {
+    switch kind {
+        case 1u: {
+            return sdEquilateralTriangle(vec2<f32>(offset.x, offset.y + radius * 0.1), radius);
+        }
+        case 2u: {
+            return sdEquilateralTriangle(vec2<f32>(offset.x, -offset.y + radius * 0.1), radius);
+        }
+        case 3u: {
+            return sdRoundedBox(offset, vec2<f32>(radius * 0.9, radius * 0.35), radius * 0.35);
+        }
+        case 4u: {
+            return sdRoundedBox(offset, vec2<f32>(radius * 0.7, radius * 0.7), radius * 0.15);
+        }
+        case 5u: {
+            return sdDiamond(offset, radius * 0.9);
+        }
+        default: {
+            return length(offset) - radius;
+        }
+    }
+}
+
+fn effectColorFromCode(code: u32, fallback: vec3<f32>) -> vec3<f32> {
+    let c = toUpperAscii(code & 255u);
+    switch c {
+        case 49u: { return mix(fallback, vec3<f32>(0.2, 0.85, 0.4), 0.75); }
+        case 50u: { return mix(fallback, vec3<f32>(0.85, 0.3, 0.3), 0.75); }
+        case 52u: { return mix(fallback, vec3<f32>(0.4, 0.7, 1.0), 0.6); }
+        case 55u: { return mix(fallback, vec3<f32>(0.9, 0.6, 0.2), 0.6); }
+        case 65u: { return mix(fallback, vec3<f32>(0.95, 0.9, 0.25), 0.7); }
+        default: { return fallback; }
+    }
+}
+
+fn buttonPatternColor(fs: FragmentConstants, uv: vec2<f32>, row: u32, channel: u32) -> vec3<f32> {
+    let tiled = fract(vec2<f32>(uv.x * fs.buttonTexScale.x + f32(row) * 0.17, uv.y * fs.buttonTexScale.y + f32(channel) * 0.23));
+    return textureSample(buttonsTexture, buttonsSampler, tiled).rgb;
+}
+
 // --- CHANGE ---
 // We've moved all the "magic numbers" for styling into this one
 // struct. Now you can tweak the appearance from one central place!
@@ -127,6 +214,8 @@ struct FragmentConstants {
   effectRadius: f32,
   effectColor: vec3<f32>,
   effectIntensity: f32,
+  buttonTexScale: vec2<f32>,
+  buttonTexMix: f32,
 
   // Borders
   borderColor: vec3<f32>,
@@ -160,6 +249,8 @@ fn getFragmentConstants() -> FragmentConstants {
     c.effectRadius = 0.05;
     c.effectColor = vec3<f32>(0.8, 0.8, 0.8);
     c.effectIntensity = 0.8;
+    c.buttonTexScale = vec2<f32>(3.5, 3.5);
+    c.buttonTexMix = 0.55;
 
     // Borders
     c.borderColor = vec3<f32>(0.15, 0.15, 0.2);
@@ -183,7 +274,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   let effCode = (in.packedB >> 8) & 255u;   // ASCII letter or code
   let effParam = in.packedB & 255u;         // 0..255
 
-  let hasNote = (noteChar > 0u);
+  let hasNote = (noteChar >= 65u && noteChar <= 71u);
   let hasEffect = (effParam > 0u);
 
   // Background stripes + row flags
@@ -229,13 +320,11 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   }
 
   if (hasNote) {
-    // Use a bright base color for notes
-    let base_note_color = vec3<f32>(0.7, 0.9, 1.0); // Bright cyan/blue
-
-    // Use instrument ID to modulate brightness [0.5, 1.0]
-    let brightness = 0.5 + (f32(inst) / 255.0) * 0.5;
-
-    var noteColor = base_note_color * brightness * fs.noteIntensity;
+    let pitchHue = pitchClassFromPacked(in.packedA);
+    let base_note_color = neonPalette(pitchHue);
+    let instBand = inst & 15u;
+    let instBrightness = 0.7 + (select(0.0, f32(instBand) / 15.0, instBand > 0u)) * 0.3;
+    var noteColor = base_note_color * instBrightness * fs.noteIntensity;
 
     if (uniforms.isPlaying == 1u) {
       let pulse = 0.5 + 0.5 * sin(uniforms.timeSec * uniforms.bpm * 0.10472);
@@ -284,13 +373,16 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
     color = mix(color, mixColor, clamp((pillShape + glow) * noteTrail, 0.0, 1.0) * volAlpha);
   }
 
-  let effectSDF = distance(in.uv, fs.effectPos) - fs.effectRadius;
-  let aa_effect = fwidth(effectSDF) * 0.5;
-
   if (hasEffect) {
+     let glyphKind = classifyEffectGlyph(effCode);
+     let effectSDF = effectGlyphSDF(glyphKind, in.uv - fs.effectPos, fs.effectRadius);
+     let aa_effect = fwidth(effectSDF) * 0.5;
      let effectShape = 1.0 - smoothstep(-aa_effect, aa_effect, effectSDF);
      let strength = clamp(f32(effParam) / 255.0, 0.2, 1.0);
-     color = mix(color, fs.effectColor, effectShape * fs.effectIntensity * strength);
+     let tinted = effectColorFromCode(effCode, fs.effectColor);
+     let pattern = buttonPatternColor(fs, in.uv, in.row, in.channel);
+     let effectColor = mix(tinted, pattern, fs.buttonTexMix);
+     color = mix(color, effectColor, effectShape * fs.effectIntensity * strength);
   }
 
   let uv_aa = vec2<f32>(fwidth(in.uv.x), fwidth(in.uv.y));

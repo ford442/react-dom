@@ -3,14 +3,24 @@
   <component name="AgentMigrationStateService">
     <option name="migrationStatus" value="IN_PROGRESS" />
     <option name="pendingSessionIds">
+      <option value="00c2059e-759b-4c1b-a87b-18b700788677" />
       <option value="02bed463-e537-417e-8227-4d3459124639" />
       <option value="1d2c51cb-2cd8-404f-88d6-0192d28ff3d7" />
       <option value="889f00fb-7f22-47d6-b8f0-2c9ee90568ee" />
       <option value="a17908ed-3672-4f78-8b18-4ed692b4e3e2" />
+      <option value="c9d80ec1-e5b1-42da-bf3a-1518b1f3cefc" />
       <option value="d9efda0d-14d7-49f0-b58b-92bdc94f99a2" />
     </option>
     <option name="pendingTurns">
       <map>
+        <entry key="00c2059e-759b-4c1b-a87b-18b700788677">
+          <value>
+            <set>
+              <option value="a4f73678-2e07-4600-a683-147032d85848" />
+              <option value="a0af7b5b-ee55-4ce9-8998-2a985c1c5de4" />
+            </set>
+          </value>
+        </entry>
         <entry key="02bed463-e537-417e-8227-4d3459124639">
           <value>
             <set>
@@ -27,6 +37,7 @@
           <value>
             <set>
               <option value="b75ceda7-8b5f-44e9-96b8-9211dbb139a3" />
+              <option value="31c115f4-ebb0-4f1c-a803-657f1a2d9306" />
             </set>
           </value>
         </entry>
@@ -70,6 +81,16 @@
             </set>
           </value>
         </entry>
+        <entry key="c9d80ec1-e5b1-42da-bf3a-1518b1f3cefc">
+          <value>
+            <set>
+              <option value="80b3d261-8772-47e7-b6c4-41ed2de2c504" />
+              <option value="e68c2d73-7602-43c6-a0c1-7abab6a49387" />
+              <option value="ecb2c383-ecb1-4115-b9fa-44ae7e9a7ca1" />
+              <option value="b81bcd11-cd8b-43f8-ada6-54bda6f42e80" />
+            </set>
+          </value>
+        </entry>
         <entry key="d9efda0d-14d7-49f0-b58b-92bdc94f99a2">
           <value>
             <set>
@@ -80,6 +101,11 @@
       </map>
     </option>
     <pendingWorkingSetItems>
+      <entry key="00c2059e-759b-4c1b-a87b-18b700788677">
+        <set>
+          <option value="file://$PROJECT_DIR$/components/PatternDisplay.tsx" />
+        </set>
+      </entry>
       <entry key="02bed463-e537-417e-8227-4d3459124639" />
       <entry key="1d2c51cb-2cd8-404f-88d6-0192d28ff3d7">
         <set>
@@ -92,6 +118,12 @@
         </set>
       </entry>
       <entry key="a17908ed-3672-4f78-8b18-4ed692b4e3e2" />
+      <entry key="c9d80ec1-e5b1-42da-bf3a-1518b1f3cefc">
+        <set>
+          <option value="file://$PROJECT_DIR$/shaders/patternv0.13.wgsl" />
+          <option value="file://$PROJECT_DIR$/components/PatternDisplay.tsx" />
+        </set>
+      </entry>
       <entry key="d9efda0d-14d7-49f0-b58b-92bdc94f99a2" />
     </pendingWorkingSetItems>
   </component>
