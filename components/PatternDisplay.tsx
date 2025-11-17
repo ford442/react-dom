@@ -366,27 +366,27 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
         if (layoutType === 'texture') {
           bindGroupLayout = device.createBindGroupLayout({
             entries: [
-              { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+              { binding: 0, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
               { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
-              { binding: 2, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
+              { binding: 2, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
               { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
             ],
           });
         } else if (layoutType === 'extended') {
           bindGroupLayout = device.createBindGroupLayout({
             entries: [
-              { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+              { binding: 0, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
               { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
               { binding: 2, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } },
               { binding: 3, visibility: GPUShaderStage.FRAGMENT, buffer: { type: 'read-only-storage' } },
-              { binding: 4, visibility: GPUShaderStage.FRAGMENT, sampler: {} },
+              { binding: 4, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
               { binding: 5, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
             ],
           });
         } else {
           bindGroupLayout = device.createBindGroupLayout({
             entries: [
-              { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+              { binding: 0, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
               { binding: 1, visibility: GPUShaderStage.FRAGMENT | GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
             ],
           });
