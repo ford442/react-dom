@@ -277,144 +277,124 @@ fn getFragmentConstants() -> FragmentConstants {
     return c;
 }
 
-
+//
+// ----------------- NEW FRAGMENT SHADER -----------------
+// This REPLACES your entire @fragment fn fs(...) function
+//
 @fragment
 fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   let fs = getFragmentConstants();
 
-  // Unpack fields
+  // --- 1. TILE & SAMPLE THE *SINGLE* BUTTON ---
+  // This replaces all the old background color logic
+
+  // Tiled UV (0 to 1 inside this cell)
+  let tiledUV = in.uv;
+
+  // UV for sampling the *first button* from your 6-button strip
+  // We assume the first button is in the u-coordinate range [0.0, 1.0/6.0]
+  // This achieves your "cut it down to one button" goal.
+  let singleButtonUV = vec2<f32>(tiledUV.x * (1.0 / 6.0), tiledUV.y);
+
+  // Get the base color from the texture. This is our "canvas".
+  var finalColor = textureSample(buttonsTexture, buttonsSampler, singleButtonUV).rgb;
+
+  // --- 2. UNPACK DATA (Same as before) ---
   let noteChar = (in.packedA >> 24) & 255u;
   let inst = in.packedA & 255u;
-  let volType = (in.packedB >> 24) & 255u; // 1=vol,2=pan
-  let volValue = (in.packedB >> 16) & 255u; // 0..255
-  let effCode = (in.packedB >> 8) & 255u;   // ASCII letter or code
-  let effParam = in.packedB & 255u;         // 0..255
-
+  let effCode = (in.packedB >> 8) & 255u;
+  let effParam = in.packedB & 255u;
   let hasNote = (noteChar >= 65u && noteChar <= 71u);
   let hasEffect = (effParam > 0u);
-
-  // Background stripes + row flags
-  var color = vec3<f32>(0.0);
-  let baseA = getFragmentConstants().bgColorA;
-  let baseB = getFragmentConstants().bgColorB;
-  color = select(baseB, baseA, (in.channel & 1u) == 1u);
-
-  var background = color;
-  if (in.row < uniforms.numRows) {
-    let flags = rowFlags[in.row];
-    let isMeasure = (flags & 2u) != 0u;
-    let isBeat = (flags & 1u) != 0u;
-    let beatPulse = 0.5 + 0.5 * sin(uniforms.beatPhase * 3.14159);
-    let grooveShift = (uniforms.groove * 0.1) * select(-1.0, 1.0, (in.row & 1u) == 0u);
-    let shiftedRow = f32(in.row) + grooveShift;
-    if (isMeasure) {
-      background = mix(background, vec3<f32>(0.02, 0.03, 0.05), 0.7 + 0.2 * beatPulse);
-    } else if (isBeat) {
-      background = mix(background, vec3<f32>(0.04, 0.04, 0.06), 0.4 + 0.2 * beatPulse);
-    }
-  }
-
-  color = background;
-
-  let pr = f32(uniforms.playheadRow) + clamp(uniforms.tickOffset, 0.0, 1.0);
-  let playheadX = pr * uniforms.cellW / uniforms.canvasW;
-  let beamDist = abs(in.uv.x + (f32(in.row) * uniforms.cellW) / uniforms.canvasW - playheadX);
-  let beam = exp(-beamDist * (48.0 - uniforms.kickTrigger * 24.0));
-  if (uniforms.isPlaying == 1u) {
-    color += vec3<f32>(0.18, 0.20, 0.26 + uniforms.kickTrigger * 0.2) * beam;
-  }
-
-  let center = in.uv - 0.5;
-  let pillSDF = sdRoundedBox(center, fs.pillSize, fs.pillRadius);
-  let pill_aa = fwidth(pillSDF) * 0.5;
-
   let ch = channels[in.channel];
 
-  // Muted channels dimmer
+  // --- 3. IDENTIFY BUTTON REGIONS (Requires Tweaking!) ---
+  //
+  // *** YOU WILL NEED TO TWEAK THESE Y-VALUES ***
+  // Based on your 'unlit-buttons.png', find the Y-coordinates for each part.
+  //
+  let y = tiledUV.y;
+  // (smoothstep creates a soft mask)
+  let topLightMask    = smoothstep(0.1, 0.11, y) - smoothstep(0.2, 0.21, y);
+  let mainButtonMask  = smoothstep(0.25, 0.26, y) - smoothstep(0.8, 0.81, y);
+  let bottomLightMask = smoothstep(0.85, 0.86, y) - smoothstep(0.95, 0.96, y);
+
+  // --- 4. APPLY STATES TO REGIONS (Your new logic) ---
+
+  // ** Muted Channel Dimming **
   if (ch.isMuted == 1u) {
-    color *= 0.2;
+      finalColor *= 0.2; // Dim the entire button
   }
 
+  // ** "Channel Active" -> Top Light **
+  // We'll use the note's "age" to see if it's "on".
+  let noteTrail = exp(-ch.noteAge * 2.0);
+  let channelActive = step(0.1, noteTrail); // Is the note "on"?
+
+  if (channelActive > 0.5) {
+      // Make the top light (blue in your PNG) pulse brightly
+      let topGlow = vec3<f32>(0.5, 0.8, 1.0) * (0.7 + 0.3 * sin(uniforms.timeSec * 10.0));
+      // Mix this glow color *onto* the top light area
+      finalColor = mix(finalColor, finalColor + topGlow, topLightMask);
+  }
+
+  // ** "Has Note" -> Main Button **
   if (hasNote) {
-    let pitchHue = pitchClassFromPacked(in.packedA);
-    let base_note_color = neonPalette(pitchHue);
-    let instBand = inst & 15u;
-    let instBrightness = 0.7 + (select(0.0, f32(instBand) / 15.0, instBand > 0u)) * 0.3;
-    var noteColor = base_note_color * instBrightness * fs.noteIntensity;
+      // Get pitch color (same as your v0.13 logic)
+      let pitchHue = pitchClassFromPacked(in.packedA);
+      let base_note_color = neonPalette(pitchHue);
+      let instBand = inst & 15u;
+      let instBrightness = 0.7 + (select(0.0, f32(instBand) / 15.0, instBand > 0u)) * 0.3;
+      var noteColor = base_note_color * instBrightness;
 
-    if (uniforms.isPlaying == 1u) {
-      let pulse = 0.5 + 0.5 * sin(uniforms.timeSec * uniforms.bpm * 0.10472);
-      noteColor *= mix(0.85, 1.15, pulse);
-    }
+      // Apply trigger flash
+      noteColor = mix(noteColor, vec3<f32>(1.0), f32(ch.trigger) * 0.8);
 
-    // Vibrato shake
-    var uv = center;
-    if (ch.activeEffect == 1u) {
-      let shake = sin(uniforms.timeSec * (10.0 + ch.effectValue * 20.0)) * (0.02 + ch.effectValue * 0.05);
-      uv.x += shake;
-    }
-    // Portamento shear
-    if (ch.activeEffect == 2u) {
-      let skew = clamp(ch.effectValue * 0.5, -0.3, 0.3);
-      uv.x += uv.y * skew;
-    }
-    // Tremolo pulse
-    if (ch.activeEffect == 3u) {
-      let trem = 0.5 + 0.5 * sin(uniforms.timeSec * (8.0 + ch.effectValue * 16.0));
-      noteColor *= mix(0.8, 1.2, trem);
-    }
-    // Arpeggio tint cycling
-    if (ch.activeEffect == 4u) {
-      let arp = fract(uniforms.timeSec * 4.0);
-      noteColor = mix(noteColor, neonPalette(arp), 0.35 * ch.effectValue);
-    }
-    // Retrigger strobe
-    if (ch.activeEffect == 5u) {
-      let strobe = step(0.5, fract(ch.noteAge * (5.0 + ch.effectValue * 30.0)));
-      noteColor *= mix(0.6, 1.4, strobe);
-    }
+      // Apply volume (as opacity/mix)
+      let volAlpha = clamp(ch.volume, 0.05, 1.0);
 
-    let pillShape = 1.0 - smoothstep(-pill_aa, pill_aa, sdRoundedBox(uv, fs.pillSize, fs.pillRadius));
-    let glow = exp(-pillSDF * fs.glowFalloff) * fs.glowIntensity;
-
-    let volAlpha = clamp(ch.volume, 0.05, 1.0);
-    let panTint = clamp(ch.pan * 0.5 + 0.5, 0.0, 1.0);
-    let panColor = mix(vec3<f32>(0.9, 0.4, 0.4), vec3<f32>(0.4, 0.4, 0.9), panTint);
-
-    var mixColor = noteColor;
-    mixColor = mix(mixColor, panColor, 0.15);
-    mixColor = mix(mixColor, vec3<f32>(1.0), mix(0.0, 0.8, f32(ch.trigger)));
-
-    let noteTrail = exp(-ch.noteAge * 2.0);
-    color = mix(color, mixColor, clamp((pillShape + glow) * noteTrail, 0.0, 1.0) * volAlpha);
+      // We mix the noteColor with the base button texture color
+      // The 'noteTrail' makes it fade out
+      let mixAmount = mainButtonMask * volAlpha * noteTrail;
+      finalColor = mix(finalColor, noteColor, mixAmount);
   }
 
-  let effectSDF = distance(in.uv, fs.effectPos) - fs.effectRadius;
-  let aa_effect = fwidth(effectSDF) * 0.5;
-  let pattern = buttonPatternColor(fs, in.uv, in.row, in.channel);
-
+  // ** "Has Effect" -> Bottom Light **
   if (hasEffect) {
-     let glyphKind = classifyEffectGlyph(effCode);
-     let effectSDF = effectGlyphSDF(glyphKind, in.uv - fs.effectPos, fs.effectRadius);
-     let effectShape = 1.0 - smoothstep(-aa_effect, aa_effect, effectSDF);
-     let strength = clamp(f32(effParam) / 255.0, 0.2, 1.0);
-     let tinted = effectColorFromCode(effCode, fs.effectColor);
-     let effectColor = mix(tinted, pattern, fs.buttonTexMix);
-     color = mix(color, effectColor, effectShape * fs.effectIntensity * strength);
+      // Get the effect-specific color
+      let effectColor = effectColorFromCode(effCode, fs.effectColor);
+      let strength = clamp(f32(effParam) / 255.0, 0.2, 1.0);
+
+      // Make the bottom light (yellow in your PNG) glow with the effect color
+      let effectGlow = effectColor * strength * (1.0 + 0.5 * sin(uniforms.timeSec * 15.0));
+      // Mix this glow color *onto* the bottom light area
+      finalColor = mix(finalColor, finalColor + effectGlow, bottomLightMask);
   }
 
+  // --- 5. BORDERS & PLAYHEAD (Same as before) ---
+  // This logic now draws *over* our new texture-based color
   let uv_aa = vec2<f32>(fwidth(in.uv.x), fwidth(in.uv.y));
   let borderX = smoothstep(1.0 - (fs.borderThickness * uv_aa.x), 1.0, in.uv.x);
   let borderY = smoothstep(1.0 - (fs.borderThickness * uv_aa.y), 1.0, in.uv.y);
   let borderAlpha = max(borderX, borderY);
 
-  if (in.row == uniforms.playheadRow) {
-      let playheadBorder = borderX * fs.playheadBorderIntensity;
-      color = mix(color, fs.playheadBorderColor, playheadBorder);
-      color = mix(color, fs.borderColor, borderY);
-  } else {
-      color = mix(color, fs.borderColor, borderAlpha);
+  // Apply playhead beam
+  let pr = f32(uniforms.playheadRow) + clamp(uniforms.tickOffset, 0.0, 1.0);
+  let playheadX = pr * uniforms.cellW / uniforms.canvasW;
+  let beamDist = abs(in.uv.x + (f32(in.row) * uniforms.cellW) / uniforms.canvasW - playheadX);
+  let beam = exp(-beamDist * (48.0 - uniforms.kickTrigger * 24.0));
+  if (uniforms.isPlaying == 1u) {
+    finalColor += vec3<f32>(0.18, 0.20, 0.26 + uniforms.kickTrigger * 0.2) * beam;
   }
 
-  return vec4<f32>(color, 1.0);
+  // Apply borders
+  if (in.row == uniforms.playheadRow) {
+      let playheadBorder = borderX * fs.playheadBorderIntensity;
+      finalColor = mix(finalColor, fs.playheadBorderColor, playheadBorder);
+      finalColor = mix(finalColor, fs.borderColor, borderY);
+  } else {
+      finalColor = mix(finalColor, fs.borderColor, borderAlpha);
+  }
+
+  return vec4<f32(finalColor, 1.0);
 }
