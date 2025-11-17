@@ -131,7 +131,6 @@ declare global {
     libopenmpt: Partial<LibOpenMPT>;
     AudioContext: typeof AudioContext;
     webkitAudioContext: typeof AudioContext;
-    GEMINI_API_KEY?: string;
     // FIX: Add promise for robust initialization
     libopenmptReady: Promise<Partial<LibOpenMPT>>;
   }

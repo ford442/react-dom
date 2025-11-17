@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { LibOpenMPT, ModuleInfo, PatternMatrix, PatternCell } from '../types';
-import { ai } from '../lib/gemini';
 
 const SAMPLE_RATE = 48000;
 const BUFFER_SIZE = 4096;
@@ -62,8 +61,6 @@ export function useLibOpenMPT() {
   const [isModuleLoaded, setIsModuleLoaded] = useState<boolean>(false);
   const [moduleInfo, setModuleInfo] = useState<ModuleInfo>(INITIAL_MODULE_INFO);
   const [patternData, setPatternData] = useState<string>('... Waiting for module to play ...');
-  const [aiResponse, setAiResponse] = useState<string>('');
-  const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [sequencerMatrix, setSequencerMatrix] = useState<PatternMatrix | null>(null);
   const [sequencerCurrentRow, setSequencerCurrentRow] = useState<number>(0);
   const [sequencerGlobalRow, setSequencerGlobalRow] = useState<number>(0);
@@ -209,7 +206,6 @@ export function useLibOpenMPT() {
     rowBufferRef.current = {};
     patternMatricesRef.current = {};
     setIsModuleLoaded(false);
-    setAiResponse('');
 
     setStatus(`Loading "${fileName}"...`);
     
@@ -381,44 +377,6 @@ export function useLibOpenMPT() {
     }
   }, [isPlaying, stopMusic, updateUI]);
 
-  const askAI = useCallback(async () => {
-    const title = moduleInfoRef.current.title;
-    if (!title || title === '...') return;
-
-    setIsAiLoading(true);
-    setAiResponse('');
-    try {
-      const prompt = `You are a music expert specializing in old-school tracker music (demoscene, video games).
-      A user has loaded a track titled "${title}".
-      Provide a brief, interesting summary about this track.
-      Consider the following points if you have information:
-      - The likely artist or group.
-      - The year it was released.
-      - The computer system it was famous on (e.g., Amiga, PC).
-      - The genre (e.g., Demoscene music, Chiptune, Jungle).
-      - Any interesting facts about its composition or use in a demo/game.
-      - Suggest 1-2 similar tracks or artists.
-      
-      Format your response as clean, readable text. If you don't know anything about this specific track, say so and provide general information about the tracker music scene instead.`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: { role: 'user', parts: [{ text: prompt }] },
-        config: {
-          thinkingConfig: { thinkingBudget: 0 }
-        }
-      });
-      
-      setAiResponse(response.text ?? '');
-
-    } catch (error) {
-      console.error("Gemini API error:", error);
-      setAiResponse("Sorry, I couldn't fetch information at this time. Please check the console for errors.");
-    } finally {
-      setIsAiLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     const init = async () => {
       if (!window.libopenmptReady) {
@@ -533,5 +491,5 @@ export function useLibOpenMPT() {
     }
   };
 
-  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, aiResponse, isAiLoading, loadModule, play, stopMusic, askAI, sequencerMatrix, sequencerCurrentRow, sequencerGlobalRow, totalPatternRows, playbackSeconds, playbackRowFraction, channelStates, beatPhase, grooveAmount, kickTrigger, activeChannels, seekToStep };
+  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, loadModule, play, stopMusic, sequencerMatrix, sequencerCurrentRow, sequencerGlobalRow, totalPatternRows, playbackSeconds, playbackRowFraction, channelStates, beatPhase, grooveAmount, kickTrigger, activeChannels, seekToStep };
 }
