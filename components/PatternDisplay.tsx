@@ -303,7 +303,7 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
   const ensureButtonTexture = async (device: GPUDevice) => {
     if (textureResourcesRef.current) return;
     const img = new Image();
-    img.src = './public/unlit-buttons.png';
+    img.src = './public/unlit-button.png';
     await img.decode();
     const bitmap = await createImageBitmap(img);
     const texture = device.createTexture({
