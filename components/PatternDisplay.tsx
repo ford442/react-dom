@@ -378,8 +378,15 @@ export const PatternDisplay: React.FC<PatternDisplayProps> = ({ matrix, playhead
       device.queue.writeBuffer(uniformBufferRef.current, 0, uniforms.buffer, uniforms.byteOffset, uniforms.byteLength);
     }
 
+    // Update channels buffer for extended layout (patternv0.13.wgsl)
+    if (useExtendedRef.current && channelsBufferRef.current) {
+      const count = Math.max(1, matrix?.numChannels ?? 1);
+      const packed = packChannelStates(channels, count);
+      device.queue.writeBuffer(channelsBufferRef.current, 0, packed);
+    }
+
     render();
-  }, [matrix, playheadRow, timeSec, bpm, tickOffset, grooveAmount, kickTrigger, activeChannels, gpuReady]);
+  }, [matrix, playheadRow, timeSec, bpm, tickOffset, grooveAmount, kickTrigger, activeChannels, gpuReady, channels]);
 
   return (
     <div className="pattern-display">
