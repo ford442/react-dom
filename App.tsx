@@ -141,7 +141,7 @@ export default function App() {
                   matrix={sequencerMatrix ?? null}
                   playheadRow={sequencerCurrentRow}
                   cellWidth={18}
-                  cellHeight={16}
+                  cellHeight={18}
                   shaderFile={shaderVersion}
                   isPlaying={isPlaying}
                   bpm={moduleInfo.bpm}
