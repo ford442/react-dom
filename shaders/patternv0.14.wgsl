@@ -242,10 +242,10 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
 
   // --- 1. TILE & SAMPLE THE *SINGLE* BUTTON ---
   let tiledUV = in.uv;
-  let singleButtonUV = tiledUV; // Use the whole texture
+  let singleButtonUV = tiledUV;
   var finalColor = textureSample(buttonsTexture, buttonsSampler, singleButtonUV).rgb;
 
-  // --- 2. UNPACK DATA (Same as before) ---
+  // --- 2. UNPACK DATA ---
   let noteChar = (in.packedA >> 24) & 255u;
   let inst = in.packedA & 255u;
   let effCode = (in.packedB >> 8) & 255u;
@@ -257,20 +257,38 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   // --- 3. IDENTIFY BUTTON REGIONS ---
   let y = tiledUV.y;
   let x = tiledUV.x;
+
+  // Indicator horizontal mask
   let indicatorXMask = smoothstep(0.4, 0.41, x) - smoothstep(0.6, 0.61, x);
+
+  // Vertical masks (Y)
   let topLightMask    = (smoothstep(0.10, 0.11, y) - smoothstep(0.20, 0.21, y)) * indicatorXMask;
+
+  // --- This is the mask we dialed in ---
 let mainButtonYMask  = smoothstep(0.23, 0.24, y) - smoothstep(0.82, 0.83, y);
-let mainButtonXMask = smoothstep(0.1, 0.11, x) - smoothstep(0.9, 0.91, x);
-// Combine them
-let mainButtonMask = mainButtonYMask * mainButtonXMask;
-let bottomLightMask = (smoothstep(0.90, 0.91, y) - smoothstep(0.95, 0.96, y)) * indicatorXMask;
+  let mainButtonXMask = smoothstep(0.1, 0.11, x) - smoothstep(0.9, 0.91, x);
+  let mainButtonMask = mainButtonYMask * mainButtonXMask;
+  // -------------------------------------
+
+  let bottomLightMask = (smoothstep(0.90, 0.91, y) - smoothstep(0.95, 0.96, y)) * indicatorXMask;
+
+  // --- 5. NEW PLAYHEAD PROXIMITY ---
+  // Calculate distance from the playhead
+  // This value will be used to light up the top/bottom indicators
+  let rowDistance = abs(i32(in.row) - i32(uniforms.playheadRow));
+  var proximityGlow: f32 = 0.0;
+  switch rowDistance {
+      case 0: { proximityGlow = 1.0; } // 1.0 == Brightest
+      case 1: { proximityGlow = 0.7; } // 0.7 == Bright
+      default: {}
+  }
 
 
-  // --- 4. APPLY STATES TO REGIONS (Your new logic) ---
+  // --- 4. APPLY STATES TO REGIONS ---
 
   // ** Muted Channel Dimming **
   if (ch.isMuted == 1u) {
-      finalColor *= 0.2; // Dim the entire button
+      finalColor *= 0.2;
   }
 
   // ** "Channel Active" -> Top Light **
@@ -278,24 +296,23 @@ let bottomLightMask = (smoothstep(0.90, 0.91, y) - smoothstep(0.95, 0.96, y)) * 
   let channelActive = step(0.1, noteTrail);
 
   if (channelActive > 0.5) {
-      let topGlow = vec3<f32>(0.5, 0.8, 1.0) * (0.7 + 0.3 * sin(uniforms.timeSec * 10.0));
+      // --- CHANGE ---
+      // Add proximityGlow to the base pulse
+      let topPulse = 0.7 + 0.3 * sin(uniforms.timeSec * 10.0);
+      let topGlow = vec3<f32>(0.5, 0.8, 1.0) * (topPulse + proximityGlow);
       finalColor = mix(finalColor, finalColor + topGlow, topLightMask);
   }
 
   // ** "Has Note" -> Main Button **
-  // <<-- FIX 1: Declare noteColor here with a default
-  var noteColor = vec3<f32>(0.0); 
-
+  var noteColor = vec3<f32>(0.0);
   if (hasNote) {
       let pitchHue = pitchClassFromPacked(in.packedA);
       let base_note_color = neonPalette(pitchHue);
       let instBand = inst & 15u;
       let instBrightness = 0.7 + (select(0.0, f32(instBand) / 15.0, instBand > 0u)) * 0.3;
-      
-      // <<-- FIX 2: Assign to noteColor (remove 'var')
-      noteColor = base_note_color * instBrightness; 
 
-      let triggerFlash = noteColor * 1.5 + 0.5; // "Hot" version of note color
+      noteColor = base_note_color * instBrightness;
+      let triggerFlash = noteColor * 1.5 + 0.5;
       noteColor = mix(noteColor, triggerFlash, f32(ch.trigger) * 0.8);
 
       let volAlpha = clamp(ch.volume, 0.05, 1.0);
@@ -307,25 +324,19 @@ let bottomLightMask = (smoothstep(0.90, 0.91, y) - smoothstep(0.95, 0.96, y)) * 
   if (hasEffect) {
       let effectColor = effectColorFromCode(effCode, fs.effectColor);
       let strength = clamp(f32(effParam) / 255.0, 0.2, 1.0);
-let effectGlow = (effectColor * strength * (1.0 + 0.5 * sin(uniforms.timeSec * 15.0))) * 1.5;
-finalColor = mix(finalColor, finalColor + effectGlow, bottomLightMask);
+
+      // --- CHANGE ---
+      // Add proximityGlow to the base pulse
+      let effectPulse = 1.0 + 0.5 * sin(uniforms.timeSec * 15.0);
+      // We keep the * 1.5 brightness multiplier from before
+      let effectGlow = (effectColor * strength * (effectPulse + proximityGlow)) * 1.5;
+
+      finalColor = mix(finalColor, finalColor + effectGlow, bottomLightMask);
   }
 
-  // --- 5. NEW PLAYHEAD LOGIC (Goals 4 & 5) ---
-  if (in.row == uniforms.playheadRow) {
-      let playheadBlink = 0.5 + 0.5 * sin(uniforms.timeSec * 30.0);
-
-      if (hasNote) {
-          // "lit notes blink their color very bright"
-          // This line will now work!
-          let brightNote = noteColor * 2.0 + 0.8; // Even hotter than trigger
-          finalColor = mix(finalColor, brightNote, playheadBlink * mainButtonMask);
-      } else {
-          // "row of indicators blinks bright white"
-          let whiteFlash = vec3<f32>(0.8, 0.8, 1.0); // A bright, cool white
-          finalColor = mix(finalColor, whiteFlash, playheadBlink * mainButtonMask);
-      }
-  }
+  // --- 5. OLD PLAYHEAD LOGIC (DELETED) ---
+  // The logic for blinking the main button face has been removed,
+  // as it is now replaced by the indicator glow.
 
   // --- 6. BORDERS ---
   let uv_aa = vec2<f32>(fwidth(in.uv.x), fwidth(in.uv.y));
