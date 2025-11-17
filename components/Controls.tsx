@@ -1,5 +1,5 @@
 import React from 'react';
-import { PlayIcon, StopIcon, UploadIcon } from './icons';
+import { PlayIcon, StopIcon, UploadIcon, LoopIcon } from './icons';
 
 interface ControlsProps {
   isReady: boolean;
@@ -10,6 +10,8 @@ interface ControlsProps {
   onStop: () => void;
   // new prop: media add callback
   onMediaAdd?: (file: File) => void;
+  isLooping: boolean;
+  onLoopToggle: () => void;
 }
 
 export const Controls: React.FC<ControlsProps> = ({
@@ -20,6 +22,8 @@ export const Controls: React.FC<ControlsProps> = ({
   onPlay,
   onStop,
   onMediaAdd,
+  isLooping,
+  onLoopToggle,
 }) => {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -81,6 +85,17 @@ export const Controls: React.FC<ControlsProps> = ({
         >
           <StopIcon className="w-5 h-5" />
           Stop
+        </button>
+
+        <button
+          id="loop-button"
+          className={`font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 ${isLooping ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-600 hover:bg-gray-700 text-gray-300'}`}
+          onClick={onLoopToggle}
+          disabled={!isModuleLoaded}
+          aria-label="Toggle Loop"
+        >
+          <LoopIcon className="w-5 h-5" />
+          Loop
         </button>
       </div>
     </section>

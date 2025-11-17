@@ -112,6 +112,15 @@
             </set>
           </value>
         </entry>
+        <entry key="fc61c8fe-9f8c-4de4-97cb-9d38f4ef598f">
+          <value>
+            <set>
+              <option value="9cde31cf-f778-4b89-816e-31e642549bc6" />
+              <option value="3dd16563-d8fd-43b3-8c24-424c568f727b" />
+              <option value="4b3638bd-0fa3-4abe-95ef-b29a2649ffee" />
+            </set>
+          </value>
+        </entry>
       </map>
     </option>
     <pendingWorkingSetItems>
@@ -123,6 +132,14 @@
       <entry key="a17908ed-3672-4f78-8b18-4ed692b4e3e2" />
       <entry key="c9d80ec1-e5b1-42da-bf3a-1518b1f3cefc" />
       <entry key="d9efda0d-14d7-49f0-b58b-92bdc94f99a2" />
+      <entry key="fc61c8fe-9f8c-4de4-97cb-9d38f4ef598f">
+        <set>
+          <option value="file://$PROJECT_DIR$/hooks/useLibOpenMPT.ts" />
+          <option value="file://$PROJECT_DIR$/components/Controls.tsx" />
+          <option value="file://$PROJECT_DIR$/components/icons.tsx" />
+          <option value="file://$PROJECT_DIR$/App.tsx" />
+        </set>
+      </entry>
     </pendingWorkingSetItems>
   </component>
 </project>

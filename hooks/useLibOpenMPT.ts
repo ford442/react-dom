@@ -72,6 +72,7 @@ export function useLibOpenMPT() {
   const [beatPhase, setBeatPhase] = useState<number>(0);
   const [grooveAmount, setGrooveAmount] = useState<number>(0);
   const [activeChannels, setActiveChannels] = useState<number>(0);
+  const [isLooping, setIsLooping] = useState<boolean>(false);
 
   const libopenmptRef = useRef<LibOpenMPT | null>(null);
   const currentModulePtr = useRef<number>(0);
@@ -82,6 +83,7 @@ export function useLibOpenMPT() {
   const animationFrameHandle = useRef<number>(0);
   const moduleInfoRef = useRef(moduleInfo);
   const isPlayingRef = useRef(isPlaying);
+  const isLoopingRef = useRef(isLooping);
 
   useEffect(() => {
     moduleInfoRef.current = moduleInfo;
@@ -90,6 +92,10 @@ export function useLibOpenMPT() {
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
+
+  useEffect(() => {
+    isLoopingRef.current = isLooping;
+  }, [isLooping]);
 
   const stopMusic = useCallback((ended = false) => {
     if (!scriptNodeRef.current) return;
@@ -350,8 +356,18 @@ export function useLibOpenMPT() {
         try {
           const frames = lib._openmpt_module_read_float_stereo(modPtr, SAMPLE_RATE, BUFFER_SIZE, leftBufferPtr, rightBufferPtr);
           if (frames === 0) {
-            setTimeout(() => stopMusic(true), 0);
-            return;
+            if (isLoopingRef.current) {
+              try {
+                lib._openmpt_module_set_position_order_row(modPtr, 0, 0);
+              } catch (resetErr) {
+                console.error("Error resetting position for loop:", resetErr);
+                setTimeout(() => stopMusic(true), 0);
+              }
+              return;
+            } else {
+              setTimeout(() => stopMusic(true), 0);
+              return;
+            }
           }
 
           const leftOutput = e.outputBuffer.getChannelData(0);
@@ -491,5 +507,5 @@ export function useLibOpenMPT() {
     }
   };
 
-  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, loadModule, play, stopMusic, sequencerMatrix, sequencerCurrentRow, sequencerGlobalRow, totalPatternRows, playbackSeconds, playbackRowFraction, channelStates, beatPhase, grooveAmount, kickTrigger, activeChannels, seekToStep };
+  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, loadModule, play, stopMusic, sequencerMatrix, sequencerCurrentRow, sequencerGlobalRow, totalPatternRows, playbackSeconds, playbackRowFraction, channelStates, beatPhase, grooveAmount, kickTrigger, activeChannels, isLooping, setIsLooping, seekToStep };
 }

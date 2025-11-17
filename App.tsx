@@ -36,6 +36,8 @@ export default function App() {
     grooveAmount,
     kickTrigger,
     activeChannels,
+    isLooping,
+    setIsLooping,
   } = useLibOpenMPT();
 
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -95,6 +97,8 @@ export default function App() {
           onPlay={play}
           onStop={stopMusic}
           onMediaAdd={addMediaFile}
+          isLooping={isLooping}
+          onLoopToggle={() => setIsLooping(!isLooping)}
         />
 
         {isModuleLoaded && (
