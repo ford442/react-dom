@@ -396,5 +396,5 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
       finalColor = mix(finalColor, fs.borderColor, borderAlpha);
   }
 
-  return vec4<f32(finalColor, 1.0);
+  return vec4<f32>(finalColor, 1.0);
 }
