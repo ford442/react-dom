@@ -140,8 +140,8 @@ export default function App() {
                 <PatternDisplay
                   matrix={sequencerMatrix ?? null}
                   playheadRow={sequencerCurrentRow}
-                  cellWidth={18}
-                  cellHeight={18}
+                  cellWidth={20}
+                  cellHeight={20}
                   shaderFile={shaderVersion}
                   isPlaying={isPlaying}
                   bpm={moduleInfo.bpm}
