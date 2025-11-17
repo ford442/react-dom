@@ -257,12 +257,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   // --- 3. IDENTIFY BUTTON REGIONS ---
   let y = tiledUV.y;
   let x = tiledUV.x;
-
-  // GOAL 1 & 2: Add X-axis mask for the small indicators
-  // (Assumes they are in the horizontal center, 40%-60% of the width)
   let indicatorXMask = smoothstep(0.4, 0.41, x) - smoothstep(0.6, 0.61, x);
-
-  // Y-Masks (from previous step)
   let topLightMask    = (smoothstep(0.10, 0.11, y) - smoothstep(0.20, 0.21, y)) * indicatorXMask;
   let mainButtonMask  = smoothstep(0.28, 0.29, y) - smoothstep(0.85, 0.86, y);
   let bottomLightMask = (smoothstep(0.90, 0.91, y) - smoothstep(0.95, 0.96, y)) * indicatorXMask;
@@ -285,14 +280,18 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   }
 
   // ** "Has Note" -> Main Button **
+  // <<-- FIX 1: Declare noteColor here with a default
+  var noteColor = vec3<f32>(0.0); 
+
   if (hasNote) {
       let pitchHue = pitchClassFromPacked(in.packedA);
       let base_note_color = neonPalette(pitchHue);
       let instBand = inst & 15u;
       let instBrightness = 0.7 + (select(0.0, f32(instBand) / 15.0, instBand > 0u)) * 0.3;
-      var noteColor = base_note_color * instBrightness;
+      
+      // <<-- FIX 2: Assign to noteColor (remove 'var')
+      noteColor = base_note_color * instBrightness; 
 
-      // GOAL 3: Apply trigger flash (boosted note color)
       let triggerFlash = noteColor * 1.5 + 0.5; // "Hot" version of note color
       noteColor = mix(noteColor, triggerFlash, f32(ch.trigger) * 0.8);
 
@@ -311,11 +310,11 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
 
   // --- 5. NEW PLAYHEAD LOGIC (Goals 4 & 5) ---
   if (in.row == uniforms.playheadRow) {
-      // Animate a blink
       let playheadBlink = 0.5 + 0.5 * sin(uniforms.timeSec * 30.0);
 
       if (hasNote) {
           // "lit notes blink their color very bright"
+          // This line will now work!
           let brightNote = noteColor * 2.0 + 0.8; // Even hotter than trigger
           finalColor = mix(finalColor, brightNote, playheadBlink * mainButtonMask);
       } else {
@@ -326,7 +325,6 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   }
 
   // --- 6. BORDERS ---
-  // GOAL 4: Removed all old playhead logic from borders
   let uv_aa = vec2<f32>(fwidth(in.uv.x), fwidth(in.uv.y));
   let borderX = smoothstep(1.0 - (fs.borderThickness * uv_aa.x), 1.0, in.uv.x);
   let borderY = smoothstep(1.0 - (fs.borderThickness * uv_aa.y), 1.0, in.uv.y);
