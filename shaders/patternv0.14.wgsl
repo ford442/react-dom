@@ -320,19 +320,26 @@ let mainButtonYMask  = smoothstep(0.23, 0.24, y) - smoothstep(0.82, 0.83, y);
       finalColor = mix(finalColor, noteColor, mixAmount);
   }
 
-  // ** "Has Effect" -> Bottom Light **
-  if (hasEffect) {
-      let effectColor = effectColorFromCode(effCode, fs.effectColor);
-      let strength = clamp(f32(effParam) / 255.0, 0.2, 1.0);
+// ** "Has Effect" -> Bottom Light **
+var bottomGlow = vec3<f32>(0.0);
 
-      // --- CHANGE ---
-      // Add proximityGlow to the base pulse
-      let effectPulse = 1.0 + 0.5 * sin(uniforms.timeSec * 15.0);
-      // We keep the * 1.5 brightness multiplier from before
-      let effectGlow = (effectColor * strength * (effectPulse + proximityGlow)) * 1.5;
+// 1. Add pulse glow IF an effect exists
+if (hasEffect) {
+    let effectColor = effectColorFromCode(effCode, fs.effectColor);
+    let strength = clamp(f32(effParam) / 255.0, 0.2, 1.0);
+    let effectPulse = 1.0 + 0.5 * sin(uniforms.timeSec * 15.0);
+    bottomGlow += (effectColor * strength * effectPulse) * 1.5;
+}
 
-      finalColor = mix(finalColor, finalColor + effectGlow, bottomLightMask);
-  }
+// 2. Add proximity glow ALWAYS (for the playhead "wipe")
+if (proximityGlow > 0.0) {
+    let baseEffectColor = vec3<f32>(0.8, 0.7, 0.3); // Base yellow
+    // Add the proximity glow, scaled by the same brightness
+    bottomGlow += (baseEffectColor * proximityGlow) * 1.5;
+}
+
+// Apply the combined glow
+finalColor = mix(finalColor, finalColor + bottomGlow, bottomLightMask);
 
   // --- 5. OLD PLAYHEAD LOGIC (DELETED) ---
   // The logic for blinking the main button face has been removed,
