@@ -6,6 +6,7 @@
       <option value="00c2059e-759b-4c1b-a87b-18b700788677" />
       <option value="02bed463-e537-417e-8227-4d3459124639" />
       <option value="1d2c51cb-2cd8-404f-88d6-0192d28ff3d7" />
+      <option value="3b4680a3-57e6-4313-a169-8d7db63700ba" />
       <option value="675dcf46-c809-4981-a8f1-c287e25f87ee" />
       <option value="889f00fb-7f22-47d6-b8f0-2c9ee90568ee" />
       <option value="a17908ed-3672-4f78-8b18-4ed692b4e3e2" />
@@ -115,9 +116,9 @@
         <entry key="fc61c8fe-9f8c-4de4-97cb-9d38f4ef598f">
           <value>
             <set>
-              <option value="9cde31cf-f778-4b89-816e-31e642549bc6" />
               <option value="3dd16563-d8fd-43b3-8c24-424c568f727b" />
               <option value="4b3638bd-0fa3-4abe-95ef-b29a2649ffee" />
+              <option value="9cde31cf-f778-4b89-816e-31e642549bc6" />
             </set>
           </value>
         </entry>
@@ -132,14 +133,7 @@
       <entry key="a17908ed-3672-4f78-8b18-4ed692b4e3e2" />
       <entry key="c9d80ec1-e5b1-42da-bf3a-1518b1f3cefc" />
       <entry key="d9efda0d-14d7-49f0-b58b-92bdc94f99a2" />
-      <entry key="fc61c8fe-9f8c-4de4-97cb-9d38f4ef598f">
-        <set>
-          <option value="file://$PROJECT_DIR$/hooks/useLibOpenMPT.ts" />
-          <option value="file://$PROJECT_DIR$/components/Controls.tsx" />
-          <option value="file://$PROJECT_DIR$/components/icons.tsx" />
-          <option value="file://$PROJECT_DIR$/App.tsx" />
-        </set>
-      </entry>
+      <entry key="fc61c8fe-9f8c-4de4-97cb-9d38f4ef598f" />
     </pendingWorkingSetItems>
   </component>
 </project>
