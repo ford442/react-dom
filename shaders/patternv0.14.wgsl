@@ -1,4 +1,4 @@
-// filepath: g:\github\react-dom\shaders\patternv0.13.wgsl
+// filepath: g:\github\react-dom\shaders\patternv0.14.wgsl
 // Horizontal Pattern Grid Shader (Time = X, Channels = Y)
 // V2: Refactored by "Custom Coding partner" to use fwidth() for AA
 // and a constants struct for easier tweaking.
@@ -257,29 +257,23 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   // --- 3. IDENTIFY BUTTON REGIONS ---
   let y = tiledUV.y;
   let x = tiledUV.x;
-
-  // Indicator horizontal mask
+  
   let indicatorXMask = smoothstep(0.4, 0.41, x) - smoothstep(0.6, 0.61, x);
-
-  // Vertical masks (Y)
   let topLightMask    = (smoothstep(0.10, 0.11, y) - smoothstep(0.20, 0.21, y)) * indicatorXMask;
-
-  // --- This is the mask we dialed in ---
-let mainButtonYMask  = smoothstep(0.23, 0.24, y) - smoothstep(0.82, 0.83, y);
+  
+  let mainButtonYMask = smoothstep(0.32, 0.33, y) - smoothstep(0.60, 0.61, y);
   let mainButtonXMask = smoothstep(0.1, 0.11, x) - smoothstep(0.9, 0.91, x);
   let mainButtonMask = mainButtonYMask * mainButtonXMask;
-  // -------------------------------------
 
   let bottomLightMask = (smoothstep(0.90, 0.91, y) - smoothstep(0.95, 0.96, y)) * indicatorXMask;
 
   // --- 5. NEW PLAYHEAD PROXIMITY ---
-  // Calculate distance from the playhead
-  // This value will be used to light up the top/bottom indicators
   let rowDistance = abs(i32(in.row) - i32(uniforms.playheadRow));
   var proximityGlow: f32 = 0.0;
   switch rowDistance {
-      case 0: { proximityGlow = 1.0; } // 1.0 == Brightest
-      case 1: { proximityGlow = 0.7; } // 0.7 == Bright
+      // --- CHANGE: 0.0 for current, 1.0 for adjacent ---
+      case 0: { proximityGlow = 0.0; } // "off"
+      case 1: { proximityGlow = 1.0; } // "blink bright"
       default: {}
   }
 
@@ -296,8 +290,6 @@ let mainButtonYMask  = smoothstep(0.23, 0.24, y) - smoothstep(0.82, 0.83, y);
   let channelActive = step(0.1, noteTrail);
 
   if (channelActive > 0.5) {
-      // --- CHANGE ---
-      // Add proximityGlow to the base pulse
       let topPulse = 0.7 + 0.3 * sin(uniforms.timeSec * 10.0);
       let topGlow = vec3<f32>(0.5, 0.8, 1.0) * (topPulse + proximityGlow);
       finalColor = mix(finalColor, finalColor + topGlow, topLightMask);
@@ -311,16 +303,11 @@ let mainButtonYMask  = smoothstep(0.23, 0.24, y) - smoothstep(0.82, 0.83, y);
       let instBand = inst & 15u;
       let instBrightness = 0.7 + (select(0.0, f32(instBand) / 15.0, instBand > 0u)) * 0.3;
 
-      // --- NEW: Octave Lightness ---
-      let octaveChar = (in.packedA >> 8) & 255u; // Get the ASCII char for the octave
-      let octaveF = f32(octaveChar) - 48.0; // Convert '0' (48) to 0.0, '4' (52) to 4.0
-      // Center brightness around Octave 4 (1.0).
-      // Lower octaves get darker (min 0.55), higher octaves get brighter.
-      let octaveDelta = clamp(octaveF, 1.0, 8.0) - 4.0; // Range from -3.0 to 4.0
-      let octaveLightness = 1.0 + octaveDelta * 0.15; // Range from 0.55 to 1.6
-      // -----------------------------
+      let octaveChar = (in.packedA >> 8) & 255u;
+      let octaveF = f32(octaveChar) - 48.0;
+      let octaveDelta = clamp(octaveF, 1.0, 8.0) - 4.0;
+      let octaveLightness = 1.0 + octaveDelta * 0.15;
       
-      // --- MODIFIED: Apply octaveLightness ---
       noteColor = base_note_color * instBrightness * octaveLightness;
       
       let triggerFlash = noteColor * 1.5 + 0.5;
@@ -331,32 +318,32 @@ let mainButtonYMask  = smoothstep(0.23, 0.24, y) - smoothstep(0.82, 0.83, y);
       finalColor = mix(finalColor, noteColor, mixAmount);
   }
 
-// ** "Has Effect" -> Bottom Light **
-var bottomGlow = vec3<f32>(0.0);
+  // ** "Has Effect" -> Bottom Light **
+  var bottomGlow = vec3<f32>(0.0);
 
-// 1. Add pulse glow IF an effect exists
-if (hasEffect) {
-    let effectColor = effectColorFromCode(effCode, fs.effectColor);
-    let strength = clamp(f32(effParam) / 255.0, 0.2, 1.0);
-    let effectPulse = 1.0 + 0.5 * sin(uniforms.timeSec * 15.0);
-    bottomGlow += (effectColor * strength * effectPulse) * 1.5;
-}
+  if (hasEffect) {
+      let effectColor = effectColorFromCode(effCode, fs.effectColor);
+      let strength = clamp(f32(effParam) / 255.0, 0.2, 1.0);
+      let effectPulse = 1.0 + 0.5 * sin(uniforms.timeSec * 15.0);
+      bottomGlow += (effectColor * strength * effectPulse) * 1.5;
+  }
 
-// 2. Add proximity glow ALWAYS (for the playhead "wipe")
-if (proximityGlow > 0.0) {
-    let baseEffectColor = vec3<f32>(0.8, 0.7, 0.3); // Base yellow
-    // Add the proximity glow, scaled by the same brightness
-    bottomGlow += (baseEffectColor * proximityGlow) * 1.5;
-}
+  if (proximityGlow > 0.0) {
+      let baseEffectColor = vec3<f32>(0.8, 0.7, 0.3);
+      bottomGlow += (baseEffectColor * proximityGlow) * 1.5;
+  }
+  finalColor = mix(finalColor, finalColor + bottomGlow, bottomLightMask);
 
-// Apply the combined glow
-finalColor = mix(finalColor, finalColor + bottomGlow, bottomLightMask);
+  
+  // --- 6. "BLINK OFF" LOGIC ---
+  // --- NEW: This block dims the main button if on the playhead and empty ---
+  if (rowDistance == 0 && !hasNote) {
+      // "blink off" by dimming the main button area
+      finalColor = mix(finalColor, finalColor * 0.2, mainButtonMask);
+  }
 
-  // --- 5. OLD PLAYHEAD LOGIC (DELETED) ---
-  // The logic for blinking the main button face has been removed,
-  // as it is now replaced by the indicator glow.
 
-  // --- 6. BORDERS ---
+  // --- 7. BORDERS ---
   let uv_aa = vec2<f32>(fwidth(in.uv.x), fwidth(in.uv.y));
   let borderX = smoothstep(1.0 - (fs.borderThickness * uv_aa.x), 1.0, in.uv.x);
   let borderY = smoothstep(1.0 - (fs.borderThickness * uv_aa.y), 1.0, in.uv.y);
