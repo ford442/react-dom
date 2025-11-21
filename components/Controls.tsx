@@ -12,6 +12,8 @@ interface ControlsProps {
   onMediaAdd?: (file: File) => void;
   isLooping: boolean;
   onLoopToggle: () => void;
+  panValue: number;
+  onPanChange: (value: number) => void;
 }
 
 export const Controls: React.FC<ControlsProps> = ({
@@ -24,6 +26,8 @@ export const Controls: React.FC<ControlsProps> = ({
   onMediaAdd,
   isLooping,
   onLoopToggle,
+  panValue,
+  onPanChange,
 }) => {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -97,6 +101,24 @@ export const Controls: React.FC<ControlsProps> = ({
           <LoopIcon className="w-5 h-5" />
           Loop
         </button>
+      </div>
+
+      <div className="flex items-center gap-3 min-w-[200px]">
+        <label htmlFor="pan-slider" className="text-sm text-gray-400 whitespace-nowrap">
+          Pan: {panValue === 0 ? 'Center' : panValue < 0 ? `L${Math.abs(Math.round(panValue * 100))}` : `R${Math.round(panValue * 100)}`}
+        </label>
+        <input
+          id="pan-slider"
+          type="range"
+          min="-1"
+          max="1"
+          step="0.01"
+          value={panValue}
+          onChange={(e) => onPanChange(parseFloat(e.target.value))}
+          disabled={!isModuleLoaded}
+          className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Stereo Panning"
+        />
       </div>
     </section>
   );
