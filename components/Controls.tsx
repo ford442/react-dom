@@ -68,7 +68,7 @@ export const Controls: React.FC<ControlsProps> = ({
         />
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex gap-4 items-center">
         <button
           id="play-button"
           className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
@@ -91,16 +91,27 @@ export const Controls: React.FC<ControlsProps> = ({
           Stop
         </button>
 
-        <button
-          id="loop-button"
-          className={`font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 ${isLooping ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-600 hover:bg-gray-700 text-gray-300'}`}
-          onClick={onLoopToggle}
-          disabled={!isModuleLoaded}
-          aria-label="Toggle Loop"
-        >
-          <LoopIcon className="w-5 h-5" />
-          Loop
-        </button>
+        <div className="flex items-center gap-2 px-3 py-2 bg-gray-700/50 rounded-lg">
+          <LoopIcon className="w-5 h-5 text-gray-400" />
+          <span className="text-sm text-gray-400 mr-2">Loop</span>
+          <button
+            id="loop-toggle"
+            onClick={onLoopToggle}
+            disabled={!isModuleLoaded}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed ${
+              isLooping ? 'bg-blue-600' : 'bg-gray-600'
+            }`}
+            aria-label="Toggle Loop"
+            role="switch"
+            aria-checked={isLooping}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                isLooping ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center gap-3 min-w-[200px]">
