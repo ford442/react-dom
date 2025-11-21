@@ -12,6 +12,8 @@ interface ControlsProps {
   onMediaAdd?: (file: File) => void;
   isLooping: boolean;
   onLoopToggle: () => void;
+  panValue: number;
+  onPanChange: (value: number) => void;
 }
 
 export const Controls: React.FC<ControlsProps> = ({
@@ -24,6 +26,8 @@ export const Controls: React.FC<ControlsProps> = ({
   onMediaAdd,
   isLooping,
   onLoopToggle,
+  panValue,
+  onPanChange,
 }) => {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -37,6 +41,12 @@ export const Controls: React.FC<ControlsProps> = ({
     if (file && onMediaAdd) {
       onMediaAdd(file);
     }
+  };
+
+  const getPanLabel = (value: number): string => {
+    if (value === 0) return 'Center';
+    if (value < 0) return `L${Math.abs(Math.round(value * 100))}`;
+    return `R${Math.abs(Math.round(value * 100))}`;
   };
 
   return (
@@ -64,7 +74,7 @@ export const Controls: React.FC<ControlsProps> = ({
         />
       </div>
 
-      <div className="flex gap-4">
+      <div className="flex gap-4 items-center">
         <button
           id="play-button"
           className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
@@ -87,16 +97,45 @@ export const Controls: React.FC<ControlsProps> = ({
           Stop
         </button>
 
-        <button
-          id="loop-button"
-          className={`font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 ${isLooping ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-600 hover:bg-gray-700 text-gray-300'}`}
-          onClick={onLoopToggle}
+        <div className="flex items-center gap-2 px-3 py-2 bg-gray-700/50 rounded-lg">
+          <LoopIcon className="w-5 h-5 text-gray-400" />
+          <span className="text-sm text-gray-400 mr-2">Loop</span>
+          <button
+            id="loop-toggle"
+            onClick={onLoopToggle}
+            disabled={!isModuleLoaded}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed ${
+              isLooping ? 'bg-blue-600' : 'bg-gray-600'
+            }`}
+            aria-label="Toggle Loop"
+            role="switch"
+            aria-checked={isLooping}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                isLooping ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 min-w-[200px]">
+        <label htmlFor="pan-slider" className="text-sm text-gray-400 whitespace-nowrap">
+          Pan: {getPanLabel(panValue)}
+        </label>
+        <input
+          id="pan-slider"
+          type="range"
+          min="-1"
+          max="1"
+          step="0.01"
+          value={panValue}
+          onChange={(e) => onPanChange(parseFloat(e.target.value))}
           disabled={!isModuleLoaded}
-          aria-label="Toggle Loop"
-        >
-          <LoopIcon className="w-5 h-5" />
-          Loop
-        </button>
+          className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Stereo Panning"
+        />
       </div>
     </section>
   );

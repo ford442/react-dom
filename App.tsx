@@ -38,6 +38,8 @@ export default function App() {
     activeChannels,
     isLooping,
     setIsLooping,
+    panValue,
+    setPanValue,
   } = useLibOpenMPT();
 
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -99,6 +101,8 @@ export default function App() {
           onMediaAdd={addMediaFile}
           isLooping={isLooping}
           onLoopToggle={() => setIsLooping(!isLooping)}
+          panValue={panValue}
+          onPanChange={setPanValue}
         />
 
         {isModuleLoaded && (
