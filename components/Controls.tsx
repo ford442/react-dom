@@ -43,6 +43,12 @@ export const Controls: React.FC<ControlsProps> = ({
     }
   };
 
+  const getPanLabel = (value: number): string => {
+    if (value === 0) return 'Center';
+    if (value < 0) return `L${Math.abs(Math.round(value * 100))}`;
+    return `R${Math.abs(Math.round(value * 100))}`;
+  };
+
   return (
     <section className="bg-gray-800 p-4 rounded-lg shadow-lg mb-6 flex flex-wrap gap-4 items-center">
       <div className="flex items-center gap-2">
@@ -116,7 +122,7 @@ export const Controls: React.FC<ControlsProps> = ({
 
       <div className="flex items-center gap-3 min-w-[200px]">
         <label htmlFor="pan-slider" className="text-sm text-gray-400 whitespace-nowrap">
-          Pan: {panValue === 0 ? 'Center' : panValue < 0 ? `L${Math.abs(Math.round(panValue * 100))}` : `R${Math.round(panValue * 100)}`}
+          Pan: {getPanLabel(panValue)}
         </label>
         <input
           id="pan-slider"

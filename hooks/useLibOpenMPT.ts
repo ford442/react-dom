@@ -104,12 +104,10 @@ export function useLibOpenMPT() {
 
     scriptNodeRef.current.disconnect();
     scriptNodeRef.current = null;
-    
     if (stereoPannerRef.current) {
       stereoPannerRef.current.disconnect();
       stereoPannerRef.current = null;
     }
-    
     setIsPlaying(false);
     cancelAnimationFrame(animationFrameHandle.current);
 
@@ -389,6 +387,11 @@ export function useLibOpenMPT() {
           setTimeout(() => stopMusic(false), 0);
         }
       };
+
+      // Clean up any existing panner before creating a new one
+      if (stereoPannerRef.current) {
+        stereoPannerRef.current.disconnect();
+      }
 
       // Create stereo panner node for panning control
       stereoPannerRef.current = audioContextRef.current.createStereoPanner();
