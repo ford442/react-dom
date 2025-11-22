@@ -1,6 +1,6 @@
 // filepath: g:\github\react-dom\shaders\patternv0.14.wgsl
 // Horizontal Pattern Grid Shader (Time = X, Channels = Y)
-// V3: "Space Diamonds" Edition - Lens flared points of light
+// V3.1: "Space Diamonds" - Fixed variable mutability
 
 struct Uniforms {
   numRows: u32,
@@ -113,7 +113,7 @@ fn pitchClassFromPacked(packed: u32) -> f32 {
     return f32(semitone) / 12.0;
 }
 
-// --- NEW: Lens Flare Function ---
+// --- Lens Flare Function ---
 fn diamondFlare(uv: vec2<f32>, color: vec3<f32>, intensity: f32, time: f32) -> vec3<f32> {
     // Center coordinates
     let p = uv - 0.5;
@@ -246,7 +246,7 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   // --- 5. EFFECT INDICATOR (Smaller flares at bottom) ---
   if (hasEffect) {
       let effColor = effectColorFromCode(effCode, vec3<f32>(0.8, 0.8, 0.8));
-      let effUV = in.uv;
+      var effUV = in.uv;
       effUV.y -= 0.35; // Shift center down
       // Smaller, sharper flare for effects
       let effFlare = diamondFlare(effUV, effColor, 0.4, uniforms.timeSec + 10.0);

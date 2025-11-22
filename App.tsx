@@ -38,12 +38,12 @@ export default function App() {
     activeChannels,
     isLooping,
     setIsLooping,
-  } = useLibOpenMPT();
+  } = useLibOpenMPT(volume);
 
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [activeMediaId, setActiveMediaId] = useState<string | undefined>(undefined);
   const [overlayVisible, setOverlayVisible] = useState<boolean>(false);
-
+  const [volume, setVolume] = useState(1.0);
   const addMediaFile = useCallback((file: File) => {
     const url = URL.createObjectURL(file);
     const kind: MediaItem['kind'] = file.type === 'video/mp4' || file.type.startsWith('video/') ? 'video' : (file.type === 'image/gif' ? 'gif' : 'image');
@@ -100,8 +100,8 @@ export default function App() {
           isLooping={isLooping}
           onLoopToggle={() => setIsLooping(!isLooping)}
         />
-
-        {isModuleLoaded && (
+          volume={volume}
+          setVolume={setVolume}
           <>
             <InfoDisplay moduleInfo={moduleInfo} />
 

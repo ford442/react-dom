@@ -12,8 +12,8 @@ interface ControlsProps {
   onMediaAdd?: (file: File) => void;
   isLooping: boolean;
   onLoopToggle: () => void;
-}
-
+  volume?: number;
+  setVolume?: (v: number) => void;
 export const Controls: React.FC<ControlsProps> = ({
   isReady,
   isPlaying,
@@ -26,8 +26,8 @@ export const Controls: React.FC<ControlsProps> = ({
   onLoopToggle,
 }) => {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
+  volume,
+  setVolume,
       onFileSelected(file);
     }
   };
@@ -101,3 +101,19 @@ export const Controls: React.FC<ControlsProps> = ({
     </section>
   );
 };
+
+
+      <div className="flex items-center gap-4">
+        <label className="flex items-center gap-2">
+          Volume
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume ?? 1}
+            onChange={e => setVolume && setVolume(Number(e.target.value))}
+            style={{ width: 100 }}
+          />
+        </label>
+      </div>

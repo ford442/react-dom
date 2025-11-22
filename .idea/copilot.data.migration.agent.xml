@@ -4,10 +4,22 @@
     <option name="migrationStatus" value="IN_PROGRESS" />
     <option name="pendingSessionIds">
       <option value="00c2059e-759b-4c1b-a87b-18b700788677" />
+      <option value="015192b4-3317-4da8-9968-b810b85edbc6" />
       <option value="02bed463-e537-417e-8227-4d3459124639" />
+      <option value="06529014-116e-4426-93a6-031022c34ba8" />
+      <option value="0ade48d2-9fc3-42dd-8619-f9467665d326" />
+      <option value="17b4ad77-32f0-4638-9ca1-882ea9d0898b" />
+      <option value="1836e08e-7300-4a99-86ff-72e626b475e7" />
+      <option value="1cb5faff-6f07-40b8-8da4-9412d6ce745a" />
       <option value="1d2c51cb-2cd8-404f-88d6-0192d28ff3d7" />
+      <option value="2a8cde7e-70dd-4939-81ef-77cd0a7e91aa" />
       <option value="3b4680a3-57e6-4313-a169-8d7db63700ba" />
+      <option value="436866df-a0cf-46b0-90df-1de3ec1579e3" />
+      <option value="4c66a05a-aa46-4fce-86c9-fc874ea78d9a" />
+      <option value="6295eced-761d-47e1-8ecc-69bfee78898c" />
+      <option value="64a6cbf8-38fa-4f9b-91fb-160929548a2e" />
       <option value="675dcf46-c809-4981-a8f1-c287e25f87ee" />
+      <option value="73995839-3f85-4bd4-9554-adcc02f9cc1f" />
       <option value="889f00fb-7f22-47d6-b8f0-2c9ee90568ee" />
       <option value="a17908ed-3672-4f78-8b18-4ed692b4e3e2" />
       <option value="b8a08896-7893-413d-a166-bcacfecdf610" />
@@ -25,6 +37,13 @@
             </set>
           </value>
         </entry>
+        <entry key="015192b4-3317-4da8-9968-b810b85edbc6">
+          <value>
+            <set>
+              <option value="9d8bb5ca-313b-4a9b-9b20-bde998572222" />
+            </set>
+          </value>
+        </entry>
         <entry key="02bed463-e537-417e-8227-4d3459124639">
           <value>
             <set>
@@ -37,6 +56,13 @@
             </set>
           </value>
         </entry>
+        <entry key="06529014-116e-4426-93a6-031022c34ba8">
+          <value>
+            <set>
+              <option value="fb649da1-dd09-4c9c-b8e2-e6884dbb3870" />
+            </set>
+          </value>
+        </entry>
         <entry key="1d2c51cb-2cd8-404f-88d6-0192d28ff3d7">
           <value>
             <set>
@@ -45,10 +71,24 @@
             </set>
           </value>
         </entry>
+        <entry key="436866df-a0cf-46b0-90df-1de3ec1579e3">
+          <value>
+            <set>
+              <option value="fb7614dd-c2fc-4ccd-b4d9-8791aeef5118" />
+            </set>
+          </value>
+        </entry>
         <entry key="675dcf46-c809-4981-a8f1-c287e25f87ee">
           <value>
             <set>
               <option value="ab5657ac-c73d-49bb-88da-398029c4c26c" />
+            </set>
+          </value>
+        </entry>
+        <entry key="73995839-3f85-4bd4-9554-adcc02f9cc1f">
+          <value>
+            <set>
+              <option value="7cecdce4-9c42-4549-92a3-ec6c2f7caf4e" />
             </set>
           </value>
         </entry>
@@ -126,7 +166,9 @@
     </option>
     <pendingWorkingSetItems>
       <entry key="00c2059e-759b-4c1b-a87b-18b700788677" />
+      <entry key="015192b4-3317-4da8-9968-b810b85edbc6" />
       <entry key="02bed463-e537-417e-8227-4d3459124639" />
+      <entry key="06529014-116e-4426-93a6-031022c34ba8" />
       <entry key="1d2c51cb-2cd8-404f-88d6-0192d28ff3d7" />
       <entry key="675dcf46-c809-4981-a8f1-c287e25f87ee" />
       <entry key="889f00fb-7f22-47d6-b8f0-2c9ee90568ee" />

@@ -54,7 +54,7 @@ const noteToFreq = (note?: string): number => {
   return 440 * Math.pow(2, (midi - 69) / 12);
 };
 
-export function useLibOpenMPT() {
+export function useLibOpenMPT(volume: number = 1.0) {
   const [status, setStatus] = useState<string>(INITIAL_STATUS);
   const [isReady, setIsReady] = useState<boolean>(false);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -84,7 +84,7 @@ export function useLibOpenMPT() {
   const moduleInfoRef = useRef(moduleInfo);
   const isPlayingRef = useRef(isPlaying);
   const isLoopingRef = useRef(isLooping);
-
+  const gainNodeRef = useRef<GainNode | null>(null);
   useEffect(() => {
     moduleInfoRef.current = moduleInfo;
   }, [moduleInfo]);
@@ -342,11 +342,11 @@ export function useLibOpenMPT() {
         audioContextRef.current = new AudioContext({ sampleRate: SAMPLE_RATE });
       }
       
-      if (audioContextRef.current.state === 'suspended') {
-        audioContextRef.current.resume();
+      if (!gainNodeRef.current) {
+        gainNodeRef.current = audioContextRef.current.createGain();
+        gainNodeRef.current.connect(audioContextRef.current.destination);
       }
-
-      const lib = libopenmptRef.current;
+      gainNodeRef.current.gain.value = volume;
       const modPtr = currentModulePtr.current;
       const leftBufferPtr = lib._malloc(BUFFER_SIZE * 4);
       const rightBufferPtr = lib._malloc(BUFFER_SIZE * 4);
@@ -387,7 +387,7 @@ export function useLibOpenMPT() {
       setStatus(`Playing "${moduleInfoRef.current.title}"...`);
       animationFrameHandle.current = requestAnimationFrame(updateUI);
 
-    } catch (e) {
+      scriptNodeRef.current.connect(gainNodeRef.current);
       console.error("Failed to start music:", e);
       setStatus("Error: Failed to start playback. See console.");
     }
