@@ -78,6 +78,13 @@
             </set>
           </value>
         </entry>
+        <entry key="4c66a05a-aa46-4fce-86c9-fc874ea78d9a">
+          <value>
+            <set>
+              <option value="250712ed-3094-4ed7-9961-bdc031221b61" />
+            </set>
+          </value>
+        </entry>
         <entry key="675dcf46-c809-4981-a8f1-c287e25f87ee">
           <value>
             <set>
@@ -170,6 +177,11 @@
       <entry key="02bed463-e537-417e-8227-4d3459124639" />
       <entry key="06529014-116e-4426-93a6-031022c34ba8" />
       <entry key="1d2c51cb-2cd8-404f-88d6-0192d28ff3d7" />
+      <entry key="4c66a05a-aa46-4fce-86c9-fc874ea78d9a">
+        <set>
+          <option value="file://$PROJECT_DIR$/shaders/patternv0.14.wgsl" />
+        </set>
+      </entry>
       <entry key="675dcf46-c809-4981-a8f1-c287e25f87ee" />
       <entry key="889f00fb-7f22-47d6-b8f0-2c9ee90568ee" />
       <entry key="a17908ed-3672-4f78-8b18-4ed692b4e3e2" />
