@@ -73,11 +73,13 @@ export function useLibOpenMPT(volume: number = 1.0) {
   const [grooveAmount, setGrooveAmount] = useState<number>(0);
   const [activeChannels, setActiveChannels] = useState<number>(0);
   const [isLooping, setIsLooping] = useState<boolean>(false);
+  const [panValue, setPanValue] = useState<number>(0);
 
   const libopenmptRef = useRef<LibOpenMPT | null>(null);
   const currentModulePtr = useRef<number>(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const scriptNodeRef = useRef<ScriptProcessorNode | null>(null);
+  const stereoPannerRef = useRef<StereoPannerNode | null>(null);
   const rowBufferRef = useRef<Record<string, string>>({});
   const patternMatricesRef = useRef<Record<number, PatternMatrix>>({});
   const animationFrameHandle = useRef<number>(0);
@@ -102,6 +104,10 @@ export function useLibOpenMPT(volume: number = 1.0) {
 
     scriptNodeRef.current.disconnect();
     scriptNodeRef.current = null;
+    if (stereoPannerRef.current) {
+      stereoPannerRef.current.disconnect();
+      stereoPannerRef.current = null;
+    }
     setIsPlaying(false);
     cancelAnimationFrame(animationFrameHandle.current);
 
@@ -382,7 +388,18 @@ export function useLibOpenMPT(volume: number = 1.0) {
         }
       };
 
-      scriptNodeRef.current.connect(audioContextRef.current.destination);
+      // Clean up any existing panner before creating a new one
+      if (stereoPannerRef.current) {
+        stereoPannerRef.current.disconnect();
+      }
+
+      // Create stereo panner node for panning control
+      stereoPannerRef.current = audioContextRef.current.createStereoPanner();
+      stereoPannerRef.current.pan.value = panValue;
+
+      // Connect: ScriptProcessor -> StereoPanner -> Destination
+      scriptNodeRef.current.connect(stereoPannerRef.current);
+      stereoPannerRef.current.connect(audioContextRef.current.destination);
       setIsPlaying(true);
       setStatus(`Playing "${moduleInfoRef.current.title}"...`);
       animationFrameHandle.current = requestAnimationFrame(updateUI);
@@ -391,7 +408,7 @@ export function useLibOpenMPT(volume: number = 1.0) {
       console.error("Failed to start music:", e);
       setStatus("Error: Failed to start playback. See console.");
     }
-  }, [isPlaying, stopMusic, updateUI]);
+  }, [isPlaying, stopMusic, updateUI, panValue]);
 
   useEffect(() => {
     const init = async () => {
@@ -445,6 +462,9 @@ export function useLibOpenMPT(volume: number = 1.0) {
       if (scriptNodeRef.current) {
         scriptNodeRef.current.disconnect();
       }
+      if (stereoPannerRef.current) {
+        stereoPannerRef.current.disconnect();
+      }
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
       }
@@ -454,6 +474,13 @@ export function useLibOpenMPT(volume: number = 1.0) {
       cancelAnimationFrame(animationFrameHandle.current);
     };
   }, []);
+
+  // Update panning when panValue changes
+  useEffect(() => {
+    if (stereoPannerRef.current) {
+      stereoPannerRef.current.pan.value = panValue;
+    }
+  }, [panValue]);
 
   useEffect(() => {
     if (isReady) {
@@ -507,5 +534,5 @@ export function useLibOpenMPT(volume: number = 1.0) {
     }
   };
 
-  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, loadModule, play, stopMusic, sequencerMatrix, sequencerCurrentRow, sequencerGlobalRow, totalPatternRows, playbackSeconds, playbackRowFraction, channelStates, beatPhase, grooveAmount, kickTrigger, activeChannels, isLooping, setIsLooping, seekToStep };
+  return { status, isReady, isPlaying, isModuleLoaded, moduleInfo, patternData, loadModule, play, stopMusic, sequencerMatrix, sequencerCurrentRow, sequencerGlobalRow, totalPatternRows, playbackSeconds, playbackRowFraction, channelStates, beatPhase, grooveAmount, kickTrigger, activeChannels, isLooping, setIsLooping, seekToStep, panValue, setPanValue };
 }
